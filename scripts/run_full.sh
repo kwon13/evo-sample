@@ -1,83 +1,155 @@
 #!/bin/bash
-# R_Q Evolutionary Problem Generation - Full Pipeline
-# 
-# Prerequisites:
-#   pip install verl vllm torch transformers datasets sentence-transformers sympy pyarrow
+# ============================================================
+# R_Q Self-Evolving Pipeline
+# ============================================================
 #
-# Hardware: 4x GPU (A100/H100 recommended)
+# One model evolves problem-generation programs (Questioner)
+# and solves the generated problems (Solver) simultaneously.
+#
+# Prerequisites:
+#   pip install -r requirements.txt
+#   # or: pip install verl vllm torch transformers datasets \
+#   #     sentence-transformers sympy pyarrow
+#
+# Hardware:
+#   - Minimum: 1x A100-80GB (7B model, tp=1)
+#   - Recommended: 4x A100-80GB (7B model, tp=1, faster veRL)
+#   - Large scale: 8x H100 (>7B model, tp=2+)
 #
 # Usage:
+#   # Quick test (small scale)
 #   bash scripts/run_full.sh
+#
+#   # Custom model
+#   MODEL=Qwen/Qwen2.5-3B bash scripts/run_full.sh
+#
+#   # Full evaluation (slower but complete)
+#   EVAL_FULL=1 bash scripts/run_full.sh
+#
+#   # Resume from checkpoint
+#   RESUME_MODEL=/path/to/checkpoint bash scripts/run_full.sh
+#
+#   # Enable WandB logging
+#   WANDB_MODE=online WANDB_API_KEY=your_key bash scripts/run_full.sh
+# ============================================================
 
-set -e
+set -euo pipefail
 
-export STORAGE_PATH=${STORAGE_PATH:-"./rq_output"}
-export WANDB_MODE=${WANDB_MODE:-"disabled"}
+# --- Configuration (override via environment variables) ---
 
-echo "================================================"
-echo "R_Q Evolutionary Problem Generation Pipeline"
-echo "================================================"
+MODEL=${MODEL:-"Qwen/Qwen3-8B-Base"}
+RESUME_MODEL=${RESUME_MODEL:-""}
+TP=${TP:-1}
+GPU_MEM=${GPU_MEM:-0.85}
 
-# --- Step 1: Prepare seed programs from LIMR ---
-echo ""
-echo "[Step 1/3] Preparing seed programs from LIMR dataset..."
-python run.py prepare \
-    --output_dir ./seed_programs \
-    --max_static 10 \
-    --max_limr 500
+NUM_EPOCHS=${NUM_EPOCHS:-5}
+NUM_GENERATIONS=${NUM_GENERATIONS:-100}
+CANDIDATES=${CANDIDATES:-8}
+NUM_ROLLOUTS=${NUM_ROLLOUTS:-16}
+TRAIN_BATCH=${TRAIN_BATCH:-256}
 
-# --- Step 2: Run Questioner evolution ---
-echo ""
-echo "[Step 2/3] Running Questioner evolution..."
-python run.py evolve \
-    --seed_dir ./seed_programs \
-    --output_dir ${STORAGE_PATH} \
-    --num_epochs 3 \
-    --num_generations 50 \
-    --candidates_per_gen 4 \
-    --num_rollouts 16 \
-    --n_h_bins 6 \
-    --n_div_bins 6 \
-    --mutator_model Qwen/Qwen2.5-7B-Instruct \
-    --solver_model Qwen/Qwen2.5-3B
+OUTPUT_DIR=${OUTPUT_DIR:-"./rq_output"}
+SEED_DIR=${SEED_DIR:-"./seed_programs"}
 
-# --- Step 3: Train Solver with veRL GRPO ---
-echo ""
-echo "[Step 3/3] Training Solver with veRL GRPO..."
+WANDB_MODE=${WANDB_MODE:-"disabled"}
+export WANDB_MODE
 
-# Find the latest training data
-LATEST_TRAIN=$(ls -t ${STORAGE_PATH}/train_epoch_*.parquet 2>/dev/null | head -1)
-
-if [ -z "$LATEST_TRAIN" ]; then
-    LATEST_TRAIN=$(ls -t ${STORAGE_PATH}/train_epoch_*.jsonl 2>/dev/null | head -1)
+# Evaluation: subset by default, set EVAL_FULL=1 for complete benchmarks
+if [ "${EVAL_FULL:-0}" = "1" ]; then
+    EVAL_GSM8K=-1       # full 1319
+    EVAL_MATH500=-1     # full 500
+    EVAL_AIME_K=32
+else
+    EVAL_GSM8K=200      # subset for fast iteration
+    EVAL_MATH500=100
+    EVAL_AIME_K=32
 fi
 
-if [ -z "$LATEST_TRAIN" ]; then
-    echo "ERROR: No training data found. Evolution may have failed."
+# Use resume model if specified
+if [ -n "$RESUME_MODEL" ]; then
+    MODEL="$RESUME_MODEL"
+fi
+
+# --- Pre-flight checks ---
+
+echo "============================================================"
+echo "R_Q Self-Evolving Pipeline"
+echo "============================================================"
+echo "  Model:        $MODEL"
+echo "  TP:           $TP"
+echo "  Epochs:       $NUM_EPOCHS"
+echo "  Generations:  $NUM_GENERATIONS"
+echo "  Rollouts:     $NUM_ROLLOUTS"
+echo "  Output:       $OUTPUT_DIR"
+echo "  Eval:         GSM8K=$EVAL_GSM8K  MATH500=$EVAL_MATH500  AIME@$EVAL_AIME_K"
+echo "============================================================"
+
+# Verify seed programs exist
+if [ ! -d "$SEED_DIR" ] || [ -z "$(ls -A $SEED_DIR/*.py 2>/dev/null)" ]; then
+    echo "ERROR: No seed programs found in $SEED_DIR"
     exit 1
 fi
+echo "Seed programs: $(ls $SEED_DIR/*.py | wc -l) files"
 
-echo "Using training data: $LATEST_TRAIN"
+# Verify GPU availability
+python -c "import torch; assert torch.cuda.is_available(), 'No GPU'; print(f'GPUs: {torch.cuda.device_count()}x {torch.cuda.get_device_name(0)}')" || {
+    echo "ERROR: No CUDA GPU available"
+    exit 1
+}
 
-# Launch veRL GRPO training
-python -m verl.trainer.main_ppo \
-    data.train_files=$LATEST_TRAIN \
-    data.train_batch_size=256 \
-    data.max_prompt_length=1024 \
-    data.max_response_length=2048 \
-    actor_rollout_ref.model.path=Qwen/Qwen2.5-3B \
-    actor_rollout_ref.actor.optim.lr=1e-6 \
-    actor_rollout_ref.rollout.n=16 \
-    actor_rollout_ref.rollout.temperature=0.7 \
-    actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
-    algorithm.kl_ctrl.kl_coeff=0.001 \
-    trainer.total_epochs=1 \
-    trainer.project_name=rq_evolve \
-    trainer.experiment_name=rq_solver \
-    trainer.default_local_dir=${STORAGE_PATH}/verl_checkpoints
+# --- Launch pipeline ---
 
 echo ""
-echo "================================================"
+echo "Starting Self-Evolving pipeline..."
+echo ""
+
+python run.py full \
+    --model "$MODEL" \
+    --tp "$TP" \
+    --gpu_mem "$GPU_MEM" \
+    --num_epochs "$NUM_EPOCHS" \
+    --num_generations "$NUM_GENERATIONS" \
+    --candidates_per_gen "$CANDIDATES" \
+    --num_rollouts "$NUM_ROLLOUTS" \
+    --train_batch_size "$TRAIN_BATCH" \
+    --eval_gsm8k "$EVAL_GSM8K" \
+    --eval_math500 "$EVAL_MATH500" \
+    --eval_aime_k "$EVAL_AIME_K" \
+    --seed_dir "$SEED_DIR" \
+    --output_dir "$OUTPUT_DIR"
+
+# --- Summary ---
+
+echo ""
+echo "============================================================"
 echo "Pipeline complete!"
-echo "Results saved to: ${STORAGE_PATH}"
-echo "================================================"
+echo "============================================================"
+echo "  Output:       $OUTPUT_DIR"
+echo "  Eval results: $OUTPUT_DIR/eval/"
+echo "  Champions:    $OUTPUT_DIR/final_champions/"
+echo "  Log:          $OUTPUT_DIR/evolution_log.json"
+
+if [ -f "$OUTPUT_DIR/final_summary.json" ]; then
+    echo ""
+    echo "Final summary:"
+    python -c "
+import json
+with open('$OUTPUT_DIR/final_summary.json') as f:
+    s = json.load(f)
+print(f'  Final model:  {s.get(\"final_model\", \"N/A\")}')
+gs = s.get('final_grid_stats', {})
+print(f'  Coverage:     {gs.get(\"coverage\", 0):.0%}')
+print(f'  Mean R_Q:     {gs.get(\"mean_rq\", 0):.4f}')
+print(f'  Champions:    {gs.get(\"num_champions\", 0)}')
+for e in s.get('evolution_log', []):
+    ev = e.get('eval', {})
+    if ev:
+        parts = [f'{k}={v[\"accuracy\"]:.1%}' for k, v in ev.items()]
+        print(f'  Epoch {e[\"epoch\"]}: {\"  \".join(parts)}')
+"
+fi
+
+echo "============================================================"
+
+
+# MODEL=Qwen/Qwen3-8B-Base WANDB_MODE=online WANDB_API_KEY=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 WANDB_PROJECT=rq_evolve TP=4 bash scripts/run_full.sh

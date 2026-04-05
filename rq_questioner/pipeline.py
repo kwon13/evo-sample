@@ -1,83 +1,190 @@
 """
-Evolutionary Pipeline: Main loop implementing Algorithm 4.1.
+Evolutionary Pipeline: Algorithm 4.1 — Self-Evolving single-model architecture.
 
-Outer Loop: Solver-Questioner co-evolution
-  Inner Loop: Questioner evolution via MAP-Elites
-    1. Sample parent programs from grid
-    2. LLM mutator generates candidate programs
-    3. Programs generate problem instances
-    4. verify(x', a') → discard on failure
-    5. H pre-filter: 1 forward pass → discard if H too low
-    6. G rollouts → p_hat, R_Q
-    7. Update MAP-Elites grid
-  Solver Training:
-    8. Select best problems from each niche
-    9. Generate new instances → GRPO training
-    10. Solver improves → R_Q landscape shifts → next epoch re-adapts
+One model plays both roles:
+  - Questioner: mutates problem-generation programs (LLM writes Python)
+  - Solver: solves the generated problems (LLM does math reasoning)
+
+Phase-separated execution per epoch:
+  Phase 1  (vLLM loaded) — Questioner evolution
+    1-2.  Sample parent + LLM mutate program
+    3.    Execute program → natural language (problem, answer)
+    4.    Verify via SymPy / majority-vote
+    5.    H pre-filter: vLLM (n=1, logprobs) → entropy
+    6.    G rollouts: vLLM (n=G) → p_hat
+    7.    R_Q = p(1-p) · H → MAP-Elites update
+    → Destroy vLLM (free GPU)
+
+  Phase 2  (veRL subprocess) — Solver GRPO training
+    8-9.  Champions → fresh problem instances → parquet
+    10.   veRL GRPO trains the SAME model on evolved problems
+    → Checkpoint saved
+
+  Next epoch: Phase 1 loads checkpoint → better mutator + better solver
 """
 
 import os
+import re
+import gc
 import json
-import time
-import random
 import logging
+import subprocess
 from pathlib import Path
 from typing import Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .program import ProblemProgram, ProblemInstance
 from .map_elites import MAPElitesGrid
-from .mutator import ProgramMutator
 from .verifier import verify_problem
 from .rq_score import compute_rq_full, h_prefilter
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Answer extraction
+# ---------------------------------------------------------------------------
+
+_BOXED_RE = re.compile(
+    r"\\boxed\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", re.DOTALL
+)
+
+
+def extract_boxed(text: str) -> Optional[str]:
+    m = _BOXED_RE.findall(text)
+    return m[-1].strip() if m else None
+
+
+def normalize(s: str) -> str:
+    s = s.strip().lower()
+    for o, c in [("{", "}"), ("[", "]"), ("(", ")")]:
+        if s.startswith(o) and s.endswith(c):
+            s = s[1:-1].strip()
+    return " ".join(s.rstrip(".").split())
+
+
+def answers_match(pred: str, gt: str) -> bool:
+    if normalize(pred) == normalize(gt):
+        return True
+    try:
+        return abs(float(pred) - float(gt)) < 1e-6
+    except (ValueError, TypeError):
+        return False
+
+
+SYSTEM_PROMPT = (
+    "Solve the following math problem step by step. "
+    "Put your final answer in \\boxed{}."
+)
+
+# ---------------------------------------------------------------------------
+# Mutation prompts (used by the SAME model)
+# ---------------------------------------------------------------------------
+
+IN_DEPTH_PROMPT = """You are an expert mathematician and Python programmer.
+
+Below is a Python function that generates natural-language math word problems 
+using inverse construction (answer chosen first, problem built from it).
+
+```python
+{source_code}
+```
+
+Modify this function to generate HARDER problems. You may:
+- Add more reasoning steps or constraints
+- Combine multiple math concepts
+- Require multi-step logic (e.g., need intermediate calculations)
+
+RULES:
+1. Function MUST be named `generate` and take a single `seed` argument
+2. MUST return (problem_text: str, answer: str)
+3. problem_text MUST be a natural language word problem (not raw equations)
+4. answer MUST be constructed FIRST, then problem built from it
+5. Use only standard library + math module
+6. Self-contained, no external dependencies
+
+Return ONLY the Python code."""
+
+IN_BREADTH_PROMPT = """You are an expert mathematician and Python programmer.
+
+Below is a Python function that generates math word problems:
+
+```python
+{source_code}
+```
+
+Create a COMPLETELY DIFFERENT type of math word problem generator covering 
+a different topic (e.g., if above does geometry, try probability, 
+sequences, work-rate problems, or number puzzles).
+
+RULES:
+1. Function MUST be named `generate` and take a single `seed` argument
+2. MUST return (problem_text: str, answer: str)  
+3. problem_text MUST be a natural language word problem
+4. answer MUST be constructed FIRST, then problem built from it
+5. Use only standard library + math module
+6. Self-contained
+
+Return ONLY the Python code."""
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
 
 @dataclass
 class PipelineConfig:
-    """Configuration for the evolutionary pipeline."""
+    # Model (SINGLE model for both roles)
+    model_path: str = "Qwen/Qwen2.5-7B-Instruct"
+    tp: int = 1
+    gpu_mem: float = 0.85
+    max_tokens: int = 2048
+    temperature: float = 0.7
+
     # Outer loop
     num_epochs: int = 5
-    
-    # Inner loop (Questioner evolution)
+
+    # Inner loop
     num_generations: int = 100
-    candidates_per_generation: int = 8
-    instances_per_program: int = 3        # k: seeds per program for evaluation
-    
+    candidates_per_gen: int = 8
+    instances_per_program: int = 3
+    in_depth_ratio: float = 0.7
+
     # H pre-filter
     h_threshold: float = 0.1
-    
+
     # Rollouts
-    num_rollouts: int = 16                # G: rollouts for p_hat estimation
-    
+    num_rollouts: int = 16
+
     # MAP-Elites
     n_h_bins: int = 6
     n_div_bins: int = 6
     h_range: tuple = (0.0, 5.0)
-    
-    # Mutator
-    mutator_model: str = "Qwen/Qwen2.5-7B-Instruct"
-    in_depth_ratio: float = 0.7
-    
-    # Solver
-    solver_model: str = "Qwen/Qwen2.5-3B"
-    
-    # Training (veRL GRPO)
+
+    # Training
     train_batch_size: int = 256
-    max_gen_tokens: int = 1024
-    
+
+    # Evaluation (R-Zero benchmarks)
+    eval_gsm8k_samples: int = 200    # -1 for full (1319)
+    eval_math500_samples: int = 100  # -1 for full (500)
+    eval_aime_k: int = 32            # mean@k for AIME
+
+    # Logging
+    wandb_project: str = "rq_evolve"
+
     # Paths
     output_dir: str = "./rq_output"
     seed_programs_dir: str = "./seed_programs"
-    
-    # Solver answer matching
-    answer_match_method: str = "exact"    # exact, sympy, llm
+
+
+# ---------------------------------------------------------------------------
+# Pipeline
+# ---------------------------------------------------------------------------
 
 
 class EvolutionaryPipeline:
     """
-    Main pipeline implementing the R_Q-guided evolutionary problem generation.
+    Self-Evolving pipeline: one model improves at both
+    generating problems (Questioner) and solving them (Solver).
     """
 
     def __init__(self, config: PipelineConfig):
@@ -85,371 +192,537 @@ class EvolutionaryPipeline:
         self.output_dir = Path(config.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Initialize components
+        self.current_model_path = config.model_path
+
         self.grid = MAPElitesGrid(
             n_h_bins=config.n_h_bins,
             n_div_bins=config.n_div_bins,
             h_range=config.h_range,
         )
-        self.mutator = ProgramMutator(
-            model_name=config.mutator_model,
-            in_depth_ratio=config.in_depth_ratio,
-        )
 
-        # Solver model (lazy loaded)
-        self._solver_model = None
-        self._solver_tokenizer = None
-
-        # Logging
+        self._llm = None
         self.evolution_log = []
 
-    def load_seed_programs(self, seed_dir: str) -> list[ProblemProgram]:
-        """Load initial seed programs from directory."""
+    # ------------------------------------------------------------------
+    # vLLM lifecycle (shared by Questioner + Solver)
+    # ------------------------------------------------------------------
+
+    def _load_vllm(self):
+        """Load vLLM engine with current model."""
+        from vllm import LLM
+        logger.info(f"Loading vLLM: {self.current_model_path}")
+        self._llm = LLM(
+            model=self.current_model_path,
+            tensor_parallel_size=self.config.tp,
+            gpu_memory_utilization=self.config.gpu_mem,
+            trust_remote_code=True,
+            max_model_len=4096,
+        )
+
+    def _destroy_vllm(self):
+        """Destroy vLLM engine and free GPU memory."""
+        if self._llm is not None:
+            logger.info("Destroying vLLM engine")
+            del self._llm
+            self._llm = None
+            try:
+                import torch
+                gc.collect()
+                torch.cuda.empty_cache()
+            except Exception:
+                gc.collect()
+
+    def _build_solver_prompt(self, problem: str) -> str:
+        try:
+            tok = self._llm.get_tokenizer()
+            if hasattr(tok, "apply_chat_template"):
+                return tok.apply_chat_template(
+                    [{"role": "system", "content": SYSTEM_PROMPT},
+                     {"role": "user", "content": problem}],
+                    tokenize=False, add_generation_prompt=True,
+                )
+        except Exception:
+            pass
+        return f"{SYSTEM_PROMPT}\n\nProblem: {problem}\n\nSolution:"
+
+    def _build_mutator_prompt(self, source: str, mutation_type: str) -> str:
+        template = IN_DEPTH_PROMPT if mutation_type == "in_depth" else IN_BREADTH_PROMPT
+        raw = template.format(source_code=source)
+        try:
+            tok = self._llm.get_tokenizer()
+            if hasattr(tok, "apply_chat_template"):
+                return tok.apply_chat_template(
+                    [{"role": "user", "content": raw}],
+                    tokenize=False, add_generation_prompt=True,
+                )
+        except Exception:
+            pass
+        return raw
+
+    # ------------------------------------------------------------------
+    # Questioner: mutate programs (uses same vLLM)
+    # ------------------------------------------------------------------
+
+    def _mutate_program(self, parent: ProblemProgram) -> Optional[ProblemProgram]:
+        """Use the current model to mutate a problem-generation program."""
+        import random as stdlib_random
+        from vllm import SamplingParams
+
+        mtype = "in_depth" if stdlib_random.random() < self.config.in_depth_ratio else "in_breadth"
+        prompt = self._build_mutator_prompt(parent.source_code, mtype)
+
+        params = SamplingParams(temperature=0.8, max_tokens=2048, n=1)
+        outputs = self._llm.generate([prompt], params)
+        response = outputs[0].outputs[0].text
+
+        source = self._extract_code(response)
+        if source is None or "def generate" not in source:
+            return None
+
+        child = ProblemProgram(
+            source_code=source,
+            parent_id=parent.program_id,
+            generation=parent.generation + 1,
+            metadata={"mutation_type": mtype},
+        )
+
+        # Smoke test
+        if child.execute(seed=42, timeout=5.0) is None:
+            return None
+        return child
+
+    def _extract_code(self, text: str) -> Optional[str]:
+        m = re.search(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
+        code = m.group(1).strip() if m else text.strip()
+        lines = code.split("\n")
+        for i, line in enumerate(lines):
+            if line.strip().startswith(("def generate", "import", "from")):
+                code = "\n".join(lines[i:])
+                break
+        return code if "def generate" in code else None
+
+    # ------------------------------------------------------------------
+    # Solver: H measurement (Step 5)
+    # ------------------------------------------------------------------
+
+    def _measure_h_batch(self, problems: list[str]) -> list[Optional[float]]:
+        from vllm import SamplingParams
+
+        prompts = [self._build_solver_prompt(p) for p in problems]
+        params = SamplingParams(
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+            logprobs=1, n=1,
+        )
+        outputs = self._llm.generate(prompts, params)
+
+        results = []
+        for out in outputs:
+            try:
+                lps = out.outputs[0].logprobs
+                if not lps:
+                    results.append(None)
+                    continue
+                ents = [max(0.0, -next(iter(d.values())).logprob) for d in lps]
+                results.append(sum(ents) / len(ents) if ents else None)
+            except Exception:
+                results.append(None)
+        return results
+
+    # ------------------------------------------------------------------
+    # Solver: G rollouts (Step 6)
+    # ------------------------------------------------------------------
+
+    def _run_rollouts_batch(
+        self, instances: list[ProblemInstance]
+    ) -> list[list[bool]]:
+        from vllm import SamplingParams
+
+        prompts = [self._build_solver_prompt(i.problem) for i in instances]
+        params = SamplingParams(
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+            n=self.config.num_rollouts,
+        )
+        outputs = self._llm.generate(prompts, params)
+
+        all_flags = []
+        for out, inst in zip(outputs, instances):
+            flags = []
+            for comp in out.outputs:
+                pred = extract_boxed(comp.text)
+                flags.append(
+                    answers_match(pred, inst.answer) if pred else False
+                )
+            all_flags.append(flags)
+        return all_flags
+
+    # ------------------------------------------------------------------
+    # Seed loading + grid init
+    # ------------------------------------------------------------------
+
+    def load_seed_programs(self) -> list[ProblemProgram]:
         programs = []
-        seed_path = Path(seed_dir)
-        
+        seed_path = Path(self.config.seed_programs_dir)
         for f in sorted(seed_path.glob("*.py")):
-            source = f.read_text()
-            program = ProblemProgram(
-                source_code=source,
-                generation=0,
+            prog = ProblemProgram(
+                source_code=f.read_text(), generation=0,
                 metadata={"source_file": f.name},
             )
-            # Smoke test
-            inst = program.execute(seed=42)
-            if inst is not None:
-                programs.append(program)
-                logger.info(f"Loaded seed program: {f.name} (id={program.program_id})")
+            inst = prog.execute(seed=42)
+            if inst:
+                programs.append(prog)
+                logger.info(f"Seed OK: {f.name} → {inst.problem[:60]}...")
             else:
-                logger.warning(f"Seed program failed smoke test: {f.name}")
-
-        logger.info(f"Loaded {len(programs)} seed programs")
+                logger.warning(f"Seed FAIL: {f.name}")
+        logger.info(f"Loaded {len(programs)} seeds")
         return programs
 
-    def initialize_grid(self, seed_programs: list[ProblemProgram]):
-        """Initialize MAP-Elites grid with seed programs."""
-        # Collect sample problems for fitting diversity axis
-        sample_problems = []
-        for prog in seed_programs:
-            for seed in range(5):
-                inst = prog.execute(seed)
+    def initialize_grid(self, seeds: list[ProblemProgram]):
+        samples = []
+        for prog in seeds:
+            for s in range(5):
+                inst = prog.execute(s)
                 if inst:
-                    sample_problems.append(inst.problem)
+                    samples.append(inst.problem)
+        if samples:
+            self.grid.fit_diversity_axis(samples)
 
-        if sample_problems:
-            self.grid.fit_diversity_axis(sample_problems)
-
-        # Insert seed programs with default scores
-        for prog in seed_programs:
+        for prog in seeds:
             inst = prog.execute(seed=0)
             if inst:
                 self.grid.try_insert(
-                    program=prog,
-                    h_value=1.0,  # Default until measured
-                    problem_text=inst.problem,
-                    rq_score=0.01,  # Small positive to populate
+                    program=prog, h_value=1.0,
+                    problem_text=inst.problem, rq_score=0.01,
                 )
+        logger.info(f"Grid init: {self.grid.stats()}")
 
-        logger.info(f"Grid initialized: {self.grid.stats()}")
+    # ------------------------------------------------------------------
+    # Main loop
+    # ------------------------------------------------------------------
 
     def run(self):
-        """Run the full pipeline."""
         logger.info("=" * 60)
-        logger.info("Starting R_Q Evolutionary Pipeline")
+        logger.info("R_Q Self-Evolving Pipeline")
+        logger.info(f"Model: {self.config.model_path}")
         logger.info("=" * 60)
 
-        # Load seed programs
-        seed_programs = self.load_seed_programs(self.config.seed_programs_dir)
-        if not seed_programs:
-            raise ValueError("No valid seed programs found!")
+        seeds = self.load_seed_programs()
+        if not seeds:
+            raise ValueError("No valid seed programs!")
+        self.initialize_grid(seeds)
 
-        # Initialize grid
-        self.initialize_grid(seed_programs)
-
-        # Outer loop: Solver-Questioner co-evolution
         for epoch in range(self.config.num_epochs):
             logger.info(f"\n{'='*60}")
-            logger.info(f"EPOCH {epoch + 1}/{self.config.num_epochs}")
+            logger.info(f"EPOCH {epoch+1}/{self.config.num_epochs}")
+            logger.info(f"Model: {self.current_model_path}")
             logger.info(f"{'='*60}")
 
-            # Inner loop: Questioner evolution
+            # --- Phase 1: Evolution (vLLM loaded) ---
+            self._load_vllm()
+
+            # Evaluate current model on benchmarks
+            eval_results = self._evaluate_benchmarks(epoch)
+
             self._evolve_questioner(epoch)
-
-            # Solver training with evolved problems
             training_data = self._prepare_training_data(epoch)
-            self._train_solver(training_data, epoch)
+            self._destroy_vllm()
 
-            # Log epoch stats
+            # --- Phase 2: GRPO training (veRL subprocess) ---
+            ckpt = self._train_solver_verl(training_data, epoch)
+
+            # --- Update model path for next epoch ---
+            if ckpt:
+                self.current_model_path = ckpt
+                logger.info(f"Model updated → {ckpt}")
+
+            # --- Logging ---
             stats = self.grid.stats()
             stats["epoch"] = epoch + 1
+            stats["model"] = self.current_model_path
+            if eval_results:
+                stats["eval"] = {
+                    name: {"accuracy": r.accuracy, "metric": r.metric}
+                    for name, r in eval_results.items()
+                }
             self.evolution_log.append(stats)
-            logger.info(f"Epoch {epoch+1} stats: {json.dumps(stats, indent=2)}")
-
-            # Save checkpoint
             self._save_checkpoint(epoch)
+            logger.info(f"Epoch {epoch+1}: {json.dumps(stats, indent=2)}")
 
-        logger.info("\nPipeline complete!")
+        logger.info("\nSelf-Evolving pipeline complete!")
         self._save_final_results()
 
+    # ------------------------------------------------------------------
+    # Phase 1: Questioner evolution
+    # ------------------------------------------------------------------
+
     def _evolve_questioner(self, epoch: int):
-        """Inner loop: Evolve problem generation programs."""
-        logger.info(f"[Epoch {epoch+1}] Starting Questioner evolution "
-                    f"({self.config.num_generations} generations)")
+        logger.info(f"[Phase 1] Evolving ({self.config.num_generations} gens)")
 
         for gen in range(self.config.num_generations):
-            # 1. Sample parent programs from MAP-Elites grid
-            parents = []
-            for _ in range(self.config.candidates_per_generation):
-                parent = self.grid.sample_parent()
-                if parent:
-                    parents.append(parent)
-
+            # 1. Sample parents
+            parents = [
+                p for p in (
+                    self.grid.sample_parent()
+                    for _ in range(self.config.candidates_per_gen)
+                ) if p is not None
+            ]
             if not parents:
-                logger.warning(f"  Gen {gen}: No parents available, skipping")
                 continue
 
-            # 2. LLM mutator generates candidate programs
-            children = self.mutator.mutate_batch(parents)
-            valid_children = [c for c in children if c is not None]
-
-            if not valid_children:
+            # 2. Mutate (same model as Solver)
+            children = []
+            for parent in parents:
+                child = self._mutate_program(parent)
+                if child:
+                    children.append(child)
+            if not children:
                 continue
 
-            # 3-7. Evaluate each candidate
+            # 3-4. Generate + verify
+            candidates = []
+            for child in children:
+                for inst in child.generate_batch(
+                    list(range(self.config.instances_per_program))
+                ):
+                    if verify_problem(inst.problem, inst.answer):
+                        inst.verified = True
+                        candidates.append((child, inst))
+                        break
+            if not candidates:
+                continue
+
+            # 5. H pre-filter (batched)
+            h_vals = self._measure_h_batch(
+                [inst.problem for _, inst in candidates]
+            )
+            surviving = [
+                (child, inst, h)
+                for (child, inst), h in zip(candidates, h_vals)
+                if h is not None and h_prefilter(h, self.config.h_threshold)
+            ]
+            if not surviving:
+                continue
+
+            # 6. G rollouts (batched)
+            all_flags = self._run_rollouts_batch(
+                [inst for _, inst, _ in surviving]
+            )
+
+            # 7. R_Q → grid update
             inserted = 0
-            for child in valid_children:
-                success = self._evaluate_and_insert(child)
-                if success:
+            for (child, inst, h), flags in zip(surviving, all_flags):
+                rq = compute_rq_full(flags, h)
+                child.h_score = h
+                child.p_hat = rq.p_hat
+                child.rq_score = rq.rq_score
+                child.fitness = rq.rq_score
+                if self.grid.try_insert(
+                    program=child, h_value=h,
+                    problem_text=inst.problem, rq_score=rq.rq_score,
+                ):
                     inserted += 1
 
             if (gen + 1) % 10 == 0:
                 logger.info(
-                    f"  Gen {gen+1}/{self.config.num_generations}: "
-                    f"{len(valid_children)} valid mutations, "
-                    f"{inserted} inserted, "
-                    f"coverage={self.grid.coverage():.2%}, "
-                    f"mean_rq={self.grid.mean_rq():.4f}"
+                    f"  Gen {gen+1}: mut={len(children)} "
+                    f"ver={len(candidates)} h_pass={len(surviving)} "
+                    f"ins={inserted} cov={self.grid.coverage():.0%} "
+                    f"rq={self.grid.mean_rq():.4f}"
                 )
 
-    def _evaluate_and_insert(self, program: ProblemProgram) -> bool:
-        """
-        Evaluate a candidate program through the full pipeline:
-        3. Generate instances
-        4. Verify
-        5. H pre-filter
-        6. G rollouts → R_Q
-        7. Try insert into grid
-        """
-        # Step 3: Generate problem instances
-        seeds = list(range(self.config.instances_per_program))
-        instances = program.generate_batch(seeds)
-        if not instances:
-            return False
-
-        # Step 4: Verify each instance
-        verified = []
-        for inst in instances:
-            if verify_problem(inst.problem, inst.answer):
-                inst.verified = True
-                verified.append(inst)
-
-        if not verified:
-            return False
-
-        # Use the first verified instance for evaluation
-        inst = verified[0]
-
-        # Step 5: H pre-filter (measure entropy)
-        h_result = self._measure_h(inst.problem)
-        if h_result is None:
-            return False
-
-        h_bar = h_result
-        if not h_prefilter(h_bar, self.config.h_threshold):
-            return False  # H too low, skip rollouts
-
-        # Step 6: G rollouts → p_hat, R_Q
-        correct_flags = self._run_rollouts(inst)
-        rq_result = compute_rq_full(correct_flags, h_bar)
-
-        # Update program scores
-        program.h_score = h_bar
-        program.p_hat = rq_result.p_hat
-        program.rq_score = rq_result.rq_score
-        program.fitness = rq_result.rq_score
-
-        # Step 7: Try insert into MAP-Elites grid
-        return self.grid.try_insert(
-            program=program,
-            h_value=h_bar,
-            problem_text=inst.problem,
-            rq_score=rq_result.rq_score,
-        )
-
-    def _measure_h(self, problem: str) -> Optional[float]:
-        """
-        Measure entropy H(x') via Solver forward pass.
-        
-        In production, this uses the actual Solver model.
-        For now, we use a simple proxy based on problem complexity.
-        """
-        # TODO: Replace with actual entropy measurement using Solver model
-        # For now, use a heuristic proxy:
-        # - Longer problems tend to have higher entropy
-        # - Problems with more numbers/operations tend to be harder
-        import re
-        num_count = len(re.findall(r'\d+', problem))
-        word_count = len(problem.split())
-        
-        # Rough proxy (replace with actual model-based measurement)
-        h_proxy = min(5.0, 0.1 * word_count + 0.2 * num_count)
-        return h_proxy
-
-    def _run_rollouts(self, instance: ProblemInstance) -> list[bool]:
-        """
-        Run G rollouts of the Solver on the problem.
-        
-        Returns list of bool indicating correctness of each rollout.
-        """
-        # TODO: Replace with actual Solver rollouts
-        # For now, simulate with a heuristic
-        import random
-        
-        # Simulate: harder problems (longer) have lower pass rate
-        word_count = len(instance.problem.split())
-        simulated_p = max(0.05, min(0.95, 1.0 - word_count / 100.0))
-        
-        correct_flags = [
-            random.random() < simulated_p
-            for _ in range(self.config.num_rollouts)
-        ]
-        return correct_flags
+    # ------------------------------------------------------------------
+    # Training data
+    # ------------------------------------------------------------------
 
     def _prepare_training_data(self, epoch: int) -> list[dict]:
-        """
-        Prepare training data from MAP-Elites grid champions.
-        Each champion generates fresh instances with new seeds.
-        """
         champions = self.grid.get_all_champions()
-        training_data = []
-        
+        data = []
         base_seed = epoch * 10000
-
+        per_champ = max(
+            1, self.config.train_batch_size // max(1, len(champions))
+        )
         for champ in champions:
-            # Generate fresh instances with new seeds
-            for i in range(self.config.train_batch_size // max(1, len(champions))):
-                seed = base_seed + len(training_data) + i
-                inst = champ.execute(seed)
+            for i in range(per_champ):
+                inst = champ.execute(base_seed + len(data) + i)
                 if inst and verify_problem(inst.problem, inst.answer):
-                    training_data.append({
+                    data.append({
                         "prompt": inst.problem,
                         "answer": inst.answer,
                         "program_id": champ.program_id,
                         "niche": f"{champ.niche_h}_{champ.niche_div}",
                         "rq_score": champ.rq_score,
                     })
+        logger.info(f"[Phase 1] {len(data)} problems from {len(champions)} champions")
+        return data
 
-        logger.info(f"[Epoch {epoch+1}] Prepared {len(training_data)} training instances "
-                    f"from {len(champions)} champion programs")
-        
-        return training_data
+    # ------------------------------------------------------------------
+    # Phase 2: veRL GRPO training
+    # ------------------------------------------------------------------
 
-    def _train_solver(self, training_data: list[dict], epoch: int):
-        """
-        Train Solver with GRPO using veRL.
-        
-        This prepares the dataset and launches veRL training.
-        """
-        if not training_data:
-            logger.warning("No training data available, skipping Solver training")
-            return
+    def _train_solver_verl(
+        self, data: list[dict], epoch: int
+    ) -> Optional[str]:
+        if not data:
+            logger.warning("No data, skip training")
+            return None
 
-        # Save training data as parquet for veRL
         train_path = self.output_dir / f"train_epoch_{epoch}.parquet"
-        self._save_as_parquet(training_data, train_path)
+        self._save_parquet(data, train_path)
 
-        logger.info(f"[Epoch {epoch+1}] Training data saved to {train_path}")
-        logger.info(f"[Epoch {epoch+1}] Launch veRL GRPO training with:")
-        logger.info(f"  python -m verl.trainer.main_ppo "
-                    f"--config configs/grpo_config.yaml "
-                    f"--data.train_files={train_path}")
+        ckpt_dir = self.output_dir / f"verl_ckpt_epoch_{epoch}"
 
-    def _save_as_parquet(self, data: list[dict], path: Path):
-        """Save training data as parquet file for veRL."""
+        cmd = [
+            "python", "-m", "verl.trainer.main_ppo",
+            f"data.train_files={train_path}",
+            f"data.train_batch_size={self.config.train_batch_size}",
+            "data.max_prompt_length=1024",
+            f"data.max_response_length={self.config.max_tokens}",
+            f"actor_rollout_ref.model.path={self.current_model_path}",
+            "actor_rollout_ref.actor.optim.lr=1e-6",
+            f"actor_rollout_ref.rollout.n={self.config.num_rollouts}",
+            f"actor_rollout_ref.rollout.temperature={self.config.temperature}",
+            f"actor_rollout_ref.rollout.tensor_model_parallel_size={self.config.tp}",
+            f"actor_rollout_ref.rollout.gpu_memory_utilization={self.config.gpu_mem}",
+            "algorithm.kl_ctrl.kl_coeff=0.001",
+            "trainer.total_epochs=1",
+            f"trainer.project_name={self.config.wandb_project}",
+            f"trainer.experiment_name=epoch_{epoch}",
+            f"trainer.default_local_dir={ckpt_dir}",
+        ]
+
+        # Enable wandb if WANDB_MODE is not disabled
+        wandb_mode = os.environ.get("WANDB_MODE", "disabled")
+        if wandb_mode != "disabled":
+            cmd.append("trainer.logger=[console,wandb]")
+        else:
+            cmd.append("trainer.logger=[console]")
+
+        logger.info(f"[Phase 2] veRL GRPO: {' '.join(cmd[:6])}...")
+        result = subprocess.run(cmd, capture_output=False)
+
+        if result.returncode != 0:
+            logger.error(f"veRL failed (code {result.returncode})")
+            return None
+
+        for candidate in [
+            ckpt_dir / "actor" / "huggingface",
+            ckpt_dir / "actor",
+            ckpt_dir,
+        ]:
+            if candidate.exists():
+                logger.info(f"Checkpoint → {candidate}")
+                return str(candidate)
+
+        return None
+
+    def _save_parquet(self, data: list[dict], path: Path):
         try:
-            import pandas as pd
-            df = pd.DataFrame(data)
-            # veRL expects specific columns
-            verl_data = []
-            for _, row in df.iterrows():
-                verl_data.append({
-                    "data_source": "rq_evolved",
-                    "prompt": [
-                        {"role": "system", "content": "Solve the following math problem step by step. Put your final answer in \\boxed{}."},
-                        {"role": "user", "content": row["prompt"]},
-                    ],
-                    "ability": "math",
-                    "reward_model": {
-                        "style": "rule",
-                        "ground_truth": row["answer"],
-                    },
-                    "extra_info": {
-                        "program_id": row.get("program_id", ""),
-                        "niche": row.get("niche", ""),
-                        "rq_score": row.get("rq_score", 0.0),
-                    },
-                })
-
             import pyarrow as pa
             import pyarrow.parquet as pq
 
-            table = pa.table({
-                "data_source": [d["data_source"] for d in verl_data],
-                "prompt": [json.dumps(d["prompt"], ensure_ascii=False) for d in verl_data],
-                "ability": [d["ability"] for d in verl_data],
-                "reward_model": [json.dumps(d["reward_model"], ensure_ascii=False) for d in verl_data],
-                "extra_info": [json.dumps(d["extra_info"], ensure_ascii=False) for d in verl_data],
-            })
-            pq.write_table(table, str(path))
+            rows = [{
+                "data_source": "rq_evolved",
+                "prompt": json.dumps([
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": r["prompt"]},
+                ], ensure_ascii=False),
+                "ability": "math",
+                "reward_model": json.dumps({
+                    "style": "rule",
+                    "ground_truth": r["answer"],
+                }, ensure_ascii=False),
+                "extra_info": json.dumps({
+                    "program_id": r.get("program_id", ""),
+                    "niche": r.get("niche", ""),
+                    "rq_score": r.get("rq_score", 0.0),
+                }, ensure_ascii=False),
+            } for r in data]
 
+            table = pa.table({k: [x[k] for x in rows] for k in rows[0]})
+            pq.write_table(table, str(path))
+            logger.info(f"Saved {len(rows)} rows → {path}")
         except ImportError:
-            # Fallback: save as jsonl
-            jsonl_path = path.with_suffix(".jsonl")
-            with open(jsonl_path, "w") as f:
+            jsonl = path.with_suffix(".jsonl")
+            with open(jsonl, "w") as f:
                 for item in data:
                     f.write(json.dumps(item, ensure_ascii=False) + "\n")
-            logger.info(f"Saved as JSONL (pyarrow not available): {jsonl_path}")
+
+    # ------------------------------------------------------------------
+    # Benchmark evaluation (R-Zero style)
+    # ------------------------------------------------------------------
+
+    def _evaluate_benchmarks(self, epoch: int) -> dict:
+        """
+        Evaluate current model on standard benchmarks.
+        
+        Called at the start of each Phase 1 while vLLM is loaded.
+        Epoch 0 = baseline; subsequent epochs measure improvement.
+        """
+        try:
+            from evaluation import run_evaluation
+            results = run_evaluation(
+                llm=self._llm,
+                epoch=epoch,
+                gsm8k_samples=self.config.eval_gsm8k_samples,
+                math500_samples=self.config.eval_math500_samples,
+                aime_k=self.config.eval_aime_k,
+                max_tokens=self.config.max_tokens,
+            )
+
+            # Save detailed results
+            eval_dir = self.output_dir / "eval"
+            eval_dir.mkdir(exist_ok=True)
+            eval_path = eval_dir / f"epoch_{epoch}.json"
+            serializable = {}
+            for name, res in results.items():
+                serializable[name] = {
+                    "benchmark": res.benchmark,
+                    "accuracy": res.accuracy,
+                    "metric": res.metric,
+                    "correct": res.correct,
+                    "total": res.total,
+                    "details": res.details,
+                }
+            with open(eval_path, "w") as f:
+                json.dump(serializable, f, indent=2, ensure_ascii=False)
+            logger.info(f"[Eval] Results saved → {eval_path}")
+
+            return results
+
+        except Exception as e:
+            logger.warning(f"[Eval] Benchmark evaluation failed: {e}")
+            return {}
+
+    # ------------------------------------------------------------------
+    # Checkpointing
+    # ------------------------------------------------------------------
 
     def _save_checkpoint(self, epoch: int):
-        """Save evolution checkpoint."""
-        ckpt_dir = self.output_dir / f"checkpoint_epoch_{epoch}"
-        self.grid.save(str(ckpt_dir / "grid"))
-
-        # Save evolution log
+        d = self.output_dir / f"checkpoint_epoch_{epoch}"
+        self.grid.save(str(d / "grid"))
         with open(self.output_dir / "evolution_log.json", "w") as f:
             json.dump(self.evolution_log, f, indent=2)
 
     def _save_final_results(self):
-        """Save final results and summary."""
         summary = {
-            "config": {
-                k: v for k, v in vars(self.config).items()
-                if not k.startswith("_")
-            },
+            "config": {k: v for k, v in vars(self.config).items()
+                       if not k.startswith("_")},
             "final_grid_stats": self.grid.stats(),
             "evolution_log": self.evolution_log,
+            "final_model": self.current_model_path,
         }
         with open(self.output_dir / "final_summary.json", "w") as f:
             json.dump(summary, f, indent=2)
 
-        # Save all champion programs
         champions = self.grid.get_all_champions()
-        champs_dir = self.output_dir / "final_champions"
-        champs_dir.mkdir(exist_ok=True)
-        for champ in champions:
-            champ.save(str(champs_dir / f"{champ.program_id}.json"))
+        d = self.output_dir / "final_champions"
+        d.mkdir(exist_ok=True)
+        for c in champions:
+            c.save(str(d / f"{c.program_id}.json"))
 
-        logger.info(f"Final results saved to {self.output_dir}")
-        logger.info(f"Total champions: {len(champions)}")
-        logger.info(f"Grid coverage: {self.grid.coverage():.2%}")
-        logger.info(f"Mean R_Q: {self.grid.mean_rq():.4f}")
+        logger.info(f"Results → {self.output_dir}")
+        logger.info(f"  Final model: {self.current_model_path}")
+        logger.info(f"  Champions:   {len(champions)}")
+        logger.info(f"  Coverage:    {self.grid.coverage():.0%}")
+        logger.info(f"  Mean R_Q:    {self.grid.mean_rq():.4f}")

@@ -200,12 +200,12 @@ def test_pipeline_dry_run():
     import tempfile
 
     seed_dir = os.path.join(os.path.dirname(__file__), "..", "seed_programs")
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         config = PipelineConfig(
             num_epochs=1,
             num_generations=3,
-            candidates_per_generation=2,
+            candidates_per_gen=2,
             num_rollouts=8,
             output_dir=tmpdir,
             seed_programs_dir=seed_dir,
@@ -214,9 +214,17 @@ def test_pipeline_dry_run():
         pipeline = EvolutionaryPipeline(config)
 
         # Load seed programs
-        programs = pipeline.load_seed_programs(seed_dir)
+        programs = pipeline.load_seed_programs()
         print(f"  Loaded {len(programs)} seed programs")
         assert len(programs) > 0, "Should load at least one seed program"
+
+        # Verify natural language output
+        for prog in programs:
+            inst = prog.execute(0)
+            if inst:
+                assert len(inst.problem.split()) >= 10, \
+                    f"Problem should be natural language: {inst.problem[:50]}"
+                print(f"  NL check: {inst.problem[:70]}...")
 
         # Initialize grid
         pipeline.initialize_grid(programs)
@@ -227,7 +235,10 @@ def test_pipeline_dry_run():
         print(f"  Prepared {len(training_data)} training instances")
 
         if training_data:
-            print(f"  Sample: {training_data[0]['prompt'][:60]}...")
+            print(f"  Sample: {training_data[0]['prompt'][:70]}...")
+
+        # Verify single model config
+        print(f"  Model (single): {config.model_path}")
 
     print(f"\nPipeline dry run passed!\n")
     return True

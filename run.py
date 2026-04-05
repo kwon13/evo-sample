@@ -1,76 +1,41 @@
 """
-R_Q Evolutionary Pipeline - Main Entry Point
+R_Q Self-Evolving Pipeline — Main Entry Point
+
+One model improves at both generating problems and solving them.
 
 Usage:
-    # Step 1: Prepare seed programs from LIMR dataset
-    python run.py prepare --output_dir ./seed_programs
-    
-    # Step 2: Run evolution (Questioner only, for debugging)
-    python run.py evolve --seed_dir ./seed_programs --output_dir ./rq_output
-    
-    # Step 3: Run full pipeline (evolution + Solver training)
-    python run.py full --seed_dir ./seed_programs --output_dir ./rq_output
+    python run.py full --model Qwen/Qwen2.5-7B-Instruct
+    python run.py full --model Qwen/Qwen2.5-7B-Instruct --num_epochs 3 --num_generations 50
 """
 
 import argparse
 import logging
 import sys
-import os
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-    ],
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
-logger = logging.getLogger(__name__)
 
 
-def cmd_prepare(args):
-    """Prepare seed programs from LIMR dataset."""
-    from data.prepare_limr import prepare_seed_programs
-    prepare_seed_programs(
-        output_dir=args.output_dir,
-        max_static=args.max_static,
-        max_limr=args.max_limr,
-    )
-
-
-def cmd_evolve(args):
-    """Run Questioner evolution only (no Solver training)."""
+def cmd_run(args):
     from rq_questioner.pipeline import EvolutionaryPipeline, PipelineConfig
 
     config = PipelineConfig(
+        model_path=args.model,
+        tp=args.tp,
+        gpu_mem=args.gpu_mem,
         num_epochs=args.num_epochs,
         num_generations=args.num_generations,
-        candidates_per_generation=args.candidates_per_gen,
+        candidates_per_gen=args.candidates_per_gen,
         num_rollouts=args.num_rollouts,
         n_h_bins=args.n_h_bins,
         n_div_bins=args.n_div_bins,
-        mutator_model=args.mutator_model,
-        solver_model=args.solver_model,
-        output_dir=args.output_dir,
-        seed_programs_dir=args.seed_dir,
-    )
-
-    pipeline = EvolutionaryPipeline(config)
-    pipeline.run()
-
-
-def cmd_full(args):
-    """Run full pipeline with veRL Solver training."""
-    from rq_questioner.pipeline import EvolutionaryPipeline, PipelineConfig
-
-    config = PipelineConfig(
-        num_epochs=args.num_epochs,
-        num_generations=args.num_generations,
-        candidates_per_generation=args.candidates_per_gen,
-        num_rollouts=args.num_rollouts,
-        n_h_bins=args.n_h_bins,
-        n_div_bins=args.n_div_bins,
-        mutator_model=args.mutator_model,
-        solver_model=args.solver_model,
+        train_batch_size=args.train_batch_size,
+        eval_gsm8k_samples=args.eval_gsm8k,
+        eval_math500_samples=args.eval_math500,
+        eval_aime_k=args.eval_aime_k,
         output_dir=args.output_dir,
         seed_programs_dir=args.seed_dir,
     )
@@ -80,49 +45,40 @@ def cmd_full(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="R_Q Evolutionary Problem Generation")
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    parser = argparse.ArgumentParser(description="R_Q Self-Evolving Pipeline")
+    sub = parser.add_subparsers(dest="command")
 
-    # Prepare command
-    prep = subparsers.add_parser("prepare", help="Prepare seed programs from LIMR")
-    prep.add_argument("--output_dir", default="./seed_programs")
-    prep.add_argument("--max_static", type=int, default=10)
-    prep.add_argument("--max_limr", type=int, default=500)
+    for name in ["full", "evolve"]:
+        p = sub.add_parser(name)
 
-    # Evolve command
-    evo = subparsers.add_parser("evolve", help="Run Questioner evolution only")
-    evo.add_argument("--seed_dir", default="./seed_programs")
-    evo.add_argument("--output_dir", default="./rq_output")
-    evo.add_argument("--num_epochs", type=int, default=3)
-    evo.add_argument("--num_generations", type=int, default=50)
-    evo.add_argument("--candidates_per_gen", type=int, default=4)
-    evo.add_argument("--num_rollouts", type=int, default=16)
-    evo.add_argument("--n_h_bins", type=int, default=6)
-    evo.add_argument("--n_div_bins", type=int, default=6)
-    evo.add_argument("--mutator_model", default="Qwen/Qwen2.5-7B-Instruct")
-    evo.add_argument("--solver_model", default="Qwen/Qwen2.5-3B")
+        # Model
+        p.add_argument("--model", default="Qwen/Qwen2.5-7B-Instruct")
+        p.add_argument("--tp", type=int, default=1, help="tensor parallel size")
+        p.add_argument("--gpu_mem", type=float, default=0.85)
 
-    # Full pipeline command
-    full = subparsers.add_parser("full", help="Run full pipeline")
-    full.add_argument("--seed_dir", default="./seed_programs")
-    full.add_argument("--output_dir", default="./rq_output")
-    full.add_argument("--num_epochs", type=int, default=5)
-    full.add_argument("--num_generations", type=int, default=100)
-    full.add_argument("--candidates_per_gen", type=int, default=8)
-    full.add_argument("--num_rollouts", type=int, default=16)
-    full.add_argument("--n_h_bins", type=int, default=6)
-    full.add_argument("--n_div_bins", type=int, default=6)
-    full.add_argument("--mutator_model", default="Qwen/Qwen2.5-7B-Instruct")
-    full.add_argument("--solver_model", default="Qwen/Qwen2.5-3B")
+        # Evolution
+        p.add_argument("--num_epochs", type=int, default=5)
+        p.add_argument("--num_generations", type=int, default=100)
+        p.add_argument("--candidates_per_gen", type=int, default=8)
+        p.add_argument("--num_rollouts", type=int, default=16)
+        p.add_argument("--train_batch_size", type=int, default=256)
+
+        # MAP-Elites
+        p.add_argument("--n_h_bins", type=int, default=6)
+        p.add_argument("--n_div_bins", type=int, default=6)
+
+        # Evaluation
+        p.add_argument("--eval_gsm8k", type=int, default=200, help="-1 for full")
+        p.add_argument("--eval_math500", type=int, default=100, help="-1 for full")
+        p.add_argument("--eval_aime_k", type=int, default=32)
+
+        # Paths
+        p.add_argument("--seed_dir", default="./seed_programs")
+        p.add_argument("--output_dir", default="./rq_output")
 
     args = parser.parse_args()
-
-    if args.command == "prepare":
-        cmd_prepare(args)
-    elif args.command == "evolve":
-        cmd_evolve(args)
-    elif args.command == "full":
-        cmd_full(args)
+    if args.command in ("full", "evolve"):
+        cmd_run(args)
     else:
         parser.print_help()
 
