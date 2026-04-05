@@ -1,0 +1,59 @@
+# veRL GRPO Configuration for R_Q Evolutionary Pipeline
+# Based on R-Zero / AZR configurations
+
+data:
+  train_files: ./rq_output/train_epoch_0.parquet
+  val_files: null
+  train_batch_size: 256
+  val_batch_size: null
+  max_prompt_length: 1024
+  max_response_length: 2048
+
+actor_rollout_ref:
+  model:
+    path: Qwen/Qwen2.5-3B
+    # For larger models:
+    # path: Qwen/Qwen2.5-7B
+  actor:
+    optim:
+      lr: 1.0e-6
+      weight_decay: 0.01
+      warmup_ratio: 0.1
+    ppo_mini_batch_size: 64
+    ppo_micro_batch_size: 8
+    clip_ratio: 0.2
+    entropy_coeff: 0.001
+    kl_coeff: 0.001
+  rollout:
+    name: vllm
+    tensor_model_parallel_size: 1
+    gpu_memory_utilization: 0.4
+    rollout_batch_size: 256
+    n: 16  # G = 16 rollouts per problem
+    temperature: 0.7
+    top_p: 0.95
+    max_tokens: 2048
+  ref:
+    log_prob_micro_batch_size: 8
+
+algorithm:
+  kl_ctrl:
+    type: fixed
+    kl_coeff: 0.001
+
+trainer:
+  total_epochs: 1  # Per outer loop epoch
+  save_freq: -1
+  test_freq: -1
+  project_name: rq_evolve
+  experiment_name: rq_solver
+  logger:
+    - console
+  default_hdfs_dir: null
+  default_local_dir: ./rq_output/verl_checkpoints
+
+reward_model:
+  # Rule-based reward: compare with ground truth answer
+  reward_class: verl.utils.reward_score.math.MathRewardFunction
+  # Custom reward function path (if needed):
+  # reward_class: rq_questioner.reward.RQRewardFunction
