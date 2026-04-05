@@ -37,7 +37,7 @@ set -euo pipefail
 
 # --- Configuration (override via environment variables) ---
 
-MODEL=${MODEL:-"Qwen/Qwen3-8B-Base"}
+MODEL=${MODEL:-"Qwen/Qwen2.5-7B-Instruct"}
 RESUME_MODEL=${RESUME_MODEL:-""}
 TP=${TP:-1}
 GPU_MEM=${GPU_MEM:-0.85}
@@ -150,6 +150,3 @@ for e in s.get('evolution_log', []):
 fi
 
 echo "============================================================"
-
-
-# MODEL=Qwen/Qwen3-8B-Base WANDB_MODE=online WANDB_API_KEY=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 WANDB_PROJECT=rq_evolve TP=4 bash scripts/run_full.sh

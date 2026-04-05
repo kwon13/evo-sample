@@ -15,6 +15,7 @@
 ```
 rq_evolve/
 ├── run.py                          # CLI 진입점 (--model 단일 모델)
+├── reward_fn.py                    # veRL 커스텀 reward (boxed 추출 + 비교)
 ├── requirements.txt
 ├── rq_questioner/                  # 핵심 모듈
 │   ├── pipeline.py                 # Algorithm 4.1 Self-Evolving loop
@@ -109,6 +110,6 @@ R-Zero 논문과 동일:
 | Phase 분리 (vLLM ↔ veRL) | ✅ 구현 |
 | 벤치마크 평가 (GSM8K/MATH/AIME) | ✅ 구현 |
 | veRL GRPO 연동 (subprocess) | ✅ 구현 |
-| 커스텀 reward function | ⚠️ veRL 기본 rule-based 사용 |
+| 커스텀 reward function | ✅ 구현 |
 | Multi-GPU 분산 진화 | ❌ 미구현 |
 | Mutator fine-tuning | ❌ 미구현 |

@@ -585,6 +585,9 @@ class EvolutionaryPipeline:
             f"actor_rollout_ref.rollout.tensor_model_parallel_size={self.config.tp}",
             f"actor_rollout_ref.rollout.gpu_memory_utilization={self.config.gpu_mem}",
             "algorithm.kl_ctrl.kl_coeff=0.001",
+            # Custom reward function: extract \boxed{} and compare
+            f"custom_reward_function.path={Path('reward_fn.py').resolve()}",
+            "custom_reward_function.name=compute_score",
             "trainer.total_epochs=1",
             f"trainer.project_name={self.config.wandb_project}",
             f"trainer.experiment_name=epoch_{epoch}",
