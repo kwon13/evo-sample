@@ -1,0 +1,112 @@
+[
+  {
+    "step": 1,
+    "coverage": 0.08333333333333333,
+    "mean_rq": 0.06973664027861247,
+    "max_rq": 0.10765060699239105,
+    "champions": 3,
+    "attempted": 8,
+    "inserted": 0,
+    "skipped_execute": 0,
+    "skipped_h": 0
+  },
+  {
+    "step": 2,
+    "coverage": 0.08333333333333333,
+    "mean_rq": 0.08238053723386561,
+    "max_rq": 0.10765060699239105,
+    "champions": 3,
+    "attempted": 8,
+    "inserted": 1,
+    "skipped_execute": 0,
+    "skipped_h": 1
+  },
+  {
+    "step": 3,
+    "coverage": 0.1111111111111111,
+    "mean_rq": 0.0781588187918871,
+    "max_rq": 0.10765060699239105,
+    "champions": 4,
+    "attempted": 8,
+    "inserted": 3,
+    "skipped_execute": 0,
+    "skipped_h": 0
+  },
+  {
+    "step": 4,
+    "coverage": 0.1111111111111111,
+    "mean_rq": 0.0781588187918871,
+    "max_rq": 0.10765060699239105,
+    "champions": 4,
+    "attempted": 8,
+    "inserted": 0,
+    "skipped_execute": 0,
+    "skipped_h": 1
+  },
+  {
+    "step": 5,
+    "coverage": 0.1111111111111111,
+    "mean_rq": 0.08428881591481946,
+    "max_rq": 0.1321705954841205,
+    "champions": 4,
+    "attempted": 8,
+    "inserted": 1,
+    "skipped_execute": 0,
+    "skipped_h": 0
+  },
+  {
+    "step": 6,
+    "coverage": 0.1111111111111111,
+    "mean_rq": 0.08428881591481946,
+    "max_rq": 0.1321705954841205,
+    "champions": 4,
+    "attempted": 8,
+    "inserted": 0,
+    "skipped_execute": 0,
+    "skipped_h": 0
+  },
+  {
+    "step": 7,
+    "coverage": 0.1111111111111111,
+    "mean_rq": 0.08428881591481946,
+    "max_rq": 0.1321705954841205,
+    "champions": 4,
+    "attempted": 8,
+    "inserted": 0,
+    "skipped_execute": 0,
+    "skipped_h": 0
+  },
+  {
+    "step": 8,
+    "coverage": 0.1111111111111111,
+    "mean_rq": 0.08428881591481946,
+    "max_rq": 0.1321705954841205,
+    "champions": 4,
+    "attempted": 8,
+    "inserted": 0,
+    "skipped_execute": 0,
+    "skipped_h": 0
+  },
+  {
+    "step": 9,
+    "coverage": 0.1388888888888889,
+    "mean_rq": 0.06781927921781913,
+    "max_rq": 0.1321705954841205,
+    "champions": 5,
+    "attempted": 8,
+    "inserted": 2,
+    "skipped_execute": 0,
+    "skipped_h": 1
+  },
+  {
+    "step": 10,
+    "coverage": 0.1388888888888889,
+    "mean_rq": 0.06903863664647651,
+    "max_rq": 0.1321705954841205,
+    "champions": 5,
+    "attempted": 8,
+    "inserted": 1,
+    "skipped_execute": 0,
+    "skipped_h": 0
+  }
+]

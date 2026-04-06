@@ -1,0 +1,143 @@
+# RQ-Evolve: veRL-integrated online training config
+# veRL ppo_trainer.yaml 기반 + rq 섹션 추가
+
+defaults:
+  - model_engine: dp
+  - actor@actor_rollout_ref.actor: ${model_engine}_actor
+  - data@data: legacy_data
+  - ref@actor_rollout_ref.ref: ${model_engine}_ref
+  - rollout@actor_rollout_ref.rollout: rollout
+  - model@actor_rollout_ref.model: hf_model
+  - critic@critic: ${model_engine}_critic
+  - legacy_reward_impl
+  - reward@reward: reward
+  - algorithm@algorithm.rollout_correction: rollout_correction
+  - _self_
+
+# ── Model ──────────────────────────────────────────────────────────────
+actor_rollout_ref:
+  hybrid_engine: true
+  nccl_timeout: 600
+
+  model:
+    path: Qwen/Qwen2.5-7B-Instruct
+
+  actor:
+    strategy: fsdp
+    optim:
+      lr: 1.0e-6
+      weight_decay: 0.01
+      warmup_ratio: 0.05
+    ppo_mini_batch_size: 64
+    ppo_micro_batch_size: 8
+    clip_ratio: 0.2
+    entropy_coeff: 0.001
+    use_kl_loss: false
+    fsdp_config:
+      dtype: bfloat16
+
+  rollout:
+    name: vllm
+    tensor_model_parallel_size: 1
+    gpu_memory_utilization: 0.5
+    n: 16                        # G rollouts per problem
+    temperature: 0.7
+    top_p: 0.95
+    max_tokens: 2048
+    # entropy 계산 활성화 (compute_log_prob에서 calculate_entropy=True 사용)
+    entropy_from_logits_with_chunking: false
+
+  ref:
+    log_prob_micro_batch_size: 8
+    fsdp_config:
+      dtype: bfloat16
+
+# ── Data (dynamic dataset은 코드에서 주입, val만 파일 필요) ─────────────
+data:
+  train_files: null            # RQEvolveTrainer가 MapElitesDynamicDataset 직접 사용
+  val_files: null              # validation 없을 경우 null
+  train_batch_size: 256
+  max_prompt_length: 1024
+  max_response_length: 2048
+  shuffle: true
+  dataloader_num_workers: 0   # MapElitesDynamicDataset thread-safety를 위해 0
+  trust_remote_code: true
+
+# ── Algorithm (GRPO) ──────────────────────────────────────────────────
+algorithm:
+  adv_estimator: grpo
+  norm_adv_by_std_in_grpo: true
+  use_kl_in_reward: false
+  kl_penalty: kl
+  kl_ctrl:
+    type: fixed
+    kl_coef: 0.001
+
+# ── Trainer ────────────────────────────────────────────────────────────
+trainer:
+  total_epochs: 5
+  total_training_steps: null
+  project_name: rq_evolve
+  experiment_name: rq_online
+  logger: ["console"]
+  nnodes: 1
+  n_gpus_per_node: 1
+  save_freq: 100
+  test_freq: -1
+  val_before_train: false
+  balance_batch: false
+  default_local_dir: ./rq_output/verl_ckpt
+  default_hdfs_dir: null
+  use_legacy_worker_impl: auto
+  device: cuda
+
+# ── RQ-Evolution 설정 ─────────────────────────────────────────────────
+rq:
+  seed_programs_dir: ./seed_programs
+  n_h_bins: 6
+  n_div_bins: 6
+  h_range: [0.0, 5.0]
+
+  # Evolution 빈도: GRPO step 몇 번마다 evolution 1회 실행
+  evolution_freq: 50
+
+  # Evolution 1회당 mutation 후보 수
+  candidates_per_evo: 8
+
+  # p_hat 추정용 rollout 수 (G)
+  num_rollouts: 16
+
+  # 챔피언 → training data 변환 시 seed 수
+  instances_per_program: 3
+
+  # In-depth mutation 비율 (나머지는 in-breadth)
+  in_depth_ratio: 0.7
+
+  # H pre-filter 임계값
+  h_threshold: 0.1
+
+  # UCB1 selection 탐험 계수 (높을수록 미방문 셀 선호)
+  ucb_c: 1.0
+
+# ── Reward (rule-based: boxed answer 비교) ─────────────────────────────
+reward:
+  reward_model:
+    enable: false
+
+  custom_reward_function:
+    path: ./reward_fn.py
+    name: compute_score
+
+# ── Ray ────────────────────────────────────────────────────────────────
+ray_kwargs:
+  ray_init:
+    num_cpus: null
+
+global_profiler:
+  tool: null
+  steps: null
+  profile_continuous_steps: false
+  save_path: "outputs/profile"
+
+transfer_queue:
+  enable: false

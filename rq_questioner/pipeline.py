@@ -37,6 +37,7 @@ from .program import ProblemProgram, ProblemInstance
 from .map_elites import MAPElitesGrid
 from .verifier import verify_problem
 from .rq_score import compute_rq_full, h_prefilter
+from .entropy_verl import compute_exact_entropy_from_checkpoint
 
 logger = logging.getLogger(__name__)
 
@@ -431,6 +432,10 @@ class EvolutionaryPipeline:
             # --- Phase 2: GRPO training (veRL subprocess) ---
             ckpt = self._train_solver_verl(training_data, epoch)
 
+            # --- Phase 2.5: 최신 checkpoint로 정확한 엔트로피 정제 ---
+            if ckpt:
+                self._refine_champion_entropy(ckpt)
+
             # --- Update model path for next epoch ---
             if ckpt:
                 self.current_model_path = ckpt
@@ -557,7 +562,7 @@ class EvolutionaryPipeline:
         return data
 
     # ------------------------------------------------------------------
-    # Phase 2: veRL GRPO training
+    # Phase 2: veRL GRPO training  (+ Phase 2.5 async entropy)
     # ------------------------------------------------------------------
 
     def _train_solver_verl(
@@ -618,6 +623,67 @@ class EvolutionaryPipeline:
                 return str(candidate)
 
         return None
+
+    # ------------------------------------------------------------------
+    # Phase 2.5: 최신 checkpoint로 정확한 엔트로피 정제
+    # ------------------------------------------------------------------
+
+    def _refine_champion_entropy(self, checkpoint_path: str):
+        """
+        veRL이 저장한 checkpoint(최신 policy)의 HF 모델로
+        MAP-Elites 챔피언들의 엔트로피를 재측정한다.
+
+        vLLM(logprobs=1)의 top-1 근사 대신 전체 vocab logits에서
+        정확한 Shannon entropy를 계산해 그리드 내 H bin 위치와
+        R_Q 점수를 갱신한다.
+
+        순서: Phase 2(veRL) 완료 → 이 메서드 → 다음 Phase 1
+        veRL subprocess가 종료된 뒤 실행되므로 GPU가 비어있다.
+        """
+        champions = self.grid.get_all_champions()
+        if not champions:
+            return
+
+        problem_texts: list[str] = []
+        valid_champions: list[ProblemProgram] = []
+        for champ in champions:
+            inst = champ.execute(seed=0)
+            if inst:
+                problem_texts.append(inst.problem)
+                valid_champions.append(champ)
+
+        if not problem_texts:
+            return
+
+        logger.info(
+            f"[Phase 2.5] Exact entropy from latest checkpoint: "
+            f"{len(valid_champions)} champions via {checkpoint_path}"
+        )
+
+        exact_h_values = compute_exact_entropy_from_checkpoint(
+            checkpoint_path=checkpoint_path,
+            problems=problem_texts,
+            max_new_tokens=256,
+            batch_size=4,
+        )
+
+        moved = updated = 0
+        for champ, new_h, problem in zip(valid_champions, exact_h_values, problem_texts):
+            if new_h is None:
+                continue
+            old_h = champ.h_score
+            was_moved = self.grid.rebin_champion(champ, new_h, problem)
+            moved += was_moved
+            updated += 1
+            logger.debug(
+                f"  {champ.program_id}: H {old_h:.4f} → {new_h:.4f}"
+                f"{' (rebinned)' if was_moved else ''}"
+            )
+
+        logger.info(
+            f"[Phase 2.5] {updated} updated, {moved} rebinned. "
+            f"cov={self.grid.coverage():.0%} mean_rq={self.grid.mean_rq():.4f}"
+        )
 
     def _save_parquet(self, data: list[dict], path: Path):
         try:

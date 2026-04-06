@@ -1,0 +1,18 @@
+{
+  "n_h_bins": 6,
+  "n_div_bins": 6,
+  "h_range": [
+    0.0,
+    5.0
+  ],
+  "stats": {
+    "coverage": 0.3055555555555556,
+    "num_champions": 11,
+    "total_niches": 36,
+    "mean_rq": 0.07427613240349783,
+    "max_rq": 0.2508583998296672,
+    "min_rq": 0.0,
+    "total_insertions": 31,
+    "total_replacements": 20
+  }
+}

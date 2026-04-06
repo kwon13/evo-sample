@@ -24,6 +24,7 @@ class NicheInfo:
     champion: Optional[ProblemProgram] = None
     champion_rq: float = -1.0
     update_count: int = 0
+    selection_count: int = 0   # UCB: 이 셀이 부모로 선택된 횟수
     history: list = field(default_factory=list)
 
 
@@ -41,11 +42,13 @@ class MAPElitesGrid:
         n_div_bins: int = 6,
         h_range: tuple = (0.0, 5.0),
         embedding_model_name: str = "all-MiniLM-L6-v2",
+        ucb_c: float = 1.0,
     ):
         self.n_h_bins = n_h_bins
         self.n_div_bins = n_div_bins
         self.h_range = h_range
         self.embedding_model_name = embedding_model_name
+        self.ucb_c = ucb_c   # UCB exploration 계수 (높을수록 탐험 중시)
 
         # Initialize grid
         self.grid: dict[tuple[int, int], NicheInfo] = {}
@@ -63,6 +66,7 @@ class MAPElitesGrid:
         # Stats
         self.total_insertions = 0
         self.total_replacements = 0
+        self.total_selections = 0   # UCB: 전체 부모 선택 횟수
 
     @property
     def embed_model(self):
@@ -171,8 +175,72 @@ class MAPElitesGrid:
 
         return False
 
+    def rebin_champion(
+        self,
+        program: ProblemProgram,
+        new_h_value: float,
+        problem_text: str,
+    ) -> bool:
+        """
+        챔피언의 H값이 갱신됐을 때 그리드 내 위치를 재조정한다.
+
+        1. 기존 niche에서 제거
+        2. 새 H값으로 bin 재계산
+        3. 새 niche에 try_insert (더 높은 R_Q만 삽입)
+
+        Returns:
+            True if the program ended up in a different niche
+        """
+        old_h_bin = program.niche_h
+        old_div_bin = program.niche_div
+        new_h_bin = self.h_to_bin(new_h_value)
+        new_div_bin = self.problem_to_div_bin(problem_text)
+
+        # 위치가 바뀌지 않으면 h_score만 갱신하고 종료
+        if new_h_bin == old_h_bin and new_div_bin == old_div_bin:
+            program.h_score = new_h_value
+            # R_Q도 새 H로 재계산
+            new_rq = program.p_hat * (1.0 - program.p_hat) * new_h_value
+            program.rq_score = new_rq
+            program.fitness = new_rq
+            niche = self.grid[(old_h_bin, old_div_bin)]
+            niche.champion_rq = new_rq
+            return False
+
+        # 기존 niche에서 이 프로그램이 챔피언이면 비워준다
+        old_niche = self.grid.get((old_h_bin, old_div_bin))
+        if old_niche and old_niche.champion is not None:
+            if old_niche.champion.program_id == program.program_id:
+                old_niche.champion = None
+                old_niche.champion_rq = -1.0
+
+        # 새 H로 R_Q 재계산 후 삽입 시도
+        program.h_score = new_h_value
+        new_rq = program.p_hat * (1.0 - program.p_hat) * new_h_value
+        program.rq_score = new_rq
+        program.fitness = new_rq
+
+        self.try_insert(
+            program=program,
+            h_value=new_h_value,
+            problem_text=problem_text,
+            rq_score=new_rq,
+        )
+        return True
+
     def sample_parent(self) -> Optional[ProblemProgram]:
-        """Sample a parent program from the grid for mutation."""
+        """
+        UCB1 기반 부모 셀 선택.
+
+        UCB1(i) = μ_i + C * sqrt(ln(N) / n_i)
+
+          μ_i  : 정규화된 RQ 점수 (exploitation)
+          C    : 탐험 계수 (self.ucb_c)
+          N    : 전체 선택 횟수
+          n_i  : 셀 i의 선택 횟수
+
+        한 번도 선택되지 않은 셀은 무한대로 처리해 먼저 탐험.
+        """
         occupied = [
             (k, niche) for k, niche in self.grid.items()
             if niche.champion is not None
@@ -180,9 +248,27 @@ class MAPElitesGrid:
         if not occupied:
             return None
 
-        # Uniform random from occupied niches
-        idx = np.random.randint(len(occupied))
+        self.total_selections += 1
+        N = self.total_selections
+
+        rqs = np.array([niche.champion_rq for _, niche in occupied], dtype=float)
+        counts = np.array([niche.selection_count for _, niche in occupied], dtype=float)
+
+        # RQ를 [0, 1]로 정규화 (exploitation term)
+        rq_min, rq_max = rqs.min(), rqs.max()
+        norm_rqs = (rqs - rq_min) / (rq_max - rq_min) if rq_max > rq_min else np.ones(len(rqs))
+
+        # UCB1: 미방문 셀은 inf → 반드시 먼저 선택됨
+        exploration = np.where(
+            counts == 0,
+            np.inf,
+            self.ucb_c * np.sqrt(np.log(N) / counts),
+        )
+        ucb_scores = norm_rqs + exploration
+
+        idx = int(np.argmax(ucb_scores))
         _, niche = occupied[idx]
+        niche.selection_count += 1
         return niche.champion
 
     def get_all_champions(self) -> list[ProblemProgram]:
@@ -216,6 +302,7 @@ class MAPElitesGrid:
             "min_rq": min(rqs) if rqs else 0.0,
             "total_insertions": self.total_insertions,
             "total_replacements": self.total_replacements,
+            "total_selections": self.total_selections,
         }
 
     def save(self, path: str):
