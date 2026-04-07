@@ -60,13 +60,74 @@ def _extract_boxed(text: str) -> Optional[str]:
     return m[-1].strip() if m else None
 
 
-def _answers_match(pred: str, gt: str) -> bool:
+def _sympy_equal(a: str, b: str, tol: float = 1e-4) -> Optional[bool]:
+    """
+    SymPy로 두 수학 표현식이 동치인지 판별.
+
+    지원 범위:
+      - 분수: 31/45, 3/4
+      - 제곱근: sqrt(2), 2*sqrt(3)
+      - 상수: pi, e
+      - 거듭제곱: 2**10, 2^10
+      - 사칙연산: 2*3+1, (1+2)/3
+      - 소수: 0.6889, 3.14
+      - LaTeX 스타일: \\frac{3}{4}, \\sqrt{2}
+
+    Returns:
+      True/False if comparison succeeded, None if parsing failed.
+    """
+    from sympy import sympify, N, simplify
+    from sympy.parsing.latex import parse_latex
+
+    def _parse(s: str):
+        s = s.strip()
+        # ^ → ** (거듭제곱 표기 통일)
+        s_py = s.replace("^", "**")
+        # LaTeX 시도 (\frac, \sqrt 등)
+        if "\\" in s:
+            try:
+                return parse_latex(s)
+            except Exception:
+                pass
+        # SymPy sympify
+        try:
+            return sympify(s_py)
+        except Exception:
+            pass
+        return None
+
+    expr_a = _parse(a)
+    expr_b = _parse(b)
+    if expr_a is None or expr_b is None:
+        return None
+
+    # 1. 기호적 동치 (exact)
+    try:
+        if simplify(expr_a - expr_b) == 0:
+            return True
+    except Exception:
+        pass
+
+    # 2. 수치적 비교 (float 근사)
+    try:
+        val_a = float(N(expr_a))
+        val_b = float(N(expr_b))
+        return abs(val_a - val_b) < tol
+    except Exception:
+        pass
+
+    return None
+
+
+def _answers_match(pred: str, gt: str, tol: float = 1e-2) -> bool:
+    # 1. 문자열 정확 일치
     if pred.strip().lower() == gt.strip().lower():
         return True
-    try:
-        return abs(float(pred) - float(gt)) < 1e-6
-    except (ValueError, TypeError):
-        return False
+    # 2. SymPy 기반 수학적 동치 판별
+    result = _sympy_equal(pred, gt, tol=tol)
+    if result is not None:
+        return result
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -82,24 +143,83 @@ _SOLVE_PROMPT = (
 
 # base 모델용 completion-style mutation 프롬프트
 # "```python\nimport random\n" 까지 포함 → 모델이 이어서 완성
+# CRITICAL: answer는 반드시 단일 숫자/값이어야 rollout 정답 비교가 가능
+_SINGLE_ANSWER_RULE = (
+    "# IMPORTANT RULES:\n"
+    "# 1. Function name MUST be `generate(seed)`\n"
+    "# 2. MUST return (problem_text: str, answer: str)\n"
+    "# 3. answer MUST be a SINGLE number or simple value (e.g. '42', '3.14', '7/3')\n"
+    "#    NOT ranges, NOT multiple values, NOT inequalities\n"
+    "# 4. Compute answer FIRST, then build problem from it\n"
+    "# 5. Use only standard library + math module\n"
+)
+
+# Score-aware mutation 프롬프트 (FunSearch, Romera-Paredes et al. 2023 스타일)
+# 부모의 p_hat, H, RQ를 넘겨 LLM이 목표 난이도를 인식하도록 함
+
+_SCORE_FEEDBACK = (
+    "# === PERFORMANCE OF CURRENT PROGRAM ===\n"
+    "# pass_rate (p_hat) = {p_hat:.2f}  (ideal: 0.50, solver gets it right half the time)\n"
+    "# entropy (H)       = {h_score:.2f}  (ideal: > 2.0, higher = solver is more uncertain)\n"
+    "# R_Q score          = {rq_score:.4f}  (higher is better, max when p_hat≈0.5 and H is high)\n"
+    "#\n"
+    "# DIAGNOSIS: {diagnosis}\n"
+    "# ACTION: {action}\n"
+)
+
+def _score_diagnosis(p_hat: float, h_score: float) -> tuple[str, str]:
+    """부모의 p_hat, H로 진단과 개선 방향을 생성."""
+    if p_hat > 0.7:
+        diag = f"TOO EASY (solver gets {p_hat:.0%} correct)"
+        action = "Make problems significantly harder: more steps, combined concepts, larger numbers"
+    elif p_hat < 0.2:
+        diag = f"TOO HARD (solver gets only {p_hat:.0%} correct)"
+        action = "Make problems slightly easier: clearer wording, fewer steps, smaller numbers"
+    else:
+        diag = f"Good difficulty (p_hat={p_hat:.2f})"
+        action = "Keep similar difficulty but increase problem diversity and reasoning depth"
+
+    if h_score < 0.5:
+        diag += f"; LOW ENTROPY (H={h_score:.2f}, solver is too confident)"
+        action += "; add ambiguity or multi-step reasoning to increase solver uncertainty"
+
+    return diag, action
+
+
 _MUTATE_DEPTH = (
     "# Python function that generates math word problems.\n"
-    "# Rewrite to generate HARDER problems "
-    "(more steps, combined concepts, multi-stage reasoning).\n\n"
-    "# Original:\n"
+    "# Rewrite to generate HARDER, competition-level problems (AMC/AIME).\n"
+    "#\n"
+    "{score_feedback}"
+    "#\n"
+    "# Requirements:\n"
+    "#   - At least 3-5 reasoning steps to solve\n"
+    "#   - Combine multiple math concepts (e.g. geometry + algebra)\n"
+    "#   - Use larger numbers, fractions, or nested computations\n"
+    "#   - Require intermediate results before final answer\n\n"
+    "# Original program:\n"
     "```python\n{code}\n```\n\n"
-    "# Harder version:\n"
+    + _SINGLE_ANSWER_RULE +
+    "# Improved version (target: p_hat ≈ 0.5, H > 2.0):\n"
     "```python\n"
     "import random\n"
 )
 
 _MUTATE_BREADTH = (
     "# Python function that generates math word problems.\n"
-    "# Rewrite to generate a COMPLETELY DIFFERENT type of math problem "
-    "(different topic, e.g. if original is geometry, try algebra or probability).\n\n"
-    "# Original:\n"
+    "# Rewrite to generate a COMPLETELY DIFFERENT type of hard math problem.\n"
+    "#\n"
+    "{score_feedback}"
+    "#\n"
+    "# Choose a different branch of mathematics:\n"
+    "#   - If original is geometry → try number theory or combinatorics\n"
+    "#   - If original is algebra → try probability or modular arithmetic\n"
+    "#   - Must require multi-step reasoning (3+ steps)\n"
+    "#   - Must produce a single numerical answer\n\n"
+    "# Original program:\n"
     "```python\n{code}\n```\n\n"
-    "# Different topic version:\n"
+    + _SINGLE_ANSWER_RULE +
+    "# Completely different topic (target: p_hat ≈ 0.5, H > 2.0):\n"
     "```python\n"
     "import random\n"
 )
@@ -122,7 +242,7 @@ class VLLMRunner:
         tensor_parallel_size: int = 1,
         gpu_memory_utilization: float = 0.85,
         temperature: float = 0.7,
-        max_tokens: int = 512,
+        max_tokens: int = 4096,
     ):
         from vllm import LLM
         print(f"[vLLM] Loading {model_name} ...")
@@ -139,29 +259,63 @@ class VLLMRunner:
 
     # ---- entropy --------------------------------------------------------
 
-    def entropy(self, inst: "ProblemInstance") -> Optional[float]:
+    def entropy(self, inst: "ProblemInstance", top_k: int = 20) -> Optional[float]:
         """
-        문제에 대한 모델 응답 토큰의 평균 엔트로피 proxy를 반환.
-        logprobs=1 → 각 위치의 top-1 log prob → H ≈ mean(-logprob).
+        Shannon entropy 근사: top-K logprobs 기반.
+
+        각 토큰 위치에서 top-K 토큰의 log probability를 받아
+        H_t = -Σ_{v∈top-K} p(v) log p(v) 로 계산.
+
+        top-K 밖 확률 mass를 균등 분배하여 보정:
+          p_rest = 1 - Σ p(top-K)
+          H_rest = p_rest * log(vocab_size - K)  (upper bound)
+
+        이 방식은 veRL의 entropy_from_logits (full vocab)보다
+        근사적이지만, -logprob(top-1) proxy보다 훨씬 정확함.
         """
+        import math
         from vllm import SamplingParams
+
         prompt = _SOLVE_PROMPT.format(problem=inst.problem)
         params = SamplingParams(
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            logprobs=1,
+            temperature=1.0,   # entropy 측정은 temperature=1.0에서 수행
+            max_tokens=min(self.max_tokens, 256),  # entropy는 앞부분만으로 충분
+            logprobs=top_k,
             n=1,
         )
         out = self.llm.generate([prompt], params)[0].outputs[0]
         if not out.logprobs:
             return None
-        ents = [max(0.0, -next(iter(d.values())).logprob) for d in out.logprobs]
-        return sum(ents) / len(ents) if ents else None
+
+        vocab_size = self.tokenizer.vocab_size or 150000
+        token_entropies = []
+
+        for step_dict in out.logprobs:
+            # step_dict: {token_id: LogProb, ...} — top-K개
+            log_probs = [lp.logprob for lp in step_dict.values()]
+            probs = [math.exp(lp) for lp in log_probs]
+
+            # top-K 토큰의 entropy
+            h_top = -sum(p * math.log(p) for p in probs if p > 0)
+
+            # top-K 밖의 잔여 확률 mass 보정
+            p_rest = max(0.0, 1.0 - sum(probs))
+            if p_rest > 1e-8 and vocab_size > top_k:
+                # 잔여 mass를 (vocab_size - K)개에 균등 분배 (upper bound)
+                h_rest = -p_rest * math.log(p_rest / (vocab_size - top_k))
+                h_top += h_rest
+
+            token_entropies.append(h_top)
+
+        return sum(token_entropies) / len(token_entropies) if token_entropies else None
 
     # ---- rollout --------------------------------------------------------
 
-    def rollout(self, inst: "ProblemInstance", n_rollouts: int) -> list[bool]:
-        """G번 생성 → boxed 정답 추출 → 정오 판별."""
+    def rollout(self, inst: "ProblemInstance", n_rollouts: int) -> tuple[list[bool], list[dict]]:
+        """
+        G번 생성 → boxed 정답 추출 → 정오 판별.
+        Returns: (flags, rollout_logs)
+        """
         from vllm import SamplingParams
         prompt = _SOLVE_PROMPT.format(problem=inst.problem)
         params = SamplingParams(
@@ -171,25 +325,44 @@ class VLLMRunner:
         )
         outputs = self.llm.generate([prompt], params)[0].outputs
         flags = []
-        for comp in outputs:
+        logs = []
+        for i, comp in enumerate(outputs):
             pred = _extract_boxed(comp.text)
-            flags.append(_answers_match(pred, inst.answer) if pred else False)
-        return flags
+            correct = _answers_match(pred, inst.answer) if pred else False
+            flags.append(correct)
+            logs.append({
+                "rollout_idx": i,
+                "response": comp.text,
+                "extracted": pred,
+                "ground_truth": inst.answer,
+                "correct": correct,
+            })
+        return flags, logs
 
     # ---- mutation -------------------------------------------------------
 
     def mutate(self, parent: "ProblemProgram", in_depth: bool = True) -> Optional[str]:
         """
-        Completion-style mutation (base 모델 호환).
-        프롬프트 끝을 "```python\\nimport random\\n" 으로 끝내
-        모델이 나머지 코드를 완성하도록 유도.
+        Score-aware completion-style mutation.
+        부모의 p_hat, H, RQ를 프롬프트에 포함하여
+        LLM이 목표 난이도를 인식하고 개선하도록 유도.
         """
         from vllm import SamplingParams
         tmpl = _MUTATE_DEPTH if in_depth else _MUTATE_BREADTH
-        prompt = tmpl.format(code=parent.source_code)
+
+        p_hat = getattr(parent, "p_hat", 0.5)
+        h_score = getattr(parent, "h_score", 1.0)
+        rq_score = getattr(parent, "rq_score", 0.0)
+        diag, action = _score_diagnosis(p_hat, h_score)
+
+        score_feedback = _SCORE_FEEDBACK.format(
+            p_hat=p_hat, h_score=h_score, rq_score=rq_score,
+            diagnosis=diag, action=action,
+        )
+        prompt = tmpl.format(code=parent.source_code, score_feedback=score_feedback)
         params = SamplingParams(
             temperature=0.1,   # 코드 생성: 낮은 temperature → syntax 오류 감소
-            max_tokens=1024,
+            max_tokens=4096,
             n=1,
         )
         text = self.llm.generate([prompt], params)[0].outputs[0].text
@@ -285,7 +458,7 @@ def _llm_mutate(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.8,
-            max_tokens=1024,
+            max_tokens=10240,
         )
         text = resp.choices[0].message.content or ""
     except Exception as e:
@@ -357,6 +530,7 @@ def evolution_step(
     attempted = 0
     skipped_execute = 0
     skipped_h = 0
+    candidate_logs = []   # 각 candidate의 상세 로그
 
     for c in range(candidates):
         parent = grid.sample_parent()
@@ -396,8 +570,9 @@ def evolution_step(
         attempted += 1
 
         # ---- Rollouts → p_hat ----
+        rollout_logs = []
         if vllm_runner:
-            flags = vllm_runner.rollout(inst, n_rollouts)
+            flags, rollout_logs = vllm_runner.rollout(inst, n_rollouts)
         else:
             flags = _mock_rollout(inst, n_rollouts, rng)
         p_hat = sum(flags) / len(flags)
@@ -433,6 +608,20 @@ def evolution_step(
             rq_score=rq_result.rq_score,
         )
 
+        # 상세 로그 기록
+        candidate_logs.append({
+            "candidate_idx": c,
+            "problem": inst.problem,
+            "answer": inst.answer,
+            "p_hat": p_hat,
+            "h_bar": h_bar,
+            "rq_score": rq_result.rq_score,
+            "inserted": was_inserted,
+            "niche": (int(child.niche_h), int(child.niche_div)) if was_inserted else None,
+            "generation": child.generation,
+            "rollouts": rollout_logs,
+        })
+
         if was_inserted:
             inserted += 1
             if verbose:
@@ -455,6 +644,7 @@ def evolution_step(
         "inserted": inserted,
         "skipped_execute": skipped_execute,
         "skipped_h": skipped_h,
+        "candidate_logs": candidate_logs,
     }
 
 
@@ -507,6 +697,8 @@ def main():
     parser.add_argument("--n_rollouts", type=int, default=10)
     parser.add_argument("--n_h_bins", type=int, default=6)
     parser.add_argument("--n_div_bins", type=int, default=6)
+    parser.add_argument("--h_range", type=float, nargs=2, default=[0.0, 5.0],
+                        help="H축 범위 [min, max] (default: 0.0 5.0)")
     parser.add_argument("--h_threshold", type=float, default=0.1)
     parser.add_argument("--ucb_c", type=float, default=1.0,
                         help="UCB1 exploration coefficient (0 = greedy, higher = more exploration)")
@@ -520,7 +712,7 @@ def main():
     parser.add_argument("--gpu_mem", type=float, default=0.85,
                         help="gpu_memory_utilization for vLLM")
     parser.add_argument("--temperature", type=float, default=0.7)
-    parser.add_argument("--max_tokens", type=int, default=512,
+    parser.add_argument("--max_tokens", type=int, default=10240,
                         help="rollout/entropy 측정 시 최대 생성 토큰 수")
     # Optional OpenAI-compatible API (mutation만, entropy/rollout은 mock)
     parser.add_argument("--model", type=str, default=None,
@@ -592,7 +784,7 @@ def main():
     grid = MAPElitesGrid(
         n_h_bins=args.n_h_bins,
         n_div_bins=args.n_div_bins,
-        h_range=(0.0, 5.0),
+        h_range=tuple(args.h_range),
         ucb_c=args.ucb_c,
     )
 
@@ -615,7 +807,7 @@ def main():
             continue
         if vllm_runner:
             h0 = vllm_runner.entropy(inst) or 1.0
-            flags0 = vllm_runner.rollout(inst, args.n_rollouts)
+            flags0, _ = vllm_runner.rollout(inst, args.n_rollouts)
         else:
             h0 = _mock_entropy(inst, rng, h_mean=1.5, h_std=0.5)
             flags0 = _mock_rollout(inst, args.n_rollouts, rng)
@@ -641,6 +833,7 @@ def main():
     print(f"[Evolution] Running {args.n_evo} evolution steps...\n")
 
     history = []
+    all_candidate_logs = []  # 전체 rollout 상세 로그
     total_inserted = 0
     total_attempted = 0
 
@@ -663,6 +856,11 @@ def main():
 
         total_inserted += step_result["inserted"]
         total_attempted += step_result["attempted"]
+
+        # candidate_logs에 step 번호 추가 후 수집
+        for log in step_result.get("candidate_logs", []):
+            log["step"] = step
+            all_candidate_logs.append(log)
 
         stats = grid.stats()
         history.append({
@@ -807,10 +1005,18 @@ def main():
                 row.append(val)
             f.write(",".join(row) + "\n")
 
+    # (d) rollout 상세 로그 (문제 + 모델 응답 + 정답 비교)
+    if all_candidate_logs:
+        logs_path = out_dir / f"rollout_logs_{run_id}.json"
+        with open(logs_path, "w") as f:
+            json.dump(all_candidate_logs, f, indent=2, ensure_ascii=False, cls=_NumpyEncoder)
+
     print(f"\n  Results saved to: {out_dir}/")
-    print(f"    history_{run_id}.json   — step별 coverage/rq 추이")
-    print(f"    champions_{run_id}.json — 챔피언 프로그램 + 문제 샘플")
-    print(f"    grid_{run_id}.csv       — grid R_Q heatmap")
+    print(f"    history_{run_id}.json       — step별 coverage/rq 추이")
+    print(f"    champions_{run_id}.json     — 챔피언 프로그램 + 문제 샘플")
+    print(f"    grid_{run_id}.csv           — grid R_Q heatmap")
+    if all_candidate_logs:
+        print(f"    rollout_logs_{run_id}.json  — 모델 응답 상세 로그")
 
 
 if __name__ == "__main__":

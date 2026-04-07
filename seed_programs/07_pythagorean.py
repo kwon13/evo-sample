@@ -1,17 +1,25 @@
 import random
+import math
 
 def generate(seed):
+    """3D geometry: diagonal of a rectangular box."""
     rng = random.Random(seed)
-    triples = [(3,4,5),(5,12,13),(8,15,17),(7,24,25),(9,40,41)]
-    a, b, c = triples[seed % len(triples)]
-    scale = rng.randint(1, 3)
-    a, b, c = a * scale, b * scale, c * scale
-    answer = c
+    a = rng.randint(3, 12)
+    b = rng.randint(3, 12)
+    c = rng.randint(3, 12)
+
+    # space diagonal = sqrt(a^2 + b^2 + c^2)
+    diag_sq = a**2 + b**2 + c**2
+    # surface area = 2(ab + bc + ca)
+    surface = 2 * (a*b + b*c + c*a)
+
+    # 질문: space diagonal^2 + surface area
+    answer = diag_sq + surface
 
     problem = (
-        f"A ladder leans against a wall. The foot of the ladder is "
-        f"{a} meters away from the wall, and the top of the ladder "
-        f"reaches {b} meters up the wall. "
-        f"How long is the ladder in meters?"
+        f"A rectangular box has dimensions {a} × {b} × {c}. "
+        f"Let D be the length of the space diagonal of the box, and "
+        f"S be the total surface area. "
+        f"Compute D² + S."
     )
     return problem, str(answer)

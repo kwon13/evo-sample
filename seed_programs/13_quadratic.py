@@ -6,37 +6,50 @@ import random
 
 
 def generate(seed):
+    """Parameter quadratic: given sum/product constraints, find expression."""
     rng = random.Random(seed)
+    r1 = rng.randint(-8, 8)
+    r2 = rng.randint(-8, 8)
+    while r2 == r1 or r1 == 0 or r2 == 0:
+        r2 = rng.randint(-8, 8)
 
-    # Two integer roots → reconstruct quadratic via Vieta's formulas
-    r1 = rng.randint(-10, 10)
-    r2 = rng.randint(-10, 10)
-    while r2 == r1:
-        r2 = rng.randint(-10, 10)
+    s = r1 + r2       # sum of roots
+    p = r1 * r2       # product of roots
+    b = -s
+    c = p
 
-    b = -(r1 + r2)   # coefficient of x  (sum of roots = -b/a)
-    c = r1 * r2      # constant term      (product of roots = c/a)
+    # Ask for r1^2 + r2^2 = s^2 - 2p
+    sq_sum = s**2 - 2*p
 
-    problem_type = rng.choice(["roots", "sum", "product"])
+    problem_type = rng.choice(["sq_sum", "reciprocal_sum", "abs_diff"])
 
-    if problem_type == "roots":
+    if problem_type == "sq_sum":
+        answer = sq_sum
+        q = f"the sum of the squares of its roots (r₁² + r₂²)"
+    elif problem_type == "reciprocal_sum":
+        # 1/r1 + 1/r2 = (r1+r2)/(r1*r2) = s/p
+        from fractions import Fraction
+        frac = Fraction(s, p)
+        answer = str(frac)
+        q = f"the sum of the reciprocals of its roots (1/r₁ + 1/r₂) as a fraction"
+    else:
+        # |r1 - r2| = sqrt((r1+r2)^2 - 4*r1*r2) = sqrt(s^2 - 4p)
+        disc = s**2 - 4*p
+        import math
+        abs_diff = round(math.sqrt(disc), 4)
+        answer = str(abs_diff)
+        q = f"the absolute difference of its roots |r₁ - r₂|, rounded to 4 decimal places"
+
+    if problem_type != "sq_sum":
         problem = (
-            f"Find all integer solutions to the equation "
-            f"x² + {b}x + {c} = 0."
+            f"The quadratic equation x² + {b}x + {c} = 0 has two real roots. "
+            f"Find {q}."
         )
-        roots = sorted([r1, r2])
-        answer = f"{roots[0]} and {roots[1]}" if roots[0] != roots[1] else str(roots[0])
-    elif problem_type == "sum":
-        problem = (
-            f"If the two roots of x² + {b}x + {c} = 0 are integers, "
-            f"what is their sum?"
-        )
-        answer = str(r1 + r2)
     else:
         problem = (
-            f"If the two roots of x² + {b}x + {c} = 0 are integers, "
-            f"what is their product?"
+            f"The quadratic equation x² + {b}x + {c} = 0 has two real roots. "
+            f"Find {q}."
         )
-        answer = str(r1 * r2)
+        answer = str(answer)
 
-    return problem, answer
+    return problem, str(answer)

@@ -63,13 +63,46 @@ def normalize(s: str) -> str:
     return " ".join(s.rstrip(".").split())
 
 
+def _sympy_equal(a: str, b: str, tol: float = 1e-4) -> bool | None:
+    """SymPy로 두 수학 표현식의 동치 판별."""
+    from sympy import sympify, N, simplify
+    from sympy.parsing.latex import parse_latex
+
+    def _parse(s: str):
+        s = s.strip().replace("^", "**")
+        if "\\" in s:
+            try:
+                return parse_latex(s)
+            except Exception:
+                pass
+        try:
+            return sympify(s)
+        except Exception:
+            pass
+        return None
+
+    expr_a, expr_b = _parse(a), _parse(b)
+    if expr_a is None or expr_b is None:
+        return None
+    try:
+        if simplify(expr_a - expr_b) == 0:
+            return True
+    except Exception:
+        pass
+    try:
+        return abs(float(N(expr_a)) - float(N(expr_b))) < tol
+    except Exception:
+        pass
+    return None
+
+
 def answers_match(pred: str, gt: str) -> bool:
     if normalize(pred) == normalize(gt):
         return True
-    try:
-        return abs(float(pred) - float(gt)) < 1e-6
-    except (ValueError, TypeError):
-        return False
+    result = _sympy_equal(pred, gt)
+    if result is not None:
+        return result
+    return False
 
 
 SYSTEM_PROMPT = (

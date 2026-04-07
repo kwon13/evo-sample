@@ -33,19 +33,54 @@ def _normalize(s: str) -> str:
     return s
 
 
-def _match(pred: str, gt: str) -> bool:
-    if _normalize(pred) == _normalize(gt):
-        return True
+def _sympy_equal(a: str, b: str, tol: float = 1e-4) -> bool | None:
+    """
+    SymPy로 두 수학 표현식이 동치인지 판별.
+
+    지원: 분수(31/45), 제곱근(sqrt(2)), π/e, 거듭제곱(2^10),
+          사칙연산((1+2)/3), LaTeX(\\frac{3}{4}), 소수(3.14) 등.
+
+    Returns: True/False or None (파싱 실패).
+    """
+    from sympy import sympify, N, simplify
+    from sympy.parsing.latex import parse_latex
+
+    def _parse(s: str):
+        s = s.strip().replace("^", "**")
+        if "\\" in s:
+            try:
+                return parse_latex(s)
+            except Exception:
+                pass
+        try:
+            return sympify(s)
+        except Exception:
+            pass
+        return None
+
+    expr_a, expr_b = _parse(a), _parse(b)
+    if expr_a is None or expr_b is None:
+        return None
     try:
-        return abs(float(pred) - float(gt)) < 1e-4
-    except (ValueError, TypeError):
-        pass
-    # Try fraction comparison
-    try:
-        from fractions import Fraction
-        return Fraction(pred) == Fraction(gt)
+        if simplify(expr_a - expr_b) == 0:
+            return True
     except Exception:
         pass
+    try:
+        return abs(float(N(expr_a)) - float(N(expr_b))) < tol
+    except Exception:
+        pass
+    return None
+
+
+def _match(pred: str, gt: str) -> bool:
+    # 1. 정규화 후 문자열 비교
+    if _normalize(pred) == _normalize(gt):
+        return True
+    # 2. SymPy 기반 수학적 동치 판별
+    result = _sympy_equal(pred, gt)
+    if result is not None:
+        return result
     return False
 
 

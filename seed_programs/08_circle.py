@@ -1,17 +1,22 @@
 import random
+import math
 
 def generate(seed):
+    """Annulus (ring) area with sector constraint."""
     rng = random.Random(seed)
-    radius = rng.randint(3, 20)
-    area_coeff = radius * radius
-    answer = area_coeff
+    R = rng.randint(8, 20)
+    r = rng.randint(3, R - 3)
+    # sector angle in degrees
+    angle = rng.choice([60, 90, 120, 150, 180, 270])
 
-    things = ["circular pond", "round playground", "circular flower bed"]
-    thing = things[seed % len(things)]
+    # annulus sector area = (angle/360) * pi * (R^2 - r^2)
+    coeff = round((angle / 360) * (R**2 - r**2), 2)
 
     problem = (
-        f"A {thing} has a radius of {radius} meters. What is the area "
-        f"of the {thing}? Express your answer as a coefficient of pi "
-        f"(e.g., if the area is 25*pi square meters, answer 25)."
+        f"Two concentric circles have radii {r} and {R}. "
+        f"A sector of central angle {angle}° is drawn. "
+        f"Find the area of the region between the two circles "
+        f"within this sector. Express your answer as a decimal "
+        f"coefficient of pi (e.g., if the area is 45.5π, answer 45.5)."
     )
-    return problem, str(answer)
+    return problem, str(coeff)
