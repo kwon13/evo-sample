@@ -52,6 +52,70 @@ load_dotenv()
 # Answer extraction helpers (rollout 정답 비교용)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Self-verification + Few-shot + Execution feedback
+# ---------------------------------------------------------------------------
+
+def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> Optional[ProblemInstance]:
+    """Multi-seed 실행 + SymPy 답 유효성 검증."""
+    from sympy import sympify
+    instances = []
+    for s in range(n_seeds):
+        inst = program.execute(seed=s, timeout=5.0)
+        if inst is None:
+            return None
+        try:
+            sympify(inst.answer.strip().replace("^", "**"))
+        except Exception:
+            try:
+                float(inst.answer)
+            except (ValueError, TypeError):
+                return None
+        instances.append(inst)
+    return instances[0] if instances else None
+
+
+def _build_few_shot_examples(grid: MAPElitesGrid, top_k: int = 3) -> str:
+    """Grid의 RQ 상위 top_k 챔피언을 few-shot 예시로 구성."""
+    champions = grid.get_all_champions()
+    if not champions:
+        return ""
+    ranked = sorted(champions, key=lambda c: -(c.rq_score or 0))[:top_k]
+    parts = ["# === HIGH-QUALITY EXAMPLES (for reference) ==="]
+    for i, champ in enumerate(ranked, 1):
+        rq = getattr(champ, "rq_score", 0)
+        p = getattr(champ, "p_hat", 0)
+        h = getattr(champ, "h_score", 0)
+        parts.append(
+            f"#\n# Example {i} (RQ={rq:.3f}, p_hat={p:.2f}, H={h:.2f}):\n"
+            f"# ```python\n# {champ.source_code[:200]}...\n# ```"
+        )
+    parts.append("# === END EXAMPLES ===\n")
+    return "\n".join(parts)
+
+
+def _build_execution_feedback(parent: ProblemProgram) -> str:
+    """부모 프로그램의 실행 결과를 프롬프트에 포함."""
+    inst = parent.execute(seed=0, timeout=5.0)
+    if inst is None:
+        return ""
+    p_hat = getattr(parent, "p_hat", 0.5)
+    h_score = getattr(parent, "h_score", 1.0)
+    difficulty = (
+        "TOO EASY" if p_hat > 0.7 else
+        "TOO HARD" if p_hat < 0.2 else
+        "GOOD"
+    )
+    return (
+        f"# === EXECUTION RESULT ===\n"
+        f"# Problem: {inst.problem[:100]}...\n"
+        f"# Answer: {inst.answer}\n"
+        f"# Solver pass rate: {p_hat:.0%} ({difficulty})\n"
+        f"# Solver entropy: {h_score:.2f}\n"
+        f"# === END ===\n"
+    )
+
+
 _BOXED_RE = re.compile(r"\\boxed\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", re.DOTALL)
 
 
@@ -190,7 +254,9 @@ _MUTATE_DEPTH = (
     "# Python function that generates math word problems.\n"
     "# Rewrite to generate HARDER, competition-level problems (AMC/AIME).\n"
     "#\n"
+    "{few_shot}"
     "{score_feedback}"
+    "{exec_feedback}"
     "#\n"
     "# Requirements:\n"
     "#   - At least 3-5 reasoning steps to solve\n"
@@ -209,7 +275,9 @@ _MUTATE_BREADTH = (
     "# Python function that generates math word problems.\n"
     "# Rewrite to generate a COMPLETELY DIFFERENT type of hard math problem.\n"
     "#\n"
+    "{few_shot}"
     "{score_feedback}"
+    "{exec_feedback}"
     "#\n"
     "# Choose a different branch of mathematics:\n"
     "#   - If original is geometry → try number theory or combinatorics\n"
@@ -220,6 +288,26 @@ _MUTATE_BREADTH = (
     "```python\n{code}\n```\n\n"
     + _SINGLE_ANSWER_RULE +
     "# Completely different topic (target: p_hat ≈ 0.5, H > 2.0):\n"
+    "```python\n"
+    "import random\n"
+)
+
+
+_MUTATE_CROSSOVER = (
+    "# Two Python functions that generate different types of math problems.\n"
+    "# Combine ideas from BOTH programs to create a NEW hybrid problem generator\n"
+    "# that merges the mathematical concepts from both parents.\n"
+    "#\n"
+    "{few_shot}"
+    "# Parent A (p_hat={p_hat_a:.2f}, H={h_a:.2f}):\n"
+    "```python\n{code_a}\n```\n\n"
+    "# Parent B (p_hat={p_hat_b:.2f}, H={h_b:.2f}):\n"
+    "```python\n{code_b}\n```\n\n"
+    "# Create a NEW function that combines concepts from both parents.\n"
+    "# Example: if A is geometry and B is probability,\n"
+    "#   create geometric probability problems.\n"
+    + _SINGLE_ANSWER_RULE +
+    "# Hybrid version combining both concepts (target: p_hat ≈ 0.5, H > 2.0):\n"
     "```python\n"
     "import random\n"
 )
@@ -341,11 +429,12 @@ class VLLMRunner:
 
     # ---- mutation -------------------------------------------------------
 
-    def mutate(self, parent: "ProblemProgram", in_depth: bool = True) -> Optional[str]:
+    def mutate(
+        self, parent: "ProblemProgram", in_depth: bool = True,
+        grid: Optional["MAPElitesGrid"] = None,
+    ) -> Optional[str]:
         """
-        Score-aware completion-style mutation.
-        부모의 p_hat, H, RQ를 프롬프트에 포함하여
-        LLM이 목표 난이도를 인식하고 개선하도록 유도.
+        Score-aware mutation + few-shot + execution feedback.
         """
         from vllm import SamplingParams
         tmpl = _MUTATE_DEPTH if in_depth else _MUTATE_BREADTH
@@ -359,7 +448,12 @@ class VLLMRunner:
             p_hat=p_hat, h_score=h_score, rq_score=rq_score,
             diagnosis=diag, action=action,
         )
-        prompt = tmpl.format(code=parent.source_code, score_feedback=score_feedback)
+        few_shot = _build_few_shot_examples(grid) if grid else ""
+        exec_fb = _build_execution_feedback(parent)
+        prompt = tmpl.format(
+            code=parent.source_code, score_feedback=score_feedback,
+            few_shot=few_shot, exec_feedback=exec_fb,
+        )
         params = SamplingParams(
             temperature=0.1,   # 코드 생성: 낮은 temperature → syntax 오류 감소
             max_tokens=4096,
@@ -376,6 +470,166 @@ class VLLMRunner:
             full_code = full_code[:cut].strip()
 
         return full_code if "def generate" in full_code else None
+
+    # ---- crossover ------------------------------------------------------
+
+    def crossover(
+        self, parent_a: "ProblemProgram", parent_b: "ProblemProgram",
+        grid: Optional["MAPElitesGrid"] = None,
+    ) -> Optional[str]:
+        """
+        두 부모 프로그램의 수학 개념을 결합하여 새 프로그램 생성.
+        MAP-Elites 원본(Mouret & Clune, 2015)의 crossover 연산자.
+        """
+        from vllm import SamplingParams
+
+        few_shot = _build_few_shot_examples(grid) if grid else ""
+        prompt = _MUTATE_CROSSOVER.format(
+            code_a=parent_a.source_code,
+            code_b=parent_b.source_code,
+            p_hat_a=getattr(parent_a, "p_hat", 0.5),
+            h_a=getattr(parent_a, "h_score", 1.0),
+            p_hat_b=getattr(parent_b, "p_hat", 0.5),
+            h_b=getattr(parent_b, "h_score", 1.0),
+            few_shot=few_shot,
+        )
+        params = SamplingParams(
+            temperature=0.3,
+            max_tokens=4096,
+            n=1,
+        )
+        text = self.llm.generate([prompt], params)[0].outputs[0].text
+        full_code = "import random\n" + text
+        cut = full_code.find("```")
+        if cut != -1:
+            full_code = full_code[:cut].strip()
+        return full_code if "def generate" in full_code else None
+
+    # ---- batch methods (논문 Appendix B 스타일) --------------------------------
+
+    def _extract_code(self, text: str) -> Optional[str]:
+        """Mutation/crossover 출력에서 코드 추출."""
+        full_code = "import random\n" + text
+        cut = full_code.find("```")
+        if cut != -1:
+            full_code = full_code[:cut].strip()
+        return full_code if "def generate" in full_code else None
+
+    def batch_mutate(
+        self, tasks: list[dict], grid: Optional["MAPElitesGrid"] = None,
+    ) -> list[Optional[str]]:
+        """
+        Batch mutation: 여러 mutation/crossover 프롬프트를 한 번의 generate()로 처리.
+        Few-shot top-K 예시 + execution feedback 포함.
+
+        tasks: list of {"op": "in_depth"|"in_breadth"|"crossover", "parent": ..., "parent_b": ...}
+        Returns: list of Optional[str] (source code or None)
+        """
+        from vllm import SamplingParams
+
+        few_shot = _build_few_shot_examples(grid) if grid else ""
+
+        prompts = []
+        for t in tasks:
+            if t["op"] == "crossover":
+                pa, pb = t["parent"], t["parent_b"]
+                prompts.append(_MUTATE_CROSSOVER.format(
+                    code_a=pa.source_code, code_b=pb.source_code,
+                    p_hat_a=getattr(pa, "p_hat", 0.5), h_a=getattr(pa, "h_score", 1.0),
+                    p_hat_b=getattr(pb, "p_hat", 0.5), h_b=getattr(pb, "h_score", 1.0),
+                    few_shot=few_shot,
+                ))
+            else:
+                parent = t["parent"]
+                tmpl = _MUTATE_DEPTH if t["op"] == "in_depth" else _MUTATE_BREADTH
+                p_hat = getattr(parent, "p_hat", 0.5)
+                h_score = getattr(parent, "h_score", 1.0)
+                rq_score = getattr(parent, "rq_score", 0.0)
+                diag, action = _score_diagnosis(p_hat, h_score)
+                feedback = _SCORE_FEEDBACK.format(
+                    p_hat=p_hat, h_score=h_score, rq_score=rq_score,
+                    diagnosis=diag, action=action,
+                )
+                exec_fb = _build_execution_feedback(parent)
+                prompts.append(tmpl.format(
+                    code=parent.source_code, score_feedback=feedback,
+                    few_shot=few_shot, exec_feedback=exec_fb,
+                ))
+
+        if not prompts:
+            return []
+
+        params = SamplingParams(temperature=0.3, max_tokens=4096, n=1)
+        outputs = self.llm.generate(prompts, params)
+        return [self._extract_code(out.outputs[0].text) for out in outputs]
+
+    def batch_entropy(
+        self, instances: list["ProblemInstance"], top_k: int = 20,
+    ) -> list[Optional[float]]:
+        """Batch entropy 측정: 여러 문제를 한 번의 generate()로 처리."""
+        import math as _math
+        from vllm import SamplingParams
+
+        prompts = [_SOLVE_PROMPT.format(problem=inst.problem) for inst in instances]
+        if not prompts:
+            return []
+
+        params = SamplingParams(
+            temperature=1.0,
+            max_tokens=min(self.max_tokens, 256),
+            logprobs=top_k, n=1,
+        )
+        outputs = self.llm.generate(prompts, params)
+        vocab_size = self.tokenizer.vocab_size or 150000
+
+        results = []
+        for out in outputs:
+            lp_list = out.outputs[0].logprobs
+            if not lp_list:
+                results.append(None)
+                continue
+            token_hs = []
+            for step_dict in lp_list:
+                log_probs = [lp.logprob for lp in step_dict.values()]
+                probs = [_math.exp(lp) for lp in log_probs]
+                h_top = -sum(p * _math.log(p) for p in probs if p > 0)
+                p_rest = max(0.0, 1.0 - sum(probs))
+                if p_rest > 1e-8 and vocab_size > top_k:
+                    h_top += -p_rest * _math.log(p_rest / (vocab_size - top_k))
+                token_hs.append(h_top)
+            results.append(sum(token_hs) / len(token_hs) if token_hs else None)
+        return results
+
+    def batch_rollout(
+        self, instances: list["ProblemInstance"], n_rollouts: int,
+    ) -> list[tuple[list[bool], list[dict]]]:
+        """Batch rollout: 여러 문제를 한 번의 generate()로 처리."""
+        from vllm import SamplingParams
+
+        prompts = [_SOLVE_PROMPT.format(problem=inst.problem) for inst in instances]
+        if not prompts:
+            return []
+
+        params = SamplingParams(
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            n=n_rollouts,
+        )
+        all_outputs = self.llm.generate(prompts, params)
+
+        results = []
+        for out, inst in zip(all_outputs, instances):
+            flags, logs = [], []
+            for i, comp in enumerate(out.outputs):
+                pred = _extract_boxed(comp.text)
+                correct = _answers_match(pred, inst.answer) if pred else False
+                flags.append(correct)
+                logs.append({
+                    "rollout_idx": i, "response": comp.text,
+                    "extracted": pred, "ground_truth": inst.answer, "correct": correct,
+                })
+            results.append((flags, logs))
+        return results
 
 
 # ---------------------------------------------------------------------------
@@ -518,88 +772,174 @@ def evolution_step(
     model: Optional[str] = None,
     base_url: Optional[str] = None,
     api_key: str = None,
-    in_depth_ratio: float = 0.7,
+    in_depth_ratio: float = 0.5,
+    crossover_ratio: float = 0.2,
     verbose: bool = True,
     vllm_runner: Optional[VLLMRunner] = None,
 ) -> dict:
     """
-    Evolution 1회 실행.
-    Returns: 통계 dict
+    Evolution 1회 실행 — vLLM 사용 시 batched inference.
+
+    3-phase pipeline:
+      Phase 1: batch_mutate (1회 vLLM 호출) → execute (CPU)
+      Phase 2: batch_rollout (1회 vLLM 호출)
+      Phase 3: batch_entropy (1회 vLLM 호출)
+      → 총 3회 GPU 호출로 전체 candidate 처리
+
+    연산자 비율 (Mouret & Clune, 2015):
+      crossover_ratio  → crossover (두 부모 결합)
+      in_depth_ratio   → in-depth mutation (같은 유형 고도화)
+      나머지            → in-breadth mutation (새 유형 탐색)
     """
     inserted = 0
     attempted = 0
     skipped_execute = 0
     skipped_h = 0
-    candidate_logs = []   # 각 candidate의 상세 로그
+    candidate_logs = []
 
+    # ================================================================
+    # Phase 1: Mutation (batched if vllm_runner)
+    # ================================================================
+    mutation_tasks = []   # {"op", "parent", "parent_b"(optional)}
     for c in range(candidates):
-        parent = grid.sample_parent()
-        if parent is None:
-            print("  [warn] grid empty, skipping")
-            continue
-
-        # ---- Mutation ----
-        in_depth = rng.random() < in_depth_ratio
-        if vllm_runner:
-            source_code = vllm_runner.mutate(parent, in_depth)
-        elif model:
-            source_code = _llm_mutate(parent, model, base_url, api_key, in_depth)
+        roll = rng.random()
+        if roll < crossover_ratio:
+            op = "crossover"
+        elif roll < crossover_ratio + in_depth_ratio:
+            op = "in_depth"
         else:
-            source_code = _mock_mutate(parent, rng)
+            op = "in_breadth"
 
-        if not source_code:
+        if op == "crossover":
+            pa, pb = grid.sample_two_parents()
+            if pa is None or pb is None:
+                pa = grid.sample_parent()
+                if pa is None:
+                    continue
+                op = "in_depth"
+                mutation_tasks.append({"op": op, "parent": pa})
+            else:
+                mutation_tasks.append({"op": "crossover", "parent": pa, "parent_b": pb})
+        else:
+            parent = grid.sample_parent()
+            if parent is None:
+                continue
+            mutation_tasks.append({"op": op, "parent": parent})
+
+    # Batch mutation
+    if vllm_runner and mutation_tasks:
+        if verbose:
+            print(f"  [batch] mutating {len(mutation_tasks)} candidates...")
+        source_codes = vllm_runner.batch_mutate(mutation_tasks, grid=grid)
+    else:
+        source_codes = []
+        for t in mutation_tasks:
+            if t["op"] == "crossover":
+                source_codes.append(_mock_mutate(t["parent"], rng))
+            elif model:
+                source_codes.append(
+                    _llm_mutate(t["parent"], model, base_url, api_key, t["op"] == "in_depth"))
+            else:
+                source_codes.append(_mock_mutate(t["parent"], rng))
+
+    # Build children + execute (CPU, fast)
+    children = []       # (child, inst, task)
+    for task, code in zip(mutation_tasks, source_codes):
+        if code is None:
             if verbose:
-                print(f"  [{c+1}/{candidates}] mutation failed")
+                print(f"  {task['op']} mutation failed")
             continue
 
-        child = ProblemProgram(
-            source_code=source_code,
-            parent_id=parent.program_id,
-            generation=parent.generation + 1,
-            metadata={"in_depth": in_depth},
-        )
+        if task["op"] == "crossover":
+            pa, pb = task["parent"], task["parent_b"]
+            child = ProblemProgram(
+                source_code=code,
+                parent_id=f"{pa.program_id}×{pb.program_id}",
+                generation=max(pa.generation, pb.generation) + 1,
+                root_seed_id=pa.root_seed_id,
+                metadata={"op": "crossover"},
+            )
+        else:
+            child = ProblemProgram(
+                source_code=code,
+                parent_id=task["parent"].program_id,
+                generation=task["parent"].generation + 1,
+                root_seed_id=task["parent"].root_seed_id,
+                metadata={"op": task["op"]},
+            )
 
-        # ---- Execute ----
-        inst = child.execute(seed=rng.randint(0, 9999), timeout=5.0)
+        # Multi-seed + SymPy 자가 검증
+        inst = _verify_program(child, n_seeds=5)
         if inst is None:
             skipped_execute += 1
             if verbose:
-                print(f"  [{c+1}/{candidates}] execute failed")
+                print(f"  execute failed ({task['op']})")
             continue
+        children.append((child, inst, task))
 
+    if not children:
+        return {"attempted": 0, "inserted": 0, "skipped_execute": skipped_execute,
+                "skipped_h": 0, "candidate_logs": []}
+
+    # ================================================================
+    # Phase 2: Rollout (batched — 1회 vLLM 호출)
+    # ================================================================
+    instances = [inst for _, inst, _ in children]
+    if vllm_runner:
+        if verbose:
+            print(f"  [batch] rollout for {len(instances)} candidates...")
+        all_rollout_results = vllm_runner.batch_rollout(instances, n_rollouts)
+    else:
+        all_rollout_results = [
+            (_mock_rollout(inst, n_rollouts, rng), []) for inst in instances
+        ]
+
+    # ================================================================
+    # Phase 3: Entropy (batched — 1회 vLLM 호출)
+    # ================================================================
+    if vllm_runner:
+        if verbose:
+            print(f"  [batch] entropy for {len(instances)} candidates...")
+        all_h = vllm_runner.batch_entropy(instances)
+    else:
+        all_h = [_mock_entropy(inst, rng) for inst in instances]
+
+    # ================================================================
+    # Phase 4: Scoring + Grid insertion (CPU, fast)
+    # ================================================================
+    for (child, inst, task), (flags, rollout_logs), h_bar in zip(
+        children, all_rollout_results, all_h
+    ):
         attempted += 1
+        p_hat = sum(flags) / len(flags) if flags else 0.0
 
-        # ---- Rollouts → p_hat ----
-        rollout_logs = []
-        if vllm_runner:
-            flags, rollout_logs = vllm_runner.rollout(inst, n_rollouts)
-        else:
-            flags = _mock_rollout(inst, n_rollouts, rng)
-        p_hat = sum(flags) / len(flags)
-
-        # ---- Entropy → H̄ ----
-        if vllm_runner:
-            h_bar = vllm_runner.entropy(inst)
-            if h_bar is None:
-                if verbose:
-                    print(f"  [{c+1}/{candidates}] entropy failed, skip")
-                skipped_h += 1
-                continue
-        else:
-            h_bar = _mock_entropy(inst, rng)
+        if h_bar is None:
+            skipped_h += 1
+            if verbose:
+                print(f"  entropy failed, skip")
+            continue
 
         if not h_prefilter(h_bar, h_threshold):
             skipped_h += 1
             if verbose:
-                print(f"  [{c+1}/{candidates}] H={h_bar:.3f} < threshold, skip")
+                print(f"  H={h_bar:.3f} < threshold, skip")
             continue
 
-        # ---- R_Q ----
         rq_result = compute_rq_full(flags, h_bar)
         child.p_hat = p_hat
         child.h_score = h_bar
         child.rq_score = rq_result.rq_score
         child.fitness = rq_result.rq_score
+
+        # 삽입 전 기존 챔피언 정보 저장 (before→after 비교용)
+        target_h = grid.h_to_bin(h_bar)
+        target_d = grid.program_to_div_bin(child)
+        old_niche = grid.grid.get((target_h, target_d))
+        old_rq = old_niche.champion_rq if (old_niche and old_niche.champion) else -1
+        old_problem = None
+        if old_niche and old_niche.champion:
+            old_inst = old_niche.champion.execute(seed=0)
+            old_problem = old_inst.problem[:60] if old_inst else None
 
         was_inserted = grid.try_insert(
             program=child,
@@ -611,6 +951,7 @@ def evolution_step(
         # 상세 로그 기록
         candidate_logs.append({
             "candidate_idx": c,
+            "op": task["op"],
             "problem": inst.problem,
             "answer": inst.answer,
             "p_hat": p_hat,
@@ -619,24 +960,36 @@ def evolution_step(
             "inserted": was_inserted,
             "niche": (int(child.niche_h), int(child.niche_div)) if was_inserted else None,
             "generation": child.generation,
+            "root_seed_id": child.root_seed_id,
             "rollouts": rollout_logs,
         })
 
         if was_inserted:
             inserted += 1
             if verbose:
-                print(
-                    f"  [{c+1}/{candidates}] ✓ inserted "
-                    f"p={p_hat:.2f} H={h_bar:.2f} "
-                    f"R_Q={rq_result.rq_score:.4f} "
-                    f"niche=({child.niche_h},{child.niche_div})"
-                )
+                op_label = task["op"][:5]
+                if old_rq >= 0:
+                    print(
+                        f"  ✓ [{op_label}] REPLACED ({child.niche_h},{child.niche_div}) "
+                        f"RQ {old_rq:.4f} → {rq_result.rq_score:.4f}  "
+                        f"p={p_hat:.2f} H={h_bar:.2f}"
+                    )
+                    if old_problem:
+                        print(f"    before: {old_problem}...")
+                    print(f"    after:  {inst.problem[:60]}...")
+                else:
+                    print(
+                        f"  ✓ [{op_label}] NEW ({child.niche_h},{child.niche_div}) "
+                        f"RQ={rq_result.rq_score:.4f} p={p_hat:.2f} H={h_bar:.2f}"
+                    )
+                    print(f"    Q: {inst.problem[:60]}...")
         else:
             if verbose:
                 print(
-                    f"  [{c+1}/{candidates}] ✗ not champion "
+                    f"  ✗ not champion "
                     f"p={p_hat:.2f} H={h_bar:.2f} "
-                    f"R_Q={rq_result.rq_score:.4f}"
+                    f"R_Q={rq_result.rq_score:.4f} "
+                    f"(needed > {old_rq:.4f} at ({target_h},{target_d}))"
                 )
 
     return {
@@ -649,37 +1002,380 @@ def evolution_step(
 
 
 # ---------------------------------------------------------------------------
-# Visualization helpers
+# HTML Dashboard
 # ---------------------------------------------------------------------------
 
-def print_grid(grid: MAPElitesGrid):
-    """MAP-Elites grid 시각화."""
-    print()
-    h_labels = [f"H{i}" for i in range(grid.n_h_bins)]
-    col_w = 8
-
-    header = "      " + "".join(f"{l:>{col_w}}" for l in h_labels)
-    print(header)
-    print("      " + "-" * (col_w * grid.n_h_bins))
-
+def _snapshot_grid(grid: MAPElitesGrid) -> list[dict]:
+    """현재 grid 상태를 직렬화 가능한 스냅샷으로 캡처."""
+    import html as html_mod
+    cells = []
     for d in range(grid.n_div_bins):
-        row = f"D{d}  | "
+        for h in range(grid.n_h_bins):
+            niche = grid.grid.get((h, d))
+            rq = niche.champion_rq if (niche and niche.champion) else 0
+            p = getattr(niche.champion, "p_hat", 0) if (niche and niche.champion) else 0
+            h_val = getattr(niche.champion, "h_score", 0) if (niche and niche.champion) else 0
+            gen = getattr(niche.champion, "generation", 0) if (niche and niche.champion) else 0
+            has = 1 if (niche and niche.champion) else 0
+            problem, answer = "", ""
+            if niche and niche.champion:
+                inst = niche.champion.execute(seed=0)
+                if inst:
+                    problem = inst.problem
+                    answer = inst.answer
+            cells.append({
+                "h": h, "d": d, "rq": round(rq, 4), "p": round(p, 3),
+                "H": round(h_val, 3), "gen": gen, "has": has,
+                "problem": html_mod.escape(problem), "answer": html_mod.escape(answer),
+            })
+    return cells
+
+
+def _save_html_dashboard(
+    path: Path,
+    grid: MAPElitesGrid,
+    history: list[dict],
+    champions_data: list[dict],
+    seed_labels: dict[int, str],
+    run_id: str,
+    grid_snapshots: list[list[dict]] | None = None,
+):
+    """Self-contained HTML dashboard — step별 grid 비교 슬라이더 포함."""
+    n_h = grid.n_h_bins
+    n_d = grid.n_div_bins
+    h_min, h_max = grid.h_range
+    bw = (h_max - h_min) / n_h
+
+    # 최신 grid (마지막 스냅샷 또는 직접 캡처)
+    if grid_snapshots:
+        all_snapshots = grid_snapshots
+    else:
+        all_snapshots = [_snapshot_grid(grid)]
+
+    h_labels_json = json.dumps([f"H{i} [{h_min+i*bw:.1f}-{h_min+(i+1)*bw:.1f})" for i in range(n_h)])
+    d_labels_json = json.dumps([seed_labels.get(d, f"D{d}") for d in range(n_d)])
+    snapshots_json = json.dumps(all_snapshots)
+    history_json = json.dumps(history)
+    champs_json = json.dumps(champions_data, ensure_ascii=False, default=str)
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>RQ-Evolve Dashboard — {run_id}</title>
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{ font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }}
+  h1 {{ color: #e94560; margin-bottom: 10px; }}
+  h2 {{ color: #0f3460; background: #e94560; padding: 8px 16px; border-radius: 4px; margin: 20px 0 10px; }}
+  .section {{ background: #16213e; border-radius: 8px; padding: 16px; margin-bottom: 20px; }}
+
+  .grid-container {{ overflow-x: auto; }}
+  table.grid {{ border-collapse: collapse; }}
+  table.grid th {{ background: #0f3460; padding: 6px 8px; font-size: 11px; position: sticky; top: 0; }}
+  table.grid td {{ width: 80px; height: 40px; text-align: center; font-size: 11px;
+                   border: 1px solid #1a1a2e; cursor: pointer; position: relative; transition: background 0.3s; }}
+  table.grid td.empty {{ background: #0d1b2a; color: #333; }}
+  table.grid td:hover {{ outline: 2px solid #e94560; z-index: 1; }}
+  table.grid td.improved {{ box-shadow: inset 0 0 0 2px #00ff88; }}
+  table.grid td.new-cell {{ box-shadow: inset 0 0 0 2px #ffd700; }}
+  .row-label {{ background: #0f3460; padding: 6px 8px; font-size: 11px; text-align: right;
+                white-space: nowrap; position: sticky; left: 0; z-index: 2; }}
+  .tooltip {{ display: none; position: fixed; background: #16213e; border: 1px solid #e94560;
+              border-radius: 6px; padding: 12px; max-width: 500px; z-index: 100; font-size: 12px;
+              line-height: 1.5; }}
+  .line {{ fill: none; stroke: #e94560; stroke-width: 2; }}
+  .line-max {{ fill: none; stroke: #ffd700; stroke-width: 2; }}
+  .line-hard {{ fill: none; stroke: #00ff88; stroke-width: 2; }}
+  .slider-container {{ display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }}
+  .slider-container input {{ flex: 1; accent-color: #e94560; }}
+  .slider-label {{ font-size: 18px; font-weight: bold; color: #e94560; min-width: 120px; }}
+  .legend {{ display: flex; gap: 16px; margin-bottom: 8px; font-size: 11px; color: #aaa; }}
+  .legend span {{ display: inline-flex; align-items: center; gap: 4px; }}
+  .legend .box {{ width: 14px; height: 14px; border-radius: 2px; }}
+  .champ {{ background: #0d1b2a; border-radius: 6px; padding: 12px; margin: 8px 0; }}
+  .champ .rq {{ color: #e94560; font-size: 18px; font-weight: bold; }}
+  .champ .problem {{ color: #aaa; font-size: 12px; margin-top: 6px; }}
+  .champ code {{ background: #1a1a2e; padding: 8px; display: block; font-size: 11px;
+                 max-height: 200px; overflow-y: auto; margin-top: 6px; white-space: pre-wrap; }}
+  .btn {{ background: #0f3460; color: #eee; border: 1px solid #e94560; padding: 4px 12px;
+          border-radius: 4px; cursor: pointer; font-size: 12px; }}
+  .btn:hover {{ background: #e94560; }}
+  .btn.active {{ background: #e94560; }}
+</style>
+</head>
+<body>
+
+<h1>RQ-Evolve Dashboard</h1>
+<p style="color:#aaa">Run: {run_id}</p>
+
+<h2>MAP-Elites Grid</h2>
+<div class="section">
+  <div class="slider-container">
+    <span style="color:#aaa">Step:</span>
+    <input type="range" id="stepSlider" min="0" max="0" value="0">
+    <span class="slider-label" id="stepLabel">Init</span>
+    <button class="btn" id="btnPlay">Play</button>
+  </div>
+  <div class="legend">
+    <span><span class="box" style="background:#e94560"></span> R_Q 강도</span>
+    <span><span class="box" style="border:2px solid #ffd700;background:transparent"></span> 새 셀 (이전 없음)</span>
+    <span><span class="box" style="border:2px solid #00ff88;background:transparent"></span> 개선됨 (RQ 상승)</span>
+  </div>
+  <div class="grid-container">
+    <table class="grid" id="gridTable"></table>
+  </div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+
+<h2>Evolution History</h2>
+<div class="section">
+  <div style="display:flex; gap:20px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:300px;">
+      <p style="color:#aaa;">Mean R_Q (red) / Max R_Q (gold)</p>
+      <svg id="chartRQ" viewBox="0 0 600 180"></svg>
+    </div>
+    <div style="flex:1; min-width:300px;">
+      <p style="color:#aaa;">Coverage (red) / H2+ Champions (green)</p>
+      <svg id="chartCov" viewBox="0 0 600 180"></svg>
+    </div>
+  </div>
+</div>
+
+<h2>Champions (by R_Q)</h2>
+<div class="section" id="champList"></div>
+
+<script>
+const H_LABELS = {h_labels_json};
+const D_LABELS = {d_labels_json};
+const SNAPSHOTS = {snapshots_json};
+const HISTORY = {history_json};
+const CHAMPS = {champs_json};
+const N_H = {n_h}, N_D = {n_d};
+
+function rqColor(rq) {{
+  if (rq <= 0) return '#0d1b2a';
+  const t = Math.min(rq / 0.8, 1);
+  const r = Math.round(35 + t * 198);
+  const g = Math.round(27 + t * 42);
+  const b = Math.round(46 + t * 50);
+  return `rgb(${{r}},${{g}},${{b}})`;
+}}
+
+// ── Grid rendering with step comparison ──
+const slider = document.getElementById('stepSlider');
+const label = document.getElementById('stepLabel');
+slider.max = SNAPSHOTS.length - 1;
+slider.value = SNAPSHOTS.length - 1;
+
+function renderGrid(stepIdx) {{
+  const grid = SNAPSHOTS[stepIdx];
+  const prev = stepIdx > 0 ? SNAPSHOTS[stepIdx - 1] : null;
+  label.textContent = stepIdx === 0 ? 'Init' : `Step ${{stepIdx}}`;
+
+  const table = document.getElementById('gridTable');
+  let html = '<tr><th></th>';
+  H_LABELS.forEach(l => html += `<th>${{l}}</th>`);
+  html += '</tr>';
+
+  for (let d = 0; d < N_D; d++) {{
+    html += `<tr><td class="row-label">${{D_LABELS[d]}}</td>`;
+    for (let h = 0; h < N_H; h++) {{
+      const cell = grid.find(c => c.h === h && c.d === d);
+      const prevCell = prev ? prev.find(c => c.h === h && c.d === d) : null;
+
+      if (cell && cell.has) {{
+        let cls = '';
+        let delta = '';
+        if (prevCell) {{
+          if (!prevCell.has) {{
+            cls = 'new-cell';
+            delta = ' (NEW)';
+          }} else if (cell.rq > prevCell.rq + 0.001) {{
+            cls = 'improved';
+            delta = ` (+${{(cell.rq - prevCell.rq).toFixed(4)}})`;
+          }}
+        }}
+        const info = `${{D_LABELS[d]}} | H${{h}}${{delta}}\\nRQ=${{cell.rq}} p=${{cell.p}} H=${{cell.H}}\\ngen=${{cell.gen}}\\nQ: ${{cell.problem}}\\nA: ${{cell.answer}}`;
+        html += `<td class="${{cls}}" style="background:${{rqColor(cell.rq)}}" data-info="${{info}}">${{cell.rq.toFixed(3)}}</td>`;
+      }} else {{
+        html += '<td class="empty">·</td>';
+      }}
+    }}
+    html += '</tr>';
+  }}
+  table.innerHTML = html;
+}}
+
+slider.addEventListener('input', () => renderGrid(+slider.value));
+renderGrid(+slider.value);
+
+// Play animation
+let playing = false;
+document.getElementById('btnPlay').addEventListener('click', function() {{
+  if (playing) return;
+  playing = true;
+  this.classList.add('active');
+  slider.value = 0;
+  renderGrid(0);
+  let i = 0;
+  const iv = setInterval(() => {{
+    i++;
+    if (i >= SNAPSHOTS.length) {{ clearInterval(iv); playing = false; document.getElementById('btnPlay').classList.remove('active'); return; }}
+    slider.value = i;
+    renderGrid(i);
+  }}, 800);
+}});
+
+// Tooltip
+const tooltip = document.getElementById('tooltip');
+document.getElementById('gridTable').addEventListener('mouseover', e => {{
+  const info = e.target.getAttribute('data-info');
+  if (info) {{ tooltip.innerHTML = info.replace(/\\\\n/g, '<br>').replace(/\\n/g, '<br>'); tooltip.style.display = 'block'; }}
+}});
+document.getElementById('gridTable').addEventListener('mousemove', e => {{
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top = (e.clientY + 14) + 'px';
+}});
+document.getElementById('gridTable').addEventListener('mouseout', () => tooltip.style.display = 'none');
+
+// ── Charts ──
+function drawChart(svgId, data, lines) {{
+  const svg = document.getElementById(svgId);
+  if (!data.length) return;
+  const W = 600, H = 160, P = 40;
+  const n = data.length;
+  const maxY = Math.max(...lines.flatMap(l => data.map(d => d[l.key] || 0)), 0.01) * 1.15;
+
+  let html = `<line x1="${{P}}" y1="${{H}}" x2="${{W}}" y2="${{H}}" stroke="#333"/>`;
+  html += `<text x="${{P-5}}" y="15" fill="#aaa" font-size="10" text-anchor="end">${{maxY.toFixed(2)}}</text>`;
+
+  lines.forEach((l, li) => {{
+    const pts = data.map((d, i) => `${{P + i*(W-P)/Math.max(n-1,1)}},${{H - (d[l.key]||0)/maxY*H}}`).join(' ');
+    html += `<polyline points="${{pts}}" class="${{l.cls}}"/>`;
+    html += `<text x="${{W-80}}" y="${{15 + li*15}}" fill="${{l.color}}" font-size="10">${{l.label}}</text>`;
+    data.forEach((d, i) => {{
+      const x = P + i*(W-P)/Math.max(n-1,1);
+      html += `<circle cx="${{x}}" cy="${{H - (d[l.key]||0)/maxY*H}}" r="3" fill="${{l.color}}"/>`;
+    }});
+  }});
+  svg.innerHTML = html;
+}}
+
+drawChart('chartRQ', HISTORY, [
+  {{key:'mean_rq', cls:'line', color:'#e94560', label:'Mean R_Q'}},
+  {{key:'max_rq', cls:'line-max', color:'#ffd700', label:'Max R_Q'}}
+]);
+
+// H2+ champion count from history (hard_champions field if available)
+const covData = HISTORY.map((h, i) => ({{
+  ...h,
+  hard: h.hard_champions !== undefined ? h.hard_champions : 0
+}}));
+drawChart('chartCov', covData, [
+  {{key:'coverage', cls:'line', color:'#e94560', label:'Coverage'}},
+  {{key:'hard', cls:'line-hard', color:'#00ff88', label:'H2+ Champions'}}
+]);
+
+// ── Champions ──
+const champDiv = document.getElementById('champList');
+CHAMPS.forEach(c => {{
+  const probs = (c.problems || []);
+  let probHtml = probs.map(p => `<div class="problem"><b>seed=${{p.seed}}</b> Q: ${{p.problem}}<br>A: ${{p.answer}}</div>`).join('');
+  champDiv.innerHTML += `
+    <div class="champ">
+      <span class="rq">RQ=${{(c.rq_score||0).toFixed(4)}}</span>
+      &nbsp; p=${{(c.p_hat||0).toFixed(2)}} H=${{(c.h_score||0).toFixed(2)}} gen=${{c.generation}} niche=(${{c.niche_h}},${{c.niche_div}})
+      ${{probHtml}}
+      <code>${{c.source_code||''}}</code>
+    </div>`;
+}});
+</script>
+</body>
+</html>"""
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+
+# ---------------------------------------------------------------------------
+# Visualization helpers (terminal)
+# ---------------------------------------------------------------------------
+
+def print_grid(grid: MAPElitesGrid, seed_labels: dict[int, str] | None = None):
+    """
+    MAP-Elites grid 시각화.
+
+    D축 라벨: seed_labels = {0: "equation", 1: "geometry", ...}
+    셀 색상: RQ 값에 따라 시각적 강도 표시
+    """
+    print()
+
+    # H축 bin 범위 표시
+    h_min, h_max = grid.h_range
+    bw = (h_max - h_min) / grid.n_h_bins
+    h_labels = [f"H{i}" for i in range(grid.n_h_bins)]
+    h_ranges = [f"[{h_min + i*bw:.1f}-{h_min + (i+1)*bw:.1f})" for i in range(grid.n_h_bins)]
+
+    col_w = 9
+    label_w = 18
+
+    # 헤더
+    header = " " * label_w + "".join(f"{l:>{col_w}}" for l in h_labels)
+    ranges = " " * label_w + "".join(f"{r:>{col_w}}" for r in h_ranges)
+    print(header)
+    print(ranges)
+    print(" " * label_w + "-" * (col_w * grid.n_h_bins))
+
+    # Grid
+    for d in range(grid.n_div_bins):
+        label = seed_labels.get(d, f"D{d}")[:label_w - 4] if seed_labels else f"D{d}"
+        row = f"{label:>{label_w - 2}} | "
         for h in range(grid.n_h_bins):
             niche = grid.grid.get((h, d))
             if niche and niche.champion is not None:
-                cell = f"{niche.champion_rq:.3f}"
+                rq = niche.champion_rq
+                # RQ 강도 표시: ░ ▒ ▓ █
+                if rq >= 0.5:
+                    cell = f"█{rq:.3f}"
+                elif rq >= 0.3:
+                    cell = f"▓{rq:.3f}"
+                elif rq >= 0.1:
+                    cell = f"▒{rq:.3f}"
+                else:
+                    cell = f"░{rq:.3f}"
             else:
-                cell = "  ---  "
+                cell = "   ·   "
             row += f"{cell:>{col_w}}"
         print(row)
     print()
 
 
+def print_champion_detail(grid: MAPElitesGrid, seed_labels: dict[int, str] | None = None):
+    """각 챔피언의 문제 예시를 보여줌."""
+    champions = grid.get_all_champions()
+    if not champions:
+        return
+    print("  ── Champion Details ──")
+    for champ in sorted(champions, key=lambda c: -(c.rq_score or 0)):
+        d_label = seed_labels.get(champ.niche_div, f"D{champ.niche_div}") if seed_labels else f"D{champ.niche_div}"
+        inst = champ.execute(seed=0)
+        if not inst:
+            continue
+        print(f"  [{champ.niche_h},{champ.niche_div}] {d_label:15s} "
+              f"RQ={champ.rq_score:.4f} p={champ.p_hat:.2f} H={champ.h_score:.2f} gen={champ.generation}")
+        print(f"    Q: {inst.problem[:90]}")
+        print(f"    A: {inst.answer[:30]}")
+    print()
+
+
 def print_stats(stats: dict, label: str = ""):
     tag = f"[{label}] " if label else ""
+    hard = stats.get('hard_champions', '?')
     print(
         f"  {tag}coverage={stats['coverage']:.0%}  "
         f"champions={stats['num_champions']}/{stats['total_niches']}  "
+        f"H2+={hard}  "
         f"mean_rq={stats['mean_rq']:.4f}  "
         f"max_rq={stats['max_rq']:.4f}"
     )
@@ -692,14 +1388,22 @@ def print_stats(stats: dict, label: str = ""):
 def main():
     parser = argparse.ArgumentParser(description="Evolution feasibility test")
     parser.add_argument("--seed_dir", default="./seed_programs")
-    parser.add_argument("--n_evo", type=int, default=10, help="evolution steps")
-    parser.add_argument("--candidates", type=int, default=8)
+    parser.add_argument("--n_evo", type=int, default=10, help="evolution steps (outer loop)")
+    parser.add_argument("--candidates", type=int, default=8, help="batch size per round")
+    parser.add_argument("--target_hard", type=int, default=6,
+                        help="batch-filling: H2 이상 champion 최소 수 (default: 6)")
+    parser.add_argument("--max_attempts", type=int, default=64,
+                        help="batch-filling: step당 최대 시도 수 (default: 64)")
     parser.add_argument("--n_rollouts", type=int, default=10)
     parser.add_argument("--n_h_bins", type=int, default=6)
     parser.add_argument("--n_div_bins", type=int, default=6)
     parser.add_argument("--h_range", type=float, nargs=2, default=[0.0, 5.0],
                         help="H축 범위 [min, max] (default: 0.0 5.0)")
     parser.add_argument("--h_threshold", type=float, default=0.1)
+    parser.add_argument("--crossover_ratio", type=float, default=0.2,
+                        help="crossover 연산자 비율 (default: 0.2)")
+    parser.add_argument("--in_depth_ratio", type=float, default=0.5,
+                        help="in-depth mutation 비율 (default: 0.5, 나머지=in-breadth)")
     parser.add_argument("--ucb_c", type=float, default=1.0,
                         help="UCB1 exploration coefficient (0 = greedy, higher = more exploration)")
     parser.add_argument("--seed", type=int, default=42)
@@ -781,23 +1485,26 @@ def main():
 
     # ---- 2. MAP-Elites init ----
     print("\n[Phase 0] Initializing MAP-Elites grid...")
+    # D축 = 시드 프로그램 ID 기반 (수학 유형 보장)
+    seed_ids = [prog.program_id for prog in seeds]
     grid = MAPElitesGrid(
         n_h_bins=args.n_h_bins,
-        n_div_bins=args.n_div_bins,
+        n_div_bins=len(seeds),
         h_range=tuple(args.h_range),
         ucb_c=args.ucb_c,
+        seed_ids=seed_ids,
     )
 
-    # Fit diversity axis from seed problems
-    samples = []
+    # 시드 등록 + root_seed_id 설정 + D축 라벨 생성
+    seed_labels: dict[int, str] = {}
     for prog in seeds:
-        for s in range(5):
-            inst = prog.execute(s)
-            if inst:
-                samples.append(inst.problem)
-    if samples:
-        grid.fit_diversity_axis(samples)
-        print(f"  Diversity axis fitted ({len(samples)} samples)")
+        prog.root_seed_id = prog.program_id
+        d_bin = grid.register_seed(prog.program_id)
+        # 파일명에서 라벨 추출: "01_equation_modeling.py" → "equation_mod"
+        fname = prog.metadata.get("source_file", f"seed_{d_bin}")
+        label = fname.replace(".py", "").split("_", 1)[-1] if "_" in fname else fname
+        seed_labels[d_bin] = label[:14]
+    print(f"  D axis: {len(seeds)} seed-based bins (1 bin per math type)")
 
     # Insert seeds — vLLM 모드면 실제 entropy/rollout, 아니면 mock
     print(f"  Scoring {len(seeds)} seeds ({'vLLM' if vllm_runner else 'mock'})...")
@@ -827,13 +1534,18 @@ def main():
                   f"H={h0:.2f}  p={rq0.p_hat:.2f}  RQ={rq0.rq_score:.4f}")
 
     print_stats(grid.stats(), "init")
-    print_grid(grid)
+    print_grid(grid, seed_labels)
+    print_champion_detail(grid, seed_labels)
 
     # ---- 3. Evolution loop ----
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     print(f"[Evolution] Running {args.n_evo} evolution steps...\n")
+    print(f"  Live dashboard: {out_dir}/dashboard_live.html\n")
 
     history = []
     all_candidate_logs = []  # 전체 rollout 상세 로그
+    grid_snapshots = [_snapshot_grid(grid)]  # step 0 = 초기 상태
     total_inserted = 0
     total_attempted = 0
 
@@ -841,26 +1553,50 @@ def main():
         t0 = time.time()
         print(f"── Step {step}/{args.n_evo} " + "─" * 40)
 
-        step_result = evolution_step(
-            grid=grid,
-            candidates=args.candidates,
-            n_rollouts=args.n_rollouts,
-            h_threshold=args.h_threshold,
-            rng=rng,
-            model=args.model,
-            base_url=args.base_url,
-            api_key=args.api_key,
-            verbose=verbose,
-            vllm_runner=vllm_runner,
-        )
+        # Batch-filling: 최소 1라운드 실행 + target 미달 시 추가 라운드
+        step_attempted = 0
+        step_inserted = 0
+        round_num = 0
 
-        total_inserted += step_result["inserted"]
-        total_attempted += step_result["attempted"]
+        while True:
+            # 최소 1라운드는 반드시 실행
+            if round_num > 0:
+                hard = grid.count_hard_champions(min_h_bin=2)
+                if hard >= args.target_hard:
+                    print(f"  [batch-fill] H2+ target reached: {hard} >= {args.target_hard}")
+                    break
+                if step_attempted >= args.max_attempts:
+                    print(f"  [batch-fill] max attempts: {step_attempted}")
+                    break
 
-        # candidate_logs에 step 번호 추가 후 수집
-        for log in step_result.get("candidate_logs", []):
-            log["step"] = step
-            all_candidate_logs.append(log)
+            batch_size = min(args.candidates, args.max_attempts - step_attempted)
+            round_num += 1
+
+            round_result = evolution_step(
+                grid=grid,
+                candidates=batch_size,
+                n_rollouts=args.n_rollouts,
+                h_threshold=args.h_threshold,
+                rng=rng,
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                in_depth_ratio=args.in_depth_ratio,
+                crossover_ratio=args.crossover_ratio,
+                verbose=verbose,
+                vllm_runner=vllm_runner,
+            )
+
+            step_attempted += round_result["attempted"]
+            step_inserted += round_result["inserted"]
+
+            for log in round_result.get("candidate_logs", []):
+                log["step"] = step
+                log["round"] = round_num
+                all_candidate_logs.append(log)
+
+        total_inserted += step_inserted
+        total_attempted += step_attempted
 
         stats = grid.stats()
         history.append({
@@ -869,23 +1605,54 @@ def main():
             "mean_rq": stats["mean_rq"],
             "max_rq": stats["max_rq"],
             "champions": stats["num_champions"],
-            **step_result,
+            "attempted": step_attempted,
+            "inserted": step_inserted,
+            "rounds": round_num,
+            "skipped_execute": 0,
+            "skipped_h": 0,
         })
 
         elapsed = time.time() - t0
         print_stats(stats, f"step {step}")
         print(
-            f"  inserted={step_result['inserted']}/{step_result['attempted']}  "
-            f"exec_fail={step_result['skipped_execute']}  "
-            f"h_fail={step_result['skipped_h']}  "
+            f"  inserted={step_inserted}/{step_attempted}  "
+            f"rounds={round_num}  "
             f"time={elapsed:.1f}s"
+        )
+
+        # 실시간 HTML dashboard 덮어쓰기 (매 step)
+        _rt_champs = []
+        for champ in sorted(grid.get_all_champions(), key=lambda c: -(c.rq_score or 0)):
+            probs = []
+            for s in range(5):
+                inst_s = champ.execute(seed=s)
+                if inst_s:
+                    probs.append({"seed": s, "problem": inst_s.problem, "answer": inst_s.answer})
+            _rt_champs.append({
+                "program_id": champ.program_id,
+                "generation": champ.generation,
+                "niche_h": int(champ.niche_h) if hasattr(champ.niche_h, 'item') else champ.niche_h,
+                "niche_div": int(champ.niche_div) if hasattr(champ.niche_div, 'item') else champ.niche_div,
+                "rq_score": champ.rq_score, "p_hat": champ.p_hat,
+                "h_score": champ.h_score, "source_code": champ.source_code,
+                "problems": probs,
+            })
+        # Grid 스냅샷 추가
+        grid_snapshots.append(_snapshot_grid(grid))
+
+        _save_html_dashboard(
+            out_dir / f"dashboard_live.html",
+            grid, history, _rt_champs, seed_labels,
+            f"live (step {step}/{args.n_evo})",
+            grid_snapshots=grid_snapshots,
         )
 
     # ---- 4. Final report ----
     print("\n" + "=" * 60)
     print("FINAL RESULTS")
     print("=" * 60)
-    print_grid(grid)
+    print_grid(grid, seed_labels)
+    print_champion_detail(grid, seed_labels)
     print_stats(grid.stats(), "final")
 
     print(f"\n  Total attempted : {total_attempted}")
@@ -1011,10 +1778,18 @@ def main():
         with open(logs_path, "w") as f:
             json.dump(all_candidate_logs, f, indent=2, ensure_ascii=False, cls=_NumpyEncoder)
 
+    # (e) HTML 시각화
+    html_path = out_dir / f"dashboard_{run_id}.html"
+    _save_html_dashboard(
+        html_path, grid, history, champions_data, seed_labels, run_id,
+        grid_snapshots=grid_snapshots,
+    )
+
     print(f"\n  Results saved to: {out_dir}/")
     print(f"    history_{run_id}.json       — step별 coverage/rq 추이")
     print(f"    champions_{run_id}.json     — 챔피언 프로그램 + 문제 샘플")
     print(f"    grid_{run_id}.csv           — grid R_Q heatmap")
+    print(f"    dashboard_{run_id}.html     — 시각화 대시보드 (브라우저에서 열기)")
     if all_candidate_logs:
         print(f"    rollout_logs_{run_id}.json  — 모델 응답 상세 로그")
 

@@ -43,6 +43,7 @@ class ProblemProgram:
     rq_score: float = 0.0
     niche_h: int = -1       # MAP-Elites H-axis index
     niche_div: int = -1     # MAP-Elites diversity-axis index
+    root_seed_id: str = ""  # 원본 시드 프로그램 ID (D축 결정에 사용)
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self):

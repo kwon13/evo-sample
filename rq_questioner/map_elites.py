@@ -39,45 +39,36 @@ class MAPElitesGrid:
     def __init__(
         self,
         n_h_bins: int = 6,
-        n_div_bins: int = 6,
+        n_div_bins: int = 17,
         h_range: tuple = (0.0, 5.0),
-        embedding_model_name: str = "all-MiniLM-L6-v2",
         ucb_c: float = 1.0,
+        seed_ids: list[str] | None = None,
     ):
         self.n_h_bins = n_h_bins
-        self.n_div_bins = n_div_bins
         self.h_range = h_range
-        self.embedding_model_name = embedding_model_name
-        self.ucb_c = ucb_c   # UCB exploration 계수 (높을수록 탐험 중시)
+        self.ucb_c = ucb_c
+
+        # D축: 시드 프로그램 ID → D bin 매핑
+        # seed_ids가 제공되면 시드 수로 n_div_bins 자동 결정
+        if seed_ids:
+            self.n_div_bins = len(seed_ids)
+            self._seed_to_div: dict[str, int] = {
+                sid: i for i, sid in enumerate(seed_ids)
+            }
+        else:
+            self.n_div_bins = n_div_bins
+            self._seed_to_div = {}
 
         # Initialize grid
         self.grid: dict[tuple[int, int], NicheInfo] = {}
         for i in range(n_h_bins):
-            for j in range(n_div_bins):
+            for j in range(self.n_div_bins):
                 self.grid[(i, j)] = NicheInfo(h_bin=i, div_bin=j)
-
-        # Embedding model (lazy loaded)
-        self._embed_model = None
-
-        # PCA components for diversity axis (fitted on first batch)
-        self._pca = None
-        self._div_bins_edges = None
 
         # Stats
         self.total_insertions = 0
         self.total_replacements = 0
-        self.total_selections = 0   # UCB: 전체 부모 선택 횟수
-
-    @property
-    def embed_model(self):
-        if self._embed_model is None:
-            try:
-                from sentence_transformers import SentenceTransformer
-                self._embed_model = SentenceTransformer(self.embedding_model_name)
-            except ImportError:
-                print("[MAP-Elites] sentence-transformers not available. "
-                      "Using hash-based diversity instead.")
-        return self._embed_model
+        self.total_selections = 0
 
     def h_to_bin(self, h_value: float) -> int:
         """Map entropy value to H bin index."""
@@ -87,68 +78,50 @@ class MAPElitesGrid:
         bin_idx = int((h_clipped - h_min) / bin_width)
         return min(bin_idx, self.n_h_bins - 1)
 
-    def problem_to_div_bin(self, problem_text: str) -> int:
+    def program_to_div_bin(self, program: "ProblemProgram") -> int:
         """
-        Map problem text to diversity bin index using embedding.
-        Falls back to hash-based assignment if embedding model unavailable.
+        프로그램의 root_seed_id로 D bin 결정.
+
+        D축 = 원본 시드 유형 (수학 카테고리).
+        같은 시드에서 mutation된 모든 변종은 같은 D bin에 배정되므로
+        한 유형이 여러 D bin을 점유하는 문제를 방지.
+
+        Crossover 자식은 parent_a의 root_seed_id를 계승.
         """
-        if self.embed_model is not None:
-            embedding = self.embed_model.encode([problem_text])[0]
+        root_id = program.root_seed_id
+        if root_id and root_id in self._seed_to_div:
+            return self._seed_to_div[root_id]
+        # fallback: hash 기반 (seed_ids 미등록 프로그램)
+        return hash(root_id or program.program_id) % self.n_div_bins
 
-            if self._pca is not None:
-                # Project to 1D using first PCA component
-                projected = np.dot(embedding, self._pca)
-                # Quantize to bins
-                if self._div_bins_edges is not None:
-                    bin_idx = np.digitize(projected, self._div_bins_edges) - 1
-                    return max(0, min(bin_idx, self.n_div_bins - 1))
-
-            # Before PCA is fitted, use hash of embedding
-            hash_val = hash(embedding.tobytes()) % self.n_div_bins
-            return hash_val
-        else:
-            # Fallback: hash-based
-            return hash(problem_text) % self.n_div_bins
-
-    def fit_diversity_axis(self, problems: list[str]):
-        """
-        Fit PCA and bin edges for the diversity axis using a batch of problems.
-        Call this once with the initial seed problems.
-        """
-        if self.embed_model is None:
-            return
-
-        embeddings = self.embed_model.encode(problems)
-
-        # Fit PCA (just first component for 1D)
-        mean = embeddings.mean(axis=0)
-        centered = embeddings - mean
-        _, _, Vt = np.linalg.svd(centered, full_matrices=False)
-        self._pca = Vt[0]  # First principal component
-
-        # Project all embeddings
-        projected = centered @ self._pca
-        # Compute bin edges using quantiles
-        quantiles = np.linspace(0, 100, self.n_div_bins + 1)
-        self._div_bins_edges = np.percentile(projected, quantiles[1:-1])
-
-        print(f"[MAP-Elites] Diversity axis fitted with {len(problems)} problems, "
-              f"{self.n_div_bins} bins")
+    def register_seed(self, seed_id: str) -> int:
+        """시드 프로그램 등록. 새 D bin 할당 후 반환."""
+        if seed_id in self._seed_to_div:
+            return self._seed_to_div[seed_id]
+        div_bin = len(self._seed_to_div)
+        if div_bin >= self.n_div_bins:
+            # grid 확장
+            for h in range(self.n_h_bins):
+                self.grid[(h, div_bin)] = NicheInfo(h_bin=h, div_bin=div_bin)
+            self.n_div_bins = div_bin + 1
+        self._seed_to_div[seed_id] = div_bin
+        return div_bin
 
     def try_insert(
         self,
         program: ProblemProgram,
         h_value: float,
-        problem_text: str,
-        rq_score: float,
+        problem_text: str = "",
+        rq_score: float = 0.0,
     ) -> bool:
         """
         Try to insert a program into the grid.
-        
+        D bin은 program.root_seed_id로 결정 (문제 텍스트 아님).
+
         Returns True if inserted (new niche or beat champion).
         """
         h_bin = self.h_to_bin(h_value)
-        div_bin = self.problem_to_div_bin(problem_text)
+        div_bin = self.program_to_div_bin(program)
 
         program.niche_h = h_bin
         program.niche_div = div_bin
@@ -194,7 +167,7 @@ class MAPElitesGrid:
         old_h_bin = program.niche_h
         old_div_bin = program.niche_div
         new_h_bin = self.h_to_bin(new_h_value)
-        new_div_bin = self.problem_to_div_bin(problem_text)
+        new_div_bin = self.program_to_div_bin(program)
 
         # 위치가 바뀌지 않으면 h_score만 갱신하고 종료
         if new_h_bin == old_h_bin and new_div_bin == old_div_bin:
@@ -271,6 +244,50 @@ class MAPElitesGrid:
         niche.selection_count += 1
         return niche.champion
 
+    def sample_two_parents(self) -> tuple[Optional[ProblemProgram], Optional[ProblemProgram]]:
+        """
+        Crossover용 부모 2개 선택 (서로 다른 셀에서).
+
+        MAP-Elites 원본 알고리즘(Mouret & Clune, 2015)에서
+        crossover 시 두 부모를 독립적으로 선택하는 방식을 따름.
+        각 부모는 UCB1 기반으로 선택하되, 같은 셀 중복을 방지.
+        """
+        occupied = [
+            (k, niche) for k, niche in self.grid.items()
+            if niche.champion is not None
+        ]
+        if len(occupied) < 2:
+            return None, None
+
+        self.total_selections += 2
+        N = self.total_selections
+
+        rqs = np.array([niche.champion_rq for _, niche in occupied], dtype=float)
+        counts = np.array([niche.selection_count for _, niche in occupied], dtype=float)
+
+        rq_min, rq_max = rqs.min(), rqs.max()
+        norm_rqs = (rqs - rq_min) / (rq_max - rq_min) if rq_max > rq_min else np.ones(len(rqs))
+
+        exploration = np.where(
+            counts == 0,
+            np.inf,
+            self.ucb_c * np.sqrt(np.log(N) / counts),
+        )
+        ucb_scores = norm_rqs + exploration
+
+        # 1st parent: best UCB
+        idx1 = int(np.argmax(ucb_scores))
+        _, niche1 = occupied[idx1]
+        niche1.selection_count += 1
+
+        # 2nd parent: best UCB excluding 1st
+        ucb_scores[idx1] = -np.inf
+        idx2 = int(np.argmax(ucb_scores))
+        _, niche2 = occupied[idx2]
+        niche2.selection_count += 1
+
+        return niche1.champion, niche2.champion
+
     def get_all_champions(self) -> list[ProblemProgram]:
         """Get all champion programs from the grid."""
         champions = []
@@ -289,6 +306,13 @@ class MAPElitesGrid:
         rqs = [n.champion_rq for n in self.grid.values() if n.champion is not None]
         return np.mean(rqs) if rqs else 0.0
 
+    def count_hard_champions(self, min_h_bin: int = 2) -> int:
+        """H bin >= min_h_bin인 챔피언 수."""
+        return sum(
+            1 for (h, _), n in self.grid.items()
+            if h >= min_h_bin and n.champion is not None
+        )
+
     def stats(self) -> dict:
         """Get grid statistics."""
         champions = self.get_all_champions()
@@ -296,6 +320,7 @@ class MAPElitesGrid:
         return {
             "coverage": self.coverage(),
             "num_champions": len(champions),
+            "hard_champions": self.count_hard_champions(min_h_bin=2),
             "total_niches": len(self.grid),
             "mean_rq": np.mean(rqs) if rqs else 0.0,
             "max_rq": max(rqs) if rqs else 0.0,

@@ -1,0 +1,1371 @@
+[
+  {
+    "program_id": "45392df5c348",
+    "generation": 2,
+    "niche_h": 4,
+    "niche_div": 11,
+    "rq_score": 0.5980132645315748,
+    "p_hat": 0.2,
+    "h_score": 3.7375829033223416,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-Secant Theorem: If a tangent and a secant are drawn from an external point,\n        # then (tangent)^2 = (secant external part) * (secant whole)\n        r = rng.randint(10, 20)  # radius of circle\n        x = rng.randint(1, 5)  # external point to circle\n        y = rng.randint(1, 5)  # length of tangent\n        z = (y**2 + x**2) // r  # length of secant external part\n        secant_whole = z + r  # length of secant whole\n        answer = y\n\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {y} drawn from an external point {x} units away. \"\n            f\"If the secant from the same point intersects the circle at two points, what is the length of the tangent?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting Chords Theorem: (product of one chord's segments) = (product of other chord's segments)\n        a = rng.randint(5, 10)  # length of first chord segment\n        b = rng.randint(5, 10)  # length of second chord segment\n        c = rng.randint(5, 10)  # length of third chord segment\n        d = (a * b) // c  # length of fourth chord segment\n        answer = d\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into segments of lengths {a} and {b}, \"\n            f\"while the other chord is divided into segments of lengths {c} and {d}. What is the length of the fourth segment?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a Point Theorem: (product of secant segments) = (product of tangent segments)\n        r = rng.randint(10, 20)  # radius of circle\n        x = rng.randint(1, 5)  # external point to circle\n        y = rng.randint(1, 5)  # length of tangent\n        z = (y**2 + x**2) // r  # length of secant external part\n        secant_whole = z + r  # length of secant whole\n        answer = y\n\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {y} drawn from an external point {x} units away. \"\n            f\"If the secant from the same point intersects the circle at two points, what is the length of the tangent?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of lengths 8 and 5, while the other chord is divided into segments of lengths 7 and 5. What is the length of the fourth segment?",
+        "answer": "5"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 19 has a tangent of length 3 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 11 has a tangent of length 3 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 19 has a tangent of length 2 drawn from an external point 5 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "2"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a tangent of length 4 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "4"
+      }
+    ]
+  },
+  {
+    "program_id": "d80c26342e6a",
+    "generation": 1,
+    "niche_h": 2,
+    "niche_div": 5,
+    "rq_score": 0.4909855955118515,
+    "p_hat": 0.6,
+    "h_score": 2.0457733146327146,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-secant theorem: t² = s * (s + d)\n        t = rng.randint(10, 20)  # tangent length\n        s = rng.randint(5, 15)   # secant external part\n        d = rng.randint(5, 15)   # secant internal part\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A tangent of length {t} is drawn to a circle from an external point. \"\n            f\"A secant from the same point intersects the circle at points A and B, \"\n            f\"with AB = {s} and the external part of the secant being {d}. \"\n            f\"What is the value of (t²)/(s * (s + d))?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting chords theorem: a * b = c * d\n        a = rng.randint(4, 8)\n        b = rng.randint(4, 8)\n        c = rng.randint(4, 8)\n        d = (a * b) // c\n        g = math.gcd(a * b, c * d)\n        num = a * b // g\n        den = c * d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into \"\n            f\"segments of length {a} and {b}, while the other chord is divided \"\n            f\"into segments of length {c} and {d}. What is the value of (a * b)/(c * d)?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a point: t² = s * (s + d)\n        t = rng.randint(10, 20)\n        s = rng.randint(5, 15)\n        d = rng.randint(5, 15)\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A point P lies outside a circle. A tangent from P touches the circle \"\n            f\"at T, and a secant from P intersects the circle at points A and B, \"\n            f\"with PA = {s} and AB = {d}. What is the value of (PT²)/(PA * PB)?\"\n        )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of length 7 and 4, while the other chord is divided into segments of length 6 and 4. What is the value of (a * b)/(c * d)?",
+        "answer": "7/6"
+      },
+      {
+        "seed": 1,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 9. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/135"
+      },
+      {
+        "seed": 2,
+        "problem": "A tangent of length 11 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 10. What is the value of (t²)/(s * (s + d))?",
+        "answer": "121/160"
+      },
+      {
+        "seed": 3,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 13 and the external part of the secant being 7. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/140"
+      },
+      {
+        "seed": 4,
+        "problem": "A tangent of length 14 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 11. What is the value of (t²)/(s * (s + d))?",
+        "answer": "196/187"
+      }
+    ]
+  },
+  {
+    "program_id": "689f779efbfc",
+    "generation": 3,
+    "niche_h": 2,
+    "niche_div": 11,
+    "rq_score": 0.4101463735909163,
+    "p_hat": 0.3,
+    "h_score": 1.953077969480554,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Hybrid geometry and probability: circle tangents, secants, and geometric probability.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\n        \"tangent_secant_probability\", \"intersecting_chords_probability\", \"power_of_point_probability\"\n    ])\n\n    if problem_type == \"tangent_secant_probability\":\n        # Tangent and secant lengths with probability\n        r = rng.randint(5, 20)  # Radius of the circle\n        d = rng.randint(r + 1, 30)  # Distance from center to external point\n        t = rng.randint(1, 10)  # Length of tangent segment\n        s = math.sqrt(d**2 - r**2)  # Length of secant segment\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * s\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {t} \"\n            f\"from an external point {d} units away from the center. \"\n            f\"If the probability of a certain event is {probability}, \"\n            f\"what is the expected length of the secant segment from the same point?\"\n        )\n\n    elif problem_type == \"intersecting_chords_probability\":\n        # Intersecting chords theorem with probability\n        a = rng.randint(2, 10)\n        b = rng.randint(2, 10)\n        c = rng.randint(2, 10)\n        d = rng.randint(2, 10)\n        product = a * b\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * c * d\n        problem = (\n            f\"In a circle, two chords intersect. One chord is divided into \"\n            f\"segments of lengths {a} and {b}, and the other into segments \"\n            f\"of lengths {c} and {d}. If the probability of a certain event is {probability}, \"\n            f\"what is the expected product of the lengths of the second chord?\"\n        )\n\n    else:  # power_of_point_probability\n        # Power of a point theorem with probability\n        r = rng.randint(5, 20)  # Radius of the circle\n        d = rng.randint(r + 1, 30)  # Distance from center to external point\n        t = rng.randint(1, 10)  # Length of tangent segment\n        s = math.sqrt(d**2 - r**2)  # Length of secant segment\n        power = t**2\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * s**2\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {t} \"\n            f\"from an external point {d} units away from the center. \"\n            f\"If the probability of a certain event is {probability}, \"\n            f\"what is the expected square of the length of the secant segment from the same point?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In a circle, two chords intersect. One chord is divided into segments of lengths 8 and 2, and the other into segments of lengths 6 and 10. If the probability of a certain event is 0.48874215725025016, what is the expected product of the lengths of the second chord?",
+        "answer": "29.32452943501501"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 has a tangent of length 2 from an external point 16 units away from the center. If the probability of a certain event is 0.4963480696735528, what is the expected length of the secant segment from the same point?",
+        "answer": "7.141205157227528"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 7 has a tangent of length 6 from an external point 10 units away from the center. If the probability of a certain event is 0.7683991025035597, what is the expected length of the secant segment from the same point?",
+        "answer": "5.487467195085733"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 9 has a tangent of length 10 from an external point 21 units away from the center. If the probability of a certain event is 0.47924282923770123, what is the expected length of the secant segment from the same point?",
+        "answer": "9.092993356165632"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a tangent of length 7 from an external point 18 units away from the center. If the probability of a certain event is 0.48310271593911813, what is the expected length of the secant segment from the same point?",
+        "answer": "5.465683303203022"
+      }
+    ]
+  },
+  {
+    "program_id": "6d6510167779",
+    "generation": 2,
+    "niche_h": 1,
+    "niche_div": 15,
+    "rq_score": 0.37661189202149015,
+    "p_hat": 0.5,
+    "h_score": 1.5064475680859606,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced number theory: Euler's totient function and modular arithmetic.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type\n    problem_type = rng.choice([\"totient_product\", \"modular_inverse\", \"chinese_remainder\"])\n\n    if problem_type == \"totient_product\":\n        # Compute φ(n) * φ(m) where n and m are coprime\n        n = rng.randint(2, 100)\n        m = rng.randint(2, 100)\n        while math.gcd(n, m) != 1:\n            n = rng.randint(2, 100)\n            m = rng.randint(2, 100)\n\n        # Compute φ(n) and φ(m)\n        def euler_totient(x):\n            result = x\n            p = 2\n            while p * p <= x:\n                if x % p == 0:\n                    while x % p == 0:\n                        x //= p\n                    result -= result // p\n                p += 1\n            if x > 1:\n                result -= result // x\n            return result\n\n        phi_n = euler_totient(n)\n        phi_m = euler_totient(m)\n        answer = phi_n * phi_m\n\n        problem = (\n            f\"Let n = {n} and m = {m}, where n and m are coprime. \"\n            f\"Compute φ(n) * φ(m), where φ is Euler's totient function.\"\n        )\n\n    elif problem_type == \"modular_inverse\":\n        # Find the modular inverse of a modulo m\n        a = rng.randint(2, 100)\n        m = rng.randint(2, 100)\n        while math.gcd(a, m) != 1:\n            a = rng.randint(2, 100)\n            m = rng.randint(2, 100)\n\n        def extended_gcd(a, b):\n            if b == 0:\n                return (a, 1, 0)\n            else:\n                g, x, y = extended_gcd(b, a % b)\n                return (g, y, x - (a // b) * y)\n\n        _, x, _ = extended_gcd(a, m)\n        answer = x % m\n\n        problem = (\n            f\"Find the modular inverse of {a} modulo {m}. \"\n            f\"Express your answer as an integer between 0 and {m-1}.\"\n        )\n\n    else:  # chinese_remainder\n        # Solve Chinese Remainder Theorem problem\n        m1 = rng.randint(2, 100)\n        m2 = rng.randint(2, 100)\n        while math.gcd(m1, m2) != 1:\n            m1 = rng.randint(2, 100)\n            m2 = rng.randint(2, 100)\n\n        r1 = rng.randint(0, m1 - 1)\n        r2 = rng.randint(0, m2 - 1)\n\n        # Compute M = m1 * m2\n        M = m1 * m2\n\n        # Compute M1 = M / m1 and M2 = M / m2\n        M1 = M // m1\n        M2 = M // m2\n\n        # Compute the modular inverses\n        def extended_gcd(a, b):\n            if b == 0:\n                return (a, 1, 0)\n            else:\n                g, x, y = extended_gcd(b, a % b)\n                return (g, y, x - (a // b) * y)\n\n        _, x1, _ = extended_gcd(M1, m1)\n        _, x2, _ = extended_gcd(M2, m2)\n\n        # Compute the solution\n        answer = (r1 * M1 * x1 + r2 * M2 * x2) % M\n\n        problem = (\n            f\"Find an integer N such that N ≡ {r1} (mod {m1}) \"\n            f\"and N ≡ {r2} (mod {m2}). Express your answer as an integer between 0 and {M-1}.\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Find the modular inverse of 67 modulo 64. Express your answer as an integer between 0 and 63.",
+        "answer": "43"
+      },
+      {
+        "seed": 1,
+        "problem": "Let n = 74 and m = 99, where n and m are coprime. Compute φ(n) * φ(m), where φ is Euler's totient function.",
+        "answer": "2160"
+      },
+      {
+        "seed": 2,
+        "problem": "Let n = 13 and m = 12, where n and m are coprime. Compute φ(n) * φ(m), where φ is Euler's totient function.",
+        "answer": "48"
+      },
+      {
+        "seed": 3,
+        "problem": "Let n = 77 and m = 71, where n and m are coprime. Compute φ(n) * φ(m), where φ is Euler's totient function.",
+        "answer": "4200"
+      },
+      {
+        "seed": 4,
+        "problem": "Let n = 13 and m = 10, where n and m are coprime. Compute φ(n) * φ(m), where φ is Euler's totient function.",
+        "answer": "48"
+      }
+    ]
+  },
+  {
+    "program_id": "c085ca095f9d",
+    "generation": 5,
+    "niche_h": 1,
+    "niche_div": 11,
+    "rq_score": 0.3307892966077484,
+    "p_hat": 0.3,
+    "h_score": 1.575187126703564,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\n        \"tangent_secant_probability\", \"intersecting_chords_probability\", \"power_of_point_probability\"\n    ])\n\n    if problem_type == \"tangent_secant_probability\":\n        # Tangent and secant lengths with probability\n        r = rng.randint(5, 20)  # Radius of the circle\n        d = rng.randint(r + 1, 30)  # Distance from center to external point\n        t = rng.randint(1, 10)  # Length of tangent segment\n        s = math.sqrt(d**2 - r**2)  # Length of secant segment\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * s\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {t} \"\n            f\"from an external point {d} units away from the center. \"\n            f\"If the probability of a certain event is {probability}, \"\n            f\"what is the expected length of the secant segment from the same point?\"\n        )\n\n    elif problem_type == \"intersecting_chords_probability\":\n        # Intersecting chords theorem with probability\n        a = rng.randint(2, 10)\n        b = rng.randint(2, 10)\n        c = rng.randint(2, 10)\n        d = rng.randint(2, 10)\n        product = a * b\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * c * d\n        problem = (\n            f\"In a circle, two chords intersect. One chord is divided into \"\n            f\"segments of lengths {a} and {b}, and the other into segments \"\n            f\"of lengths {c} and {d}. If the probability of a certain event is {probability}, \"\n            f\"what is the expected product of the lengths of the second chord?\"\n        )\n\n    else:  # power_of_point_probability\n        # Power of a point theorem with probability\n        r = rng.randint(5, 20)  # Radius of the circle\n        d = rng.randint(r + 1, 30)  # Distance from center to external point\n        t = rng.randint(1, 10)  # Length of tangent segment\n        s = math.sqrt(d**2 - r**2)  # Length of secant segment\n        power = t**2\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * s**2\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {t} \"\n            f\"from an external point {d} units away from the center. \"\n            f\"If the probability of a certain event is {probability}, \"\n            f\"what is the expected square of the length of the secant segment from the same point?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In a circle, two chords intersect. One chord is divided into segments of lengths 8 and 2, and the other into segments of lengths 6 and 10. If the probability of a certain event is 0.48874215725025016, what is the expected product of the lengths of the second chord?",
+        "answer": "29.32452943501501"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 has a tangent of length 2 from an external point 16 units away from the center. If the probability of a certain event is 0.4963480696735528, what is the expected length of the secant segment from the same point?",
+        "answer": "7.141205157227528"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 7 has a tangent of length 6 from an external point 10 units away from the center. If the probability of a certain event is 0.7683991025035597, what is the expected length of the secant segment from the same point?",
+        "answer": "5.487467195085733"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 9 has a tangent of length 10 from an external point 21 units away from the center. If the probability of a certain event is 0.47924282923770123, what is the expected length of the secant segment from the same point?",
+        "answer": "9.092993356165632"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a tangent of length 7 from an external point 18 units away from the center. If the probability of a certain event is 0.48310271593911813, what is the expected length of the secant segment from the same point?",
+        "answer": "5.465683303203022"
+      }
+    ]
+  },
+  {
+    "program_id": "689f779efbfc",
+    "generation": 5,
+    "niche_h": 1,
+    "niche_div": 13,
+    "rq_score": 0.3251985432679672,
+    "p_hat": 0.3,
+    "h_score": 1.5485644917522248,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Hybrid geometry and probability: circle tangents, secants, and geometric probability.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\n        \"tangent_secant_probability\", \"intersecting_chords_probability\", \"power_of_point_probability\"\n    ])\n\n    if problem_type == \"tangent_secant_probability\":\n        # Tangent and secant lengths with probability\n        r = rng.randint(5, 20)  # Radius of the circle\n        d = rng.randint(r + 1, 30)  # Distance from center to external point\n        t = rng.randint(1, 10)  # Length of tangent segment\n        s = math.sqrt(d**2 - r**2)  # Length of secant segment\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * s\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {t} \"\n            f\"from an external point {d} units away from the center. \"\n            f\"If the probability of a certain event is {probability}, \"\n            f\"what is the expected length of the secant segment from the same point?\"\n        )\n\n    elif problem_type == \"intersecting_chords_probability\":\n        # Intersecting chords theorem with probability\n        a = rng.randint(2, 10)\n        b = rng.randint(2, 10)\n        c = rng.randint(2, 10)\n        d = rng.randint(2, 10)\n        product = a * b\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * c * d\n        problem = (\n            f\"In a circle, two chords intersect. One chord is divided into \"\n            f\"segments of lengths {a} and {b}, and the other into segments \"\n            f\"of lengths {c} and {d}. If the probability of a certain event is {probability}, \"\n            f\"what is the expected product of the lengths of the second chord?\"\n        )\n\n    else:  # power_of_point_probability\n        # Power of a point theorem with probability\n        r = rng.randint(5, 20)  # Radius of the circle\n        d = rng.randint(r + 1, 30)  # Distance from center to external point\n        t = rng.randint(1, 10)  # Length of tangent segment\n        s = math.sqrt(d**2 - r**2)  # Length of secant segment\n        power = t**2\n        probability = rng.uniform(0.1, 0.9)  # Probability of a certain event\n        answer = probability * s**2\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {t} \"\n            f\"from an external point {d} units away from the center. \"\n            f\"If the probability of a certain event is {probability}, \"\n            f\"what is the expected square of the length of the secant segment from the same point?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In a circle, two chords intersect. One chord is divided into segments of lengths 8 and 2, and the other into segments of lengths 6 and 10. If the probability of a certain event is 0.48874215725025016, what is the expected product of the lengths of the second chord?",
+        "answer": "29.32452943501501"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 has a tangent of length 2 from an external point 16 units away from the center. If the probability of a certain event is 0.4963480696735528, what is the expected length of the secant segment from the same point?",
+        "answer": "7.141205157227528"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 7 has a tangent of length 6 from an external point 10 units away from the center. If the probability of a certain event is 0.7683991025035597, what is the expected length of the secant segment from the same point?",
+        "answer": "5.487467195085733"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 9 has a tangent of length 10 from an external point 21 units away from the center. If the probability of a certain event is 0.47924282923770123, what is the expected length of the secant segment from the same point?",
+        "answer": "9.092993356165632"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a tangent of length 7 from an external point 18 units away from the center. If the probability of a certain event is 0.48310271593911813, what is the expected length of the secant segment from the same point?",
+        "answer": "5.465683303203022"
+      }
+    ]
+  },
+  {
+    "program_id": "9f256d59034d",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 3,
+    "rq_score": 0.29373007161023035,
+    "p_hat": 0.4,
+    "h_score": 1.2238752983759598,
+    "source_code": "import random\n\ndef generate(seed):\n    \"\"\"Chinese Remainder Theorem style: find N given multiple remainder conditions.\"\"\"\n    rng = random.Random(seed)\n    # N ≡ r1 (mod m1), N ≡ r2 (mod m2)\n    # m1, m2 coprime → unique solution mod m1*m2\n    m1 = rng.choice([3, 5, 7])\n    m2 = rng.choice([4, 7, 9, 11])\n    while m2 == m1 or __import__('math').gcd(m1, m2) != 1:\n        m2 = rng.choice([4, 7, 9, 11, 13])\n\n    r1 = rng.randint(1, m1 - 1)\n    r2 = rng.randint(1, m2 - 1)\n\n    # CRT로 최소 양수 해 구하기\n    product = m1 * m2\n    for n in range(1, product + 1):\n        if n % m1 == r1 and n % m2 == r2:\n            answer = n\n            break\n\n    # 범위 내에서 몇 개인지\n    upper = rng.randint(200, 500)\n    count = 0\n    val = answer\n    while val <= upper:\n        count += 1\n        val += product\n\n    problem = (\n        f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n        f\"and a remainder of {r2} when divided by {m2}. \"\n        f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n    )\n    return problem, str(count)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 5, and a remainder of 5 when divided by 11. How many such integers N exist in the range 1 to 461, inclusive?",
+        "answer": "9"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 1 when divided by 4. How many such integers N exist in the range 1 to 453, inclusive?",
+        "answer": "38"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 3, and a remainder of 2 when divided by 4. How many such integers N exist in the range 1 to 286, inclusive?",
+        "answer": "24"
+      },
+      {
+        "seed": 3,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 5 when divided by 7. How many such integers N exist in the range 1 to 442, inclusive?",
+        "answer": "21"
+      },
+      {
+        "seed": 4,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 2 when divided by 4. How many such integers N exist in the range 1 to 279, inclusive?",
+        "answer": "24"
+      }
+    ]
+  },
+  {
+    "program_id": "d80c26342e6a",
+    "generation": 4,
+    "niche_h": 1,
+    "niche_div": 5,
+    "rq_score": 0.2911927815112701,
+    "p_hat": 0.6,
+    "h_score": 1.2133032562969588,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-secant theorem: t² = s * (s + d)\n        t = rng.randint(10, 20)  # tangent length\n        s = rng.randint(5, 15)   # secant external part\n        d = rng.randint(5, 15)   # secant internal part\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A tangent of length {t} is drawn to a circle from an external point. \"\n            f\"A secant from the same point intersects the circle at points A and B, \"\n            f\"with AB = {s} and the external part of the secant being {d}. \"\n            f\"What is the value of (t²)/(s * (s + d))?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting chords theorem: a * b = c * d\n        a = rng.randint(4, 8)\n        b = rng.randint(4, 8)\n        c = rng.randint(4, 8)\n        d = (a * b) // c\n        g = math.gcd(a * b, c * d)\n        num = a * b // g\n        den = c * d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into \"\n            f\"segments of length {a} and {b}, while the other chord is divided \"\n            f\"into segments of length {c} and {d}. What is the value of (a * b)/(c * d)?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a point: t² = s * (s + d)\n        t = rng.randint(10, 20)\n        s = rng.randint(5, 15)\n        d = rng.randint(5, 15)\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A point P lies outside a circle. A tangent from P touches the circle \"\n            f\"at T, and a secant from P intersects the circle at points A and B, \"\n            f\"with PA = {s} and AB = {d}. What is the value of (PT²)/(PA * PB)?\"\n        )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of length 7 and 4, while the other chord is divided into segments of length 6 and 4. What is the value of (a * b)/(c * d)?",
+        "answer": "7/6"
+      },
+      {
+        "seed": 1,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 9. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/135"
+      },
+      {
+        "seed": 2,
+        "problem": "A tangent of length 11 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 10. What is the value of (t²)/(s * (s + d))?",
+        "answer": "121/160"
+      },
+      {
+        "seed": 3,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 13 and the external part of the secant being 7. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/140"
+      },
+      {
+        "seed": 4,
+        "problem": "A tangent of length 14 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 11. What is the value of (t²)/(s * (s + d))?",
+        "answer": "196/187"
+      }
+    ]
+  },
+  {
+    "program_id": "deb947c2aa72",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 1,
+    "rq_score": 0.28100579805097275,
+    "p_hat": 0.7,
+    "h_score": 1.3381228478617748,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # 두 접선과 한 현\n        R = rng.randint(10, 25)\n        x = rng.randint(5, R - 5)\n        y = rng.randint(5, R - 5)\n        answer = x * y\n        problem = (\n            f\"Two tangents from point P to a circle of radius {R} \"\n            f\"intersect the circle at points A and B. If PA = {x} \"\n            f\"and PB = {y}, find the product PA * PB.\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # 두 현의 교차\n        a = rng.randint(3, 12)\n        b = rng.randint(3, 12)\n        c = rng.randint(3, 12)\n        d = rng.randint(3, 12)\n        answer = a * b\n        problem = (\n            f\"Two chords AB and CD intersect at point P inside a circle. \"\n            f\"If AP = {a}, PB = {b}, CP = {c}, and PD = {d}, \"\n            f\"find the product AP * PB.\"\n        )\n\n    else:  # power_of_point\n        # 점의 거듭제곱\n        R = rng.randint(10, 25)\n        x = rng.randint(5, R - 5)\n        answer = R**2 - x**2\n        problem = (\n            f\"A point P is at distance {x} from the center of a circle of radius {R}. \"\n            f\"Find the length of the tangent from P to the circle.\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords AB and CD intersect at point P inside a circle. If AP = 9, PB = 3, CP = 7, and PD = 11, find the product AP * PB.",
+        "answer": "27"
+      },
+      {
+        "seed": 1,
+        "problem": "Two tangents from point P to a circle of radius 12 intersect the circle at points A and B. If PA = 6 and PB = 5, find the product PA * PB.",
+        "answer": "30"
+      },
+      {
+        "seed": 2,
+        "problem": "Two tangents from point P to a circle of radius 12 intersect the circle at points A and B. If PA = 5 and PB = 6, find the product PA * PB.",
+        "answer": "30"
+      },
+      {
+        "seed": 3,
+        "problem": "Two tangents from point P to a circle of radius 14 intersect the circle at points A and B. If PA = 7 and PB = 9, find the product PA * PB.",
+        "answer": "63"
+      },
+      {
+        "seed": 4,
+        "problem": "Two tangents from point P to a circle of radius 19 intersect the circle at points A and B. If PA = 6 and PB = 11, find the product PA * PB.",
+        "answer": "66"
+      }
+    ]
+  },
+  {
+    "program_id": "89672bdb8962",
+    "generation": 3,
+    "niche_h": 1,
+    "niche_div": 12,
+    "rq_score": 0.2754575769931435,
+    "p_hat": 0.4,
+    "h_score": 1.147739904138098,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n    \n    # Step 1: Generate two random integers for the sides of the polygons\n    sides1 = rng.randint(3, 10)\n    sides2 = rng.randint(3, 10)\n    \n    # Step 2: Calculate the sum of interior angles for each polygon\n    sum_interior_angles1 = (sides1 - 2) * 180\n    sum_interior_angles2 = (sides2 - 2) * 180\n    \n    # Step 3: Calculate the measure of each interior angle for each polygon\n    interior_angle1 = sum_interior_angles1 / sides1\n    interior_angle2 = sum_interior_angles2 / sides2\n    \n    # Step 4: Compute the absolute difference between the two interior angles\n    answer = abs(interior_angle1 - interior_angle2)\n    \n    # Step 5: Construct the problem statement\n    problem = (\n        f\"Consider two regular polygons: one with {sides1} sides and another with {sides2} sides. \"\n        f\"Find the absolute difference between the measure of each interior angle of these two polygons.\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Consider two regular polygons: one with 9 sides and another with 9 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "0.0"
+      },
+      {
+        "seed": 1,
+        "problem": "Consider two regular polygons: one with 5 sides and another with 4 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "18.0"
+      },
+      {
+        "seed": 2,
+        "problem": "Consider two regular polygons: one with 3 sides and another with 4 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "30.0"
+      },
+      {
+        "seed": 3,
+        "problem": "Consider two regular polygons: one with 6 sides and another with 5 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "12.0"
+      },
+      {
+        "seed": 4,
+        "problem": "Consider two regular polygons: one with 6 sides and another with 7 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "8.571428571428584"
+      }
+    ]
+  },
+  {
+    "program_id": "a9d175169b32",
+    "generation": 4,
+    "niche_h": 3,
+    "niche_div": 11,
+    "rq_score": 0.2742093560552687,
+    "p_hat": 0.9,
+    "h_score": 3.0467706228363194,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\n        \"tangent_secant_combined\", \"intersecting_chords_combined\", \"power_of_point_combined\"\n    ])\n\n    if problem_type == \"tangent_secant_combined\":\n        # Tangent and secant lengths with combined operations\n        r = rng.randint(10, 30)  # Radius of the circle\n        d = rng.randint(r + 1, 50)  # Distance from center to external point\n        t = rng.randint(1, 10)  # Length of tangent segment\n        s = math.sqrt(d**2 - r**2)  # Length of secant segment\n        combined_value = t + s  # Combined value for the problem\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {t} \"\n            f\"from an external point {d} units away from the center. \"\n            f\"What is the sum of the tangent and secant lengths from the same point?\"\n        )\n\n    elif problem_type == \"intersecting_chords_combined\":\n        # Intersecting chords theorem with combined operations\n        a = rng.randint(2, 10)\n        b = rng.randint(2, 10)\n        c = rng.randint(2, 10)\n        d = rng.randint(2, 10)\n        product = a * b\n        combined_value = product + c * d  # Combined value for the problem\n        problem = (\n            f\"In a circle, two chords intersect. One chord is divided into \"\n            f\"segments of lengths {a} and {b}, and the other into segments \"\n            f\"of lengths {c} and {d}. What is the sum of the products of the segments?\"\n        )\n\n    else:  # power_of_point_combined\n        # Power of a point theorem with combined operations\n        r = rng.randint(10, 30)  # Radius of the circle\n        d = rng.randint(r + 1, 50)  # Distance from center to external point\n        t = rng.randint(1, 10)  # Length of tangent segment\n        s = math.sqrt(d**2 - r**2)  # Length of secant segment\n        power = t**2\n        combined_value = power + s**2  # Combined value for the problem\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {t} \"\n            f\"from an external point {d} units away from the center. \"\n            f\"What is the sum of the square of the tangent length and the square of the secant length?\"\n        )\n\n    return problem, str(combined_value)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In a circle, two chords intersect. One chord is divided into segments of lengths 8 and 2, and the other into segments of lengths 6 and 10. What is the sum of the products of the segments?",
+        "answer": "76"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 28 has a tangent of length 5 from an external point 31 units away from the center. What is the sum of the tangent and secant lengths from the same point?",
+        "answer": "18.30413469565007"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 12 has a tangent of length 6 from an external point 18 units away from the center. What is the sum of the tangent and secant lengths from the same point?",
+        "answer": "19.41640786499874"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 28 has a tangent of length 3 from an external point 46 units away from the center. What is the sum of the tangent and secant lengths from the same point?",
+        "answer": "39.49657518178932"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 19 has a tangent of length 7 from an external point 23 units away from the center. What is the sum of the tangent and secant lengths from the same point?",
+        "answer": "19.96148139681572"
+      }
+    ]
+  },
+  {
+    "program_id": "1ce18ead9d67",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 0,
+    "rq_score": 0.2707376121809023,
+    "p_hat": 0.3,
+    "h_score": 1.2892267246709634,
+    "source_code": "\"\"\"\nEquation modeling: multi-step word problems requiring equation setup.\nMerges: age, speed, work_rate, mixture, rectangle categories.\n\"\"\"\nimport random\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\n        \"age_system\", \"speed_legs\", \"work_rate_join\",\n        \"mixture_dilute\", \"rect_optimize\",\n    ])\n\n    if problem_type == \"age_system\":\n        # 3인 나이 연립방정식\n        b = rng.randint(8, 25)\n        d1 = rng.randint(5, 15)\n        d2 = rng.randint(3, b - 2)\n        a = b + d1\n        c = b - d2\n        total = a + b + c\n        answer = b\n        problem = (\n            f\"Three people A, B, and C have ages summing to {total}. \"\n            f\"A is {d1} years older than B, and B is {d2} years older than C. \"\n            f\"What is B's current age?\"\n        )\n\n    elif problem_type == \"speed_legs\":\n        # 3구간 + 휴식 → 평균속도\n        s1 = rng.choice([40, 50, 60, 80])\n        t1 = rng.randint(2, 4)\n        d1 = s1 * t1\n        t_rest = rng.randint(1, 2)\n        s2 = rng.choice([30, 40, 50, 60])\n        t2 = rng.randint(1, 3)\n        d2 = s2 * t2\n        s3 = rng.choice([60, 80, 100])\n        t3 = rng.randint(1, 3)\n        d3 = s3 * t3\n        avg = round((d1 + d2 + d3) / (t1 + t_rest + t2 + t3), 2)\n        if avg == int(avg):\n            avg = int(avg)\n        answer = avg\n        problem = (\n            f\"A driver travels {d1} km at {s1} km/h, rests {t_rest} h, \"\n            f\"then {d2} km at {s2} km/h, then {d3} km at {s3} km/h. \"\n            f\"What is the average speed for the entire trip including rest? \"\n            f\"Round to 2 decimal places.\"\n        )\n\n    elif problem_type == \"work_rate_join\":\n        # A 혼자 h1시간 작업 후 B,C 합류\n        t_a = rng.choice([4, 5, 6, 8, 10])\n        t_b = rng.choice([6, 8, 10, 12, 15])\n        t_c = rng.choice([10, 12, 15, 20])\n        h1 = rng.randint(1, t_a - 1)\n        work_done = h1 / t_a\n        remaining = 1 - work_done\n        rate_all = 1/t_a + 1/t_b + 1/t_c\n        h2 = remaining / rate_all\n        answer = round(h1 + h2, 2)\n        problem = (\n            f\"A can finish a job in {t_a}h, B in {t_b}h, C in {t_c}h. \"\n            f\"A works alone for {h1}h, then B and C join. \"\n            f\"Total time to finish? Round to 2 decimal places.\"\n        )\n\n    elif problem_type == \"mixture_dilute\":\n        # 혼합 → 제거 → 물 추가\n        v_a = rng.randint(5, 15)\n        p_a = rng.choice([20, 25, 30, 40])\n        v_b = rng.randint(5, 15)\n        p_b = rng.choice([50, 60, 70, 80])\n        total = v_a + v_b\n        pure = v_a * p_a / 100 + v_b * p_b / 100\n        conc = pure / total\n        remove = rng.randint(2, min(v_a, v_b))\n        pure2 = pure - remove * conc\n        add_water = rng.randint(3, 10)\n        final_pct = round(pure2 / (total - remove + add_water) * 100, 2)\n        answer = final_pct\n        problem = (\n            f\"Mix {v_a}L of {p_a}% solution with {v_b}L of {p_b}% solution. \"\n            f\"Remove {remove}L of the mixture, add {add_water}L pure water. \"\n            f\"Final concentration (%)? Round to 2 decimal places.\"\n        )\n\n    else:  # rect_optimize\n        # 직사각형 → 대각선 → 외접원\n        import math\n        w = rng.randint(5, 15)\n        l = rng.randint(w + 3, 30)\n        perim = 2 * (w + l)\n        area = w * l\n        diag_sq = w**2 + l**2\n        circle_coeff = round(diag_sq / 4, 2)\n        answer = circle_coeff\n        problem = (\n            f\"A rectangle has perimeter {perim} and area {area}. \"\n            f\"Find the area of the circumscribed circle of the triangle \"\n            f\"formed by its diagonal. Express as a coefficient of pi.\"\n        )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Mix 11L of 20% solution with 9L of 80% solution. Remove 8L of the mixture, add 7L pure water. Final concentration (%)? Round to 2 decimal places.",
+        "answer": "29.68"
+      },
+      {
+        "seed": 1,
+        "problem": "A driver travels 120 km at 40 km/h, rests 1 h, then 120 km at 60 km/h, then 240 km at 80 km/h. What is the average speed for the entire trip including rest? Round to 2 decimal places.",
+        "answer": "53.33"
+      },
+      {
+        "seed": 2,
+        "problem": "Three people A, B, and C have ages summing to 31. A is 6 years older than B, and B is 5 years older than C. What is B's current age?",
+        "answer": "10"
+      },
+      {
+        "seed": 3,
+        "problem": "A driver travels 150 km at 50 km/h, rests 2 h, then 90 km at 30 km/h, then 120 km at 60 km/h. What is the average speed for the entire trip including rest? Round to 2 decimal places.",
+        "answer": "36"
+      },
+      {
+        "seed": 4,
+        "problem": "A driver travels 120 km at 60 km/h, rests 2 h, then 60 km at 60 km/h, then 60 km at 60 km/h. What is the average speed for the entire trip including rest? Round to 2 decimal places.",
+        "answer": "40"
+      }
+    ]
+  },
+  {
+    "program_id": "d80c26342e6a",
+    "generation": 3,
+    "niche_h": 1,
+    "niche_div": 10,
+    "rq_score": 0.23242008587019883,
+    "p_hat": 0.2,
+    "h_score": 1.4526255366887424,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-secant theorem: t² = s * (s + d)\n        t = rng.randint(10, 20)  # tangent length\n        s = rng.randint(5, 15)   # secant external part\n        d = rng.randint(5, 15)   # secant internal part\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A tangent of length {t} is drawn to a circle from an external point. \"\n            f\"A secant from the same point intersects the circle at points A and B, \"\n            f\"with AB = {s} and the external part of the secant being {d}. \"\n            f\"What is the value of (t²)/(s * (s + d))?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting chords theorem: a * b = c * d\n        a = rng.randint(4, 8)\n        b = rng.randint(4, 8)\n        c = rng.randint(4, 8)\n        d = (a * b) // c\n        g = math.gcd(a * b, c * d)\n        num = a * b // g\n        den = c * d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into \"\n            f\"segments of length {a} and {b}, while the other chord is divided \"\n            f\"into segments of length {c} and {d}. What is the value of (a * b)/(c * d)?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a point: t² = s * (s + d)\n        t = rng.randint(10, 20)\n        s = rng.randint(5, 15)\n        d = rng.randint(5, 15)\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A point P lies outside a circle. A tangent from P touches the circle \"\n            f\"at T, and a secant from P intersects the circle at points A and B, \"\n            f\"with PA = {s} and AB = {d}. What is the value of (PT²)/(PA * PB)?\"\n        )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of length 7 and 4, while the other chord is divided into segments of length 6 and 4. What is the value of (a * b)/(c * d)?",
+        "answer": "7/6"
+      },
+      {
+        "seed": 1,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 9. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/135"
+      },
+      {
+        "seed": 2,
+        "problem": "A tangent of length 11 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 10. What is the value of (t²)/(s * (s + d))?",
+        "answer": "121/160"
+      },
+      {
+        "seed": 3,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 13 and the external part of the secant being 7. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/140"
+      },
+      {
+        "seed": 4,
+        "problem": "A tangent of length 14 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 11. What is the value of (t²)/(s * (s + d))?",
+        "answer": "196/187"
+      }
+    ]
+  },
+  {
+    "program_id": "9eed5da3f047",
+    "generation": 2,
+    "niche_h": 2,
+    "niche_div": 8,
+    "rq_score": 0.2043130705683531,
+    "p_hat": 0.1,
+    "h_score": 2.2701452285372565,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Given: Circle with radius r, tangent AB, secant CD\n        # Find: Length of tangent segment AB\n        r = rng.randint(5, 10)  # radius\n        d = rng.randint(15, 20)  # distance from center to secant\n        # AB^2 = d^2 - r^2\n        AB = math.isqrt(d**2 - r**2)\n        answer = AB\n        problem = (\n            f\"A circle has radius {r} units. A tangent line and a secant line intersect \"\n            f\"at a point outside the circle. The distance from the center to the secant \"\n            f\"is {d} units. Find the length of the tangent segment.\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Given: Circle with intersecting chords AB and CD\n        # Find: Product of segments AB and CD\n        r = rng.randint(8, 12)  # radius\n        # Chords intersect at point P, dividing AB into a and b, CD into c and d\n        a, b = rng.randint(3, 5), rng.randint(3, 5)\n        c, d = rng.randint(3, 5), rng.randint(3, 5)\n        # AB * CD = (a+b) * (c+d)\n        product = (a + b) * (c + d)\n        answer = product\n        problem = (\n            f\"In a circle, two chords AB and CD intersect at point P. The segments are \"\n            f\"divided as follows: AP = {a}, PB = {b}, CP = {c}, PD = {d}. Find the \"\n            f\"product of the lengths of the two chords.\"\n        )\n\n    else:  # power_of_point\n        # Given: Circle with point P outside, tangent PT and secant PAB\n        # Find: Length of tangent segment PT\n        r = rng.randint(6, 9)  # radius\n        PA = rng.randint(10, 15)  # length of secant segment PA\n        # PT^2 = PA * PB\n        PB = rng.randint(5, 10)  # length of secant segment PB\n        PT = math.isqrt(PA * PB)\n        answer = PT\n        problem = (\n            f\"A circle has radius {r} units. A point P is located outside the circle. \"\n            f\"A tangent PT and a secant PAB intersect the circle. The lengths are: \"\n            f\"PA = {PA} units, PB = {PB} units. Find the length of the tangent segment PT.\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In a circle, two chords AB and CD intersect at point P. The segments are divided as follows: AP = 3, PB = 4, CP = 5, PD = 4. Find the product of the lengths of the two chords.",
+        "answer": "63"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle has radius 9 units. A tangent line and a secant line intersect at a point outside the circle. The distance from the center to the secant is 15 units. Find the length of the tangent segment.",
+        "answer": "12"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle has radius 5 units. A tangent line and a secant line intersect at a point outside the circle. The distance from the center to the secant is 15 units. Find the length of the tangent segment.",
+        "answer": "14"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle has radius 9 units. A tangent line and a secant line intersect at a point outside the circle. The distance from the center to the secant is 19 units. Find the length of the tangent segment.",
+        "answer": "16"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle has radius 7 units. A tangent line and a secant line intersect at a point outside the circle. The distance from the center to the secant is 15 units. Find the length of the tangent segment.",
+        "answer": "13"
+      }
+    ]
+  },
+  {
+    "program_id": "45392df5c348",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 11,
+    "rq_score": 0.19949541567766776,
+    "p_hat": 0.5,
+    "h_score": 0.7979816627106711,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-Secant Theorem: If a tangent and a secant are drawn from an external point,\n        # then (tangent)^2 = (secant external part) * (secant whole)\n        r = rng.randint(10, 20)  # radius of circle\n        x = rng.randint(1, 5)  # external point to circle\n        y = rng.randint(1, 5)  # length of tangent\n        z = (y**2 + x**2) // r  # length of secant external part\n        secant_whole = z + r  # length of secant whole\n        answer = y\n\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {y} drawn from an external point {x} units away. \"\n            f\"If the secant from the same point intersects the circle at two points, what is the length of the tangent?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting Chords Theorem: (product of one chord's segments) = (product of other chord's segments)\n        a = rng.randint(5, 10)  # length of first chord segment\n        b = rng.randint(5, 10)  # length of second chord segment\n        c = rng.randint(5, 10)  # length of third chord segment\n        d = (a * b) // c  # length of fourth chord segment\n        answer = d\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into segments of lengths {a} and {b}, \"\n            f\"while the other chord is divided into segments of lengths {c} and {d}. What is the length of the fourth segment?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a Point Theorem: (product of secant segments) = (product of tangent segments)\n        r = rng.randint(10, 20)  # radius of circle\n        x = rng.randint(1, 5)  # external point to circle\n        y = rng.randint(1, 5)  # length of tangent\n        z = (y**2 + x**2) // r  # length of secant external part\n        secant_whole = z + r  # length of secant whole\n        answer = y\n\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {y} drawn from an external point {x} units away. \"\n            f\"If the secant from the same point intersects the circle at two points, what is the length of the tangent?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of lengths 8 and 5, while the other chord is divided into segments of lengths 7 and 5. What is the length of the fourth segment?",
+        "answer": "5"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 19 has a tangent of length 3 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 11 has a tangent of length 3 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 19 has a tangent of length 2 drawn from an external point 5 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "2"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a tangent of length 4 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "4"
+      }
+    ]
+  },
+  {
+    "program_id": "63e4fa7b075f",
+    "generation": 3,
+    "niche_h": 1,
+    "niche_div": 8,
+    "rq_score": 0.1908337360943712,
+    "p_hat": 0.7,
+    "h_score": 0.9087320766398628,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Hybrid geometry and probability: circle tangents, secants, and geometric probability.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"geometric_probability\"])\n\n    if problem_type == \"tangent_secant\":\n        # 두 접선과 한 현\n        R = rng.randint(10, 25)\n        x = rng.randint(5, R - 5)\n        y = rng.randint(5, R - 5)\n        answer = x * y\n        problem = (\n            f\"Two tangents from point P to a circle of radius {R} \"\n            f\"intersect the circle at points A and B. If PA = {x} \"\n            f\"and PB = {y}, find the product PA * PB.\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # 두 현의 교차\n        a = rng.randint(3, 12)\n        b = rng.randint(3, 12)\n        c = rng.randint(3, 12)\n        d = rng.randint(3, 12)\n        answer = a * b\n        problem = (\n            f\"Two chords AB and CD intersect at point P inside a circle. \"\n            f\"If AP = {a}, PB = {b}, CP = {c}, and PD = {d}, \"\n            f\"find the product AP * PB.\"\n        )\n\n    else:  # geometric_probability\n        # 기하학적 확률\n        R = rng.randint(10, 25)\n        x = rng.randint(5, R - 5)\n        area_circle = math.pi * R**2\n        area_segment = (math.pi * R**2) / 4  # 예시: 원의 1/4\n        probability = area_segment / area_circle\n        answer = probability\n        problem = (\n            f\"A point is chosen at random inside a circle of radius {R}. \"\n            f\"What is the probability that the point lies within a sector of the circle \"\n            f\"that subtends a central angle of 90 degrees?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords AB and CD intersect at point P inside a circle. If AP = 9, PB = 3, CP = 7, and PD = 11, find the product AP * PB.",
+        "answer": "27"
+      },
+      {
+        "seed": 1,
+        "problem": "Two tangents from point P to a circle of radius 12 intersect the circle at points A and B. If PA = 6 and PB = 5, find the product PA * PB.",
+        "answer": "30"
+      },
+      {
+        "seed": 2,
+        "problem": "Two tangents from point P to a circle of radius 12 intersect the circle at points A and B. If PA = 5 and PB = 6, find the product PA * PB.",
+        "answer": "30"
+      },
+      {
+        "seed": 3,
+        "problem": "Two tangents from point P to a circle of radius 14 intersect the circle at points A and B. If PA = 7 and PB = 9, find the product PA * PB.",
+        "answer": "63"
+      },
+      {
+        "seed": 4,
+        "problem": "Two tangents from point P to a circle of radius 19 intersect the circle at points A and B. If PA = 6 and PB = 11, find the product PA * PB.",
+        "answer": "66"
+      }
+    ]
+  },
+  {
+    "program_id": "d80c26342e6a",
+    "generation": 2,
+    "niche_h": 0,
+    "niche_div": 5,
+    "rq_score": 0.17447457594348378,
+    "p_hat": 0.3,
+    "h_score": 0.8308313140165895,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-secant theorem: t² = s * (s + d)\n        t = rng.randint(10, 20)  # tangent length\n        s = rng.randint(5, 15)   # secant external part\n        d = rng.randint(5, 15)   # secant internal part\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A tangent of length {t} is drawn to a circle from an external point. \"\n            f\"A secant from the same point intersects the circle at points A and B, \"\n            f\"with AB = {s} and the external part of the secant being {d}. \"\n            f\"What is the value of (t²)/(s * (s + d))?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting chords theorem: a * b = c * d\n        a = rng.randint(4, 8)\n        b = rng.randint(4, 8)\n        c = rng.randint(4, 8)\n        d = (a * b) // c\n        g = math.gcd(a * b, c * d)\n        num = a * b // g\n        den = c * d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into \"\n            f\"segments of length {a} and {b}, while the other chord is divided \"\n            f\"into segments of length {c} and {d}. What is the value of (a * b)/(c * d)?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a point: t² = s * (s + d)\n        t = rng.randint(10, 20)\n        s = rng.randint(5, 15)\n        d = rng.randint(5, 15)\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A point P lies outside a circle. A tangent from P touches the circle \"\n            f\"at T, and a secant from P intersects the circle at points A and B, \"\n            f\"with PA = {s} and AB = {d}. What is the value of (PT²)/(PA * PB)?\"\n        )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of length 7 and 4, while the other chord is divided into segments of length 6 and 4. What is the value of (a * b)/(c * d)?",
+        "answer": "7/6"
+      },
+      {
+        "seed": 1,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 9. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/135"
+      },
+      {
+        "seed": 2,
+        "problem": "A tangent of length 11 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 10. What is the value of (t²)/(s * (s + d))?",
+        "answer": "121/160"
+      },
+      {
+        "seed": 3,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 13 and the external part of the secant being 7. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/140"
+      },
+      {
+        "seed": 4,
+        "problem": "A tangent of length 14 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 11. What is the value of (t²)/(s * (s + d))?",
+        "answer": "196/187"
+      }
+    ]
+  },
+  {
+    "program_id": "d67f23c84a8a",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 4,
+    "rq_score": 0.16869572354012488,
+    "p_hat": 0.3,
+    "h_score": 0.80331296923869,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-Secant Theorem problem\n        r = rng.randint(10, 20)  # radius\n        x = rng.randint(5, 15)  # external segment\n        y = rng.randint(5, 15)  # internal segment\n        answer = math.sqrt(x * (x + 2 * y))\n\n        problem = (\n            f\"A circle with radius {r} has a tangent line and a secant line \"\n            f\"extending from a common point outside the circle. The external \"\n            f\"segment of the secant is {x} units long, and the internal segment \"\n            f\"is {y} units long. What is the length of the tangent segment?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting Chords Theorem problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        answer = (a * b) / c\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into \"\n            f\"segments of lengths {a} and {b}, and the other chord is divided \"\n            f\"into segments of lengths {c} and {c}. What is the length of the \"\n            f\"segment of the second chord that is adjacent to the {c} unit segment?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a Point Theorem problem\n        r = rng.randint(10, 20)\n        d = rng.randint(5, 15)\n        answer = d**2 - r**2\n\n        problem = (\n            f\"A point P is located outside a circle with radius {r}. A tangent \"\n            f\"line from P touches the circle at point T, and the distance from \"\n            f\"P to the center of the circle is {d}. What is the length of the \"\n            f\"tangent segment PT?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of lengths 16 and 10, and the other chord is divided into segments of lengths 14 and 14. What is the length of the segment of the second chord that is adjacent to the 14 unit segment?",
+        "answer": "11.428571428571429"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 19 has a tangent line and a secant line extending from a common point outside the circle. The external segment of the secant is 6 units long, and the internal segment is 9 units long. What is the length of the tangent segment?",
+        "answer": "12.0"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 11 has a tangent line and a secant line extending from a common point outside the circle. The external segment of the secant is 6 units long, and the internal segment is 10 units long. What is the length of the tangent segment?",
+        "answer": "12.489995996796797"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 19 has a tangent line and a secant line extending from a common point outside the circle. The external segment of the secant is 13 units long, and the internal segment is 7 units long. What is the length of the tangent segment?",
+        "answer": "18.734993995195193"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a tangent line and a secant line extending from a common point outside the circle. The external segment of the secant is 6 units long, and the internal segment is 11 units long. What is the length of the tangent segment?",
+        "answer": "12.96148139681572"
+      }
+    ]
+  },
+  {
+    "program_id": "9eed5da3f047",
+    "generation": 3,
+    "niche_h": 0,
+    "niche_div": 8,
+    "rq_score": 0.1649877585838061,
+    "p_hat": 0.6,
+    "h_score": 0.6874489940991921,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Given: Circle with radius r, tangent AB, secant CD\n        # Find: Length of tangent segment AB\n        r = rng.randint(5, 10)  # radius\n        d = rng.randint(15, 20)  # distance from center to secant\n        # AB^2 = d^2 - r^2\n        AB = math.isqrt(d**2 - r**2)\n        answer = AB\n        problem = (\n            f\"A circle has radius {r} units. A tangent line and a secant line intersect \"\n            f\"at a point outside the circle. The distance from the center to the secant \"\n            f\"is {d} units. Find the length of the tangent segment.\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Given: Circle with intersecting chords AB and CD\n        # Find: Product of segments AB and CD\n        r = rng.randint(8, 12)  # radius\n        # Chords intersect at point P, dividing AB into a and b, CD into c and d\n        a, b = rng.randint(3, 5), rng.randint(3, 5)\n        c, d = rng.randint(3, 5), rng.randint(3, 5)\n        # AB * CD = (a+b) * (c+d)\n        product = (a + b) * (c + d)\n        answer = product\n        problem = (\n            f\"In a circle, two chords AB and CD intersect at point P. The segments are \"\n            f\"divided as follows: AP = {a}, PB = {b}, CP = {c}, PD = {d}. Find the \"\n            f\"product of the lengths of the two chords.\"\n        )\n\n    else:  # power_of_point\n        # Given: Circle with point P outside, tangent PT and secant PAB\n        # Find: Length of tangent segment PT\n        r = rng.randint(6, 9)  # radius\n        PA = rng.randint(10, 15)  # length of secant segment PA\n        # PT^2 = PA * PB\n        PB = rng.randint(5, 10)  # length of secant segment PB\n        PT = math.isqrt(PA * PB)\n        answer = PT\n        problem = (\n            f\"A circle has radius {r} units. A point P is located outside the circle. \"\n            f\"A tangent PT and a secant PAB intersect the circle. The lengths are: \"\n            f\"PA = {PA} units, PB = {PB} units. Find the length of the tangent segment PT.\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In a circle, two chords AB and CD intersect at point P. The segments are divided as follows: AP = 3, PB = 4, CP = 5, PD = 4. Find the product of the lengths of the two chords.",
+        "answer": "63"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle has radius 9 units. A tangent line and a secant line intersect at a point outside the circle. The distance from the center to the secant is 15 units. Find the length of the tangent segment.",
+        "answer": "12"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle has radius 5 units. A tangent line and a secant line intersect at a point outside the circle. The distance from the center to the secant is 15 units. Find the length of the tangent segment.",
+        "answer": "14"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle has radius 9 units. A tangent line and a secant line intersect at a point outside the circle. The distance from the center to the secant is 19 units. Find the length of the tangent segment.",
+        "answer": "16"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle has radius 7 units. A tangent line and a secant line intersect at a point outside the circle. The distance from the center to the secant is 15 units. Find the length of the tangent segment.",
+        "answer": "13"
+      }
+    ]
+  },
+  {
+    "program_id": "83cb10cce210",
+    "generation": 2,
+    "niche_h": 0,
+    "niche_div": 7,
+    "rq_score": 0.1366505105175572,
+    "p_hat": 0.4,
+    "h_score": 0.5693771271564884,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Number theory: modular arithmetic and prime factorization combined.\"\"\"\n    rng = random.Random(seed)\n    \n    # Generate parameters\n    base = rng.randint(10, 100)\n    exponent = rng.randint(2, 5)\n    modulus = rng.randint(100, 500)\n    \n    # Compute answer using modular exponentiation\n    answer = pow(base, exponent, modulus)\n    \n    # Build problem statement\n    problem = (\n        f\"Calculate the remainder when {base} raised to the power of {exponent} \"\n        f\"is divided by {modulus}.\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Calculate the remainder when 59 raised to the power of 5 is divided by 120.",
+        "answer": "59"
+      },
+      {
+        "seed": 1,
+        "problem": "Calculate the remainder when 27 raised to the power of 2 is divided by 230.",
+        "answer": "39"
+      },
+      {
+        "seed": 2,
+        "problem": "Calculate the remainder when 17 raised to the power of 2 is divided by 143.",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "Calculate the remainder when 40 raised to the power of 3 is divided by 289.",
+        "answer": "131"
+      },
+      {
+        "seed": 4,
+        "problem": "Calculate the remainder when 40 raised to the power of 4 is divided by 152.",
+        "answer": "16"
+      }
+    ]
+  },
+  {
+    "program_id": "d80c26342e6a",
+    "generation": 4,
+    "niche_h": 0,
+    "niche_div": 10,
+    "rq_score": 0.13611560709902312,
+    "p_hat": 0.6,
+    "h_score": 0.5671483629125964,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-secant theorem: t² = s * (s + d)\n        t = rng.randint(10, 20)  # tangent length\n        s = rng.randint(5, 15)   # secant external part\n        d = rng.randint(5, 15)   # secant internal part\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A tangent of length {t} is drawn to a circle from an external point. \"\n            f\"A secant from the same point intersects the circle at points A and B, \"\n            f\"with AB = {s} and the external part of the secant being {d}. \"\n            f\"What is the value of (t²)/(s * (s + d))?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting chords theorem: a * b = c * d\n        a = rng.randint(4, 8)\n        b = rng.randint(4, 8)\n        c = rng.randint(4, 8)\n        d = (a * b) // c\n        g = math.gcd(a * b, c * d)\n        num = a * b // g\n        den = c * d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into \"\n            f\"segments of length {a} and {b}, while the other chord is divided \"\n            f\"into segments of length {c} and {d}. What is the value of (a * b)/(c * d)?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a point: t² = s * (s + d)\n        t = rng.randint(10, 20)\n        s = rng.randint(5, 15)\n        d = rng.randint(5, 15)\n        s_total = s + d\n        t_squared = t ** 2\n        s_total_times_d = s_total * d\n        g = math.gcd(t_squared, s_total_times_d)\n        num = t_squared // g\n        den = s_total_times_d // g\n        answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"A point P lies outside a circle. A tangent from P touches the circle \"\n            f\"at T, and a secant from P intersects the circle at points A and B, \"\n            f\"with PA = {s} and AB = {d}. What is the value of (PT²)/(PA * PB)?\"\n        )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of length 7 and 4, while the other chord is divided into segments of length 6 and 4. What is the value of (a * b)/(c * d)?",
+        "answer": "7/6"
+      },
+      {
+        "seed": 1,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 9. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/135"
+      },
+      {
+        "seed": 2,
+        "problem": "A tangent of length 11 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 10. What is the value of (t²)/(s * (s + d))?",
+        "answer": "121/160"
+      },
+      {
+        "seed": 3,
+        "problem": "A tangent of length 19 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 13 and the external part of the secant being 7. What is the value of (t²)/(s * (s + d))?",
+        "answer": "361/140"
+      },
+      {
+        "seed": 4,
+        "problem": "A tangent of length 14 is drawn to a circle from an external point. A secant from the same point intersects the circle at points A and B, with AB = 6 and the external part of the secant being 11. What is the value of (t²)/(s * (s + d))?",
+        "answer": "196/187"
+      }
+    ]
+  },
+  {
+    "program_id": "67aad7d3a4a8",
+    "generation": 2,
+    "niche_h": 0,
+    "niche_div": 2,
+    "rq_score": 0.13565345628174713,
+    "p_hat": 0.7,
+    "h_score": 0.645968839436891,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Combined problem: Geometry and Probability\"\"\"\n    rng = random.Random(seed)\n    \n    # Generate a random number of sides for a polygon\n    sides = rng.randint(3, 10)\n    \n    # Calculate the sum of interior angles\n    sum_interior_angles = (sides - 2) * 180\n    \n    # Calculate the measure of each interior angle in a regular polygon\n    interior_angle = sum_interior_angles / sides\n    \n    # Generate a random number of sides for a different polygon\n    different_sides = rng.randint(3, 10)\n    \n    # Calculate the sum of interior angles for the different polygon\n    sum_different_interior_angles = (different_sides - 2) * 180\n    \n    # Calculate the measure of each interior angle in the different regular polygon\n    different_interior_angle = sum_different_interior_angles / different_sides\n    \n    # Compute the difference between the two interior angles\n    angle_difference = abs(interior_angle - different_interior_angle)\n    \n    # Generate a random number of buses for the problem\n    num_buses = rng.randint(2, 5)\n    \n    # Calculate the LCM of the bus departure times\n    bus_times = [rng.randint(6, 30) for _ in range(num_buses)]\n    lcm_bus_times = bus_times[0]\n    for time in bus_times[1:]:\n        lcm_bus_times = lcm_bus_times * time // math.gcd(lcm_bus_times, time)\n    \n    # Calculate the number of times all buses depart simultaneously within 12 hours\n    total_minutes = 12 * 60\n    times = total_minutes // lcm_bus_times\n    \n    # Combine the results into a single answer\n    combined_answer = times * angle_difference\n    \n    problem = (\n        f\"Consider two regular polygons: one with {sides} sides and another with {different_sides} sides. \"\n        f\"Find the absolute difference between the measure of each interior angle of these two polygons. \"\n        f\"Then, consider {num_buses} bus routes that depart every {', '.join(map(str, bus_times))} minutes. \"\n        f\"If all buses depart simultaneously at 6:00 AM, how many times within the next 12 hours will all buses \"\n        f\"depart simultaneously, multiplied by the angle difference?\"\n    )\n    \n    return problem, str(combined_answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Consider two regular polygons: one with 9 sides and another with 9 sides. Find the absolute difference between the measure of each interior angle of these two polygons. Then, consider 2 bus routes that depart every 14, 22 minutes. If all buses depart simultaneously at 6:00 AM, how many times within the next 12 hours will all buses depart simultaneously, multiplied by the angle difference?",
+        "answer": "0.0"
+      },
+      {
+        "seed": 1,
+        "problem": "Consider two regular polygons: one with 5 sides and another with 4 sides. Find the absolute difference between the measure of each interior angle of these two polygons. Then, consider 4 bus routes that depart every 9, 21, 30, 20 minutes. If all buses depart simultaneously at 6:00 AM, how many times within the next 12 hours will all buses depart simultaneously, multiplied by the angle difference?",
+        "answer": "0.0"
+      },
+      {
+        "seed": 2,
+        "problem": "Consider two regular polygons: one with 3 sides and another with 4 sides. Find the absolute difference between the measure of each interior angle of these two polygons. Then, consider 2 bus routes that depart every 17, 11 minutes. If all buses depart simultaneously at 6:00 AM, how many times within the next 12 hours will all buses depart simultaneously, multiplied by the angle difference?",
+        "answer": "90.0"
+      },
+      {
+        "seed": 3,
+        "problem": "Consider two regular polygons: one with 6 sides and another with 5 sides. Find the absolute difference between the measure of each interior angle of these two polygons. Then, consider 4 bus routes that depart every 25, 21, 26, 24 minutes. If all buses depart simultaneously at 6:00 AM, how many times within the next 12 hours will all buses depart simultaneously, multiplied by the angle difference?",
+        "answer": "0.0"
+      },
+      {
+        "seed": 4,
+        "problem": "Consider two regular polygons: one with 6 sides and another with 7 sides. Find the absolute difference between the measure of each interior angle of these two polygons. Then, consider 2 bus routes that depart every 29, 18 minutes. If all buses depart simultaneously at 6:00 AM, how many times within the next 12 hours will all buses depart simultaneously, multiplied by the angle difference?",
+        "answer": "8.571428571428584"
+      }
+    ]
+  },
+  {
+    "program_id": "91b2311a6c4b",
+    "generation": 3,
+    "niche_h": 0,
+    "niche_div": 15,
+    "rq_score": 0.13271846950459237,
+    "p_hat": 0.7,
+    "h_score": 0.6319927119266303,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type\n    problem_type = rng.choice([\"tangent_secant_product\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant_product\":\n        # Compute product of tangent and secant segments\n        # Given: Circle with radius r, point P outside circle\n        # Construct: Tangent PT and secant PAB\n        # Find: PT * PA\n\n        r = rng.randint(5, 20)  # radius\n        d = rng.randint(2*r+1, 3*r)  # distance from P to circle center\n        PA = rng.randint(r+1, 2*r)  # length of secant segment PA\n\n        # Compute PT using Pythagorean theorem\n        PT = math.sqrt(d**2 - r**2)\n\n        # Compute PB using secant length formula\n        PB = PA + PT\n\n        # Compute product PT * PA\n        answer = PT * PA\n\n        problem = (\n            f\"A circle with radius {r} has a point P {d} units from its center. \"\n            f\"A tangent PT and a secant PAB are drawn from P. If PA = {PA}, \"\n            f\"find the product PT * PA.\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Compute product of intersecting chords\n        # Given: Circle with chords AB and CD intersecting at P\n        # Find: AP * PB\n\n        r = rng.randint(10, 30)  # radius\n        AP = rng.randint(5, r-5)  # length of AP\n        BP = rng.randint(5, r-5)  # length of BP\n\n        # Compute CP and DP using intersecting chords theorem\n        CP = BP\n        DP = AP\n\n        # Compute product AP * PB\n        answer = AP * BP\n\n        problem = (\n            f\"In a circle with radius {r}, chords AB and CD intersect at point P. \"\n            f\"If AP = {AP} and BP = {BP}, find the product AP * PB.\"\n        )\n\n    else:  # power_of_point\n        # Compute power of point with respect to circle\n        # Given: Circle with radius r, point P at distance d from center\n        # Find: Power of point P (d^2 - r^2)\n\n        r = rng.randint(10, 30)  # radius\n        d = rng.randint(2*r+1, 3*r)  # distance from P to circle center\n\n        # Compute power of point\n        answer = d**2 - r**2\n\n        problem = (\n            f\"A circle has radius {r} and a point P is {d} units from its center. \"\n            f\"Find the power of point P with respect to the circle.\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In a circle with radius 23, chords AB and CD intersect at point P. If AP = 5 and BP = 9, find the product AP * PB.",
+        "answer": "45"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 has a point P 17 units from its center. A tangent PT and a secant PAB are drawn from P. If PA = 8, find the product PT * PA.",
+        "answer": "123.93546707863734"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 7 has a point P 15 units from its center. A tangent PT and a secant PAB are drawn from P. If PA = 10, find the product PT * PA.",
+        "answer": "132.66499161421598"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 9 has a point P 24 units from its center. A tangent PT and a secant PAB are drawn from P. If PA = 17, find the product PT * PA.",
+        "answer": "378.2261228418788"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a point P 30 units from its center. A tangent PT and a secant PAB are drawn from P. If PA = 26, find the product PT * PA.",
+        "answer": "689.8579563939231"
+      }
+    ]
+  },
+  {
+    "program_id": "29ae13630478",
+    "generation": 2,
+    "niche_h": 0,
+    "niche_div": 1,
+    "rq_score": 0.1260394348006821,
+    "p_hat": 0.7,
+    "h_score": 0.6001877847651529,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced geometry: circle tangents, secants, combined.\"\"\"\n    rng = random.Random(seed)\n\n    # Generate random parameters\n    R = rng.randint(10, 25)  # Radius of circle\n    x = rng.randint(5, R - 5)  # Distance from center to point P\n    a = rng.randint(3, 12)  # Length of one chord segment\n    b = rng.randint(3, 12)  # Length of other chord segment\n    c = rng.randint(3, 12)  # Length of another chord segment\n    d = rng.randint(3, 12)  # Length of remaining chord segment\n\n    # Calculate intermediate values\n    tangent_length = math.sqrt(R**2 - x**2)  # Length of tangent from P\n    intersect_product = a * b  # Product of intersecting chords segments\n    secant_product = c * d  # Product of secant segments\n\n    # Choose problem type\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Two tangents and one secant\n        answer = tangent_length * tangent_length\n        problem = (\n            f\"Two tangents from point P to a circle of radius {R} \"\n            f\"intersect the circle at points A and B. If PA = {tangent_length} \"\n            f\"and PB = {tangent_length}, find the product PA * PB.\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Two intersecting chords\n        answer = intersect_product\n        problem = (\n            f\"Two chords AB and CD intersect at point P inside a circle. \"\n            f\"If AP = {a}, PB = {b}, CP = {c}, and PD = {d}, \"\n            f\"find the product AP * PB.\"\n        )\n\n    else:  # power_of_point\n        # Power of a point\n        answer = secant_product\n        problem = (\n            f\"Two secants from point P to a circle of radius {R} \"\n            f\"intersect the circle at points A, B, C, and D. \"\n            f\"If PA = {c}, PB = {d}, PC = {a}, and PD = {b}, \"\n            f\"find the product PA * PB.\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords AB and CD intersect at point P inside a circle. If AP = 9, PB = 3, CP = 7, and PD = 11, find the product AP * PB.",
+        "answer": "27"
+      },
+      {
+        "seed": 1,
+        "problem": "Two chords AB and CD intersect at point P inside a circle. If AP = 4, PB = 7, CP = 4, and PD = 10, find the product AP * PB.",
+        "answer": "28"
+      },
+      {
+        "seed": 2,
+        "problem": "Two chords AB and CD intersect at point P inside a circle. If AP = 4, PB = 8, CP = 5, and PD = 7, find the product AP * PB.",
+        "answer": "32"
+      },
+      {
+        "seed": 3,
+        "problem": "Two tangents from point P to a circle of radius 17 intersect the circle at points A and B. If PA = 15.491933384829668 and PB = 15.491933384829668, find the product PA * PB.",
+        "answer": "240.00000000000003"
+      },
+      {
+        "seed": 4,
+        "problem": "Two tangents from point P to a circle of radius 17 intersect the circle at points A and B. If PA = 14.422205101855956 and PB = 14.422205101855956, find the product PA * PB.",
+        "answer": "207.99999999999997"
+      }
+    ]
+  },
+  {
+    "program_id": "0366fc9ea9f0",
+    "generation": 3,
+    "niche_h": 1,
+    "niche_div": 16,
+    "rq_score": 0.12208092399836602,
+    "p_hat": 0.1,
+    "h_score": 1.3564547110929557,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced Geometry: Circle Tangents, Secants, and Combined Problems.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_length\", \"secant_product\", \"combined\"])\n\n    if problem_type == \"tangent_length\":\n        # Solve for tangent length\n        r = rng.randint(5, 15)  # Radius\n        d = r + rng.randint(1, 10)  # Distance from center\n        length = math.sqrt(d**2 - r**2)\n        answer = str(round(length, 2))\n\n        problem = (\n            f\"A circle with radius {r} has a tangent line from a point {d} units away. \"\n            f\"Find the length of the tangent segment. Provide the answer rounded to two decimal places.\"\n        )\n\n    elif problem_type == \"secant_product\":\n        # Solve for secant product\n        r = rng.randint(5, 15)  # Radius\n        d1 = r + rng.randint(1, 10)  # External point to circle\n        d2 = d1 + rng.randint(1, 10)  # Extended secant length\n        product = d1 * d2\n        answer = str(product)\n\n        problem = (\n            f\"A circle with radius {r} has a secant line from a point {d1} units away. \"\n            f\"The secant extends {d2} units beyond the circle. Find the product of the secant lengths. \"\n            f\"Provide the exact integer value.\"\n        )\n\n    else:  # combined\n        # Solve combined tangent/secant problem\n        r = rng.randint(5, 15)  # Radius\n        d1 = r + rng.randint(1, 10)  # External point to circle\n        d2 = d1 + rng.randint(1, 10)  # Extended secant length\n        length = math.sqrt(d2**2 - r**2)\n        answer = str(round(length, 2))\n\n        problem = (\n            f\"A circle with radius {r} has a tangent line from a point {d1} units away. \"\n            f\"The secant extends {d2} units beyond the circle. Find the length of the tangent segment. \"\n            f\"Provide the answer rounded to two decimal places.\"\n        )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 11 has a secant line from a point 12 units away. The secant extends 17 units beyond the circle. Find the product of the secant lengths. Provide the exact integer value.",
+        "answer": "204"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 14 has a tangent line from a point 16 units away. Find the length of the tangent segment. Provide the answer rounded to two decimal places.",
+        "answer": "7.75"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 6 has a tangent line from a point 8 units away. Find the length of the tangent segment. Provide the answer rounded to two decimal places.",
+        "answer": "5.29"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 14 has a tangent line from a point 23 units away. Find the length of the tangent segment. Provide the answer rounded to two decimal places.",
+        "answer": "18.25"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 9 has a tangent line from a point 11 units away. Find the length of the tangent segment. Provide the answer rounded to two decimal places.",
+        "answer": "6.32"
+      }
+    ]
+  },
+  {
+    "program_id": "246cac007d78",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 13,
+    "rq_score": 0.11494116952696808,
+    "p_hat": 0.3,
+    "h_score": 0.5473389025093718,
+    "source_code": "\"\"\"\nInduction & Recursion: compute n-th term or closed form of recurrence.\n\"\"\"\nimport random\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\"linear_recurrence\", \"nested_sum\", \"fibonacci_variant\"])\n\n    if problem_type == \"linear_recurrence\":\n        # a(n) = p*a(n-1) + q, a(0) = c\n        p = rng.choice([2, 3])\n        q = rng.randint(1, 5)\n        c = rng.randint(1, 5)\n        n = rng.randint(6, 10)\n        # compute iteratively\n        val = c\n        for _ in range(n):\n            val = p * val + q\n        answer = val\n        problem = (\n            f\"A sequence is defined by a(0) = {c} and a(n) = {p}·a(n−1) + {q} for n ≥ 1. \"\n            f\"Find a({n}).\"\n        )\n\n    elif problem_type == \"nested_sum\":\n        # S(n) = 1^2 + 2^2 + ... + n^2 = n(n+1)(2n+1)/6\n        # then compute S(a) - S(b)\n        a = rng.randint(15, 30)\n        b = rng.randint(1, a - 5)\n        s_a = a * (a + 1) * (2*a + 1) // 6\n        s_b = b * (b + 1) * (2*b + 1) // 6\n        answer = s_a - s_b\n        problem = (\n            f\"Compute the sum {b+1}² + {b+2}² + ... + {a}² \"\n            f\"(i.e., the sum of squares from {b+1} to {a}).\"\n        )\n\n    else:  # fibonacci_variant\n        # F(n) = F(n-1) + F(n-2), F(1)=a, F(2)=b\n        a = rng.randint(1, 5)\n        b = rng.randint(1, 5)\n        n = rng.randint(8, 15)\n        fib = [0] * (n + 1)\n        fib[1] = a\n        fib[2] = b\n        for i in range(3, n + 1):\n            fib[i] = fib[i-1] + fib[i-2]\n        answer = fib[n]\n        problem = (\n            f\"A sequence is defined by F(1) = {a}, F(2) = {b}, and \"\n            f\"F(n) = F(n−1) + F(n−2) for n ≥ 3. Find F({n}).\"\n        )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Compute the sum 3² + 4² + ... + 28² (i.e., the sum of squares from 3 to 28).",
+        "answer": "7709"
+      },
+      {
+        "seed": 1,
+        "problem": "A sequence is defined by a(0) = 1 and a(n) = 2·a(n−1) + 3 for n ≥ 1. Find a(9).",
+        "answer": "2045"
+      },
+      {
+        "seed": 2,
+        "problem": "A sequence is defined by a(0) = 3 and a(n) = 2·a(n−1) + 1 for n ≥ 1. Find a(7).",
+        "answer": "511"
+      },
+      {
+        "seed": 3,
+        "problem": "A sequence is defined by a(0) = 5 and a(n) = 2·a(n−1) + 3 for n ≥ 1. Find a(9).",
+        "answer": "4093"
+      },
+      {
+        "seed": 4,
+        "problem": "A sequence is defined by a(0) = 4 and a(n) = 3·a(n−1) + 1 for n ≥ 1. Find a(9).",
+        "answer": "88573"
+      }
+    ]
+  },
+  {
+    "program_id": "5884e4ec2ed5",
+    "generation": 3,
+    "niche_h": 0,
+    "niche_div": 3,
+    "rq_score": 0.11413246860001912,
+    "p_hat": 0.3,
+    "h_score": 0.5434879457143768,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Hybrid geometry and probability: circle tangents, secants, and geometric probability.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-Secant Theorem: If a tangent and a secant are drawn from an external point,\n        # then (tangent)^2 = (secant external part) * (secant whole)\n        r = rng.randint(10, 20)  # radius of circle\n        x = rng.randint(1, 5)  # external point to circle\n        y = rng.randint(1, 5)  # length of tangent\n        z = (y**2 + x**2) // r  # length of secant external part\n        secant_whole = z + r  # length of secant whole\n        answer = y\n\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {y} drawn from an external point {x} units away. \"\n            f\"If the secant from the same point intersects the circle at two points, what is the length of the tangent?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting Chords Theorem: (product of one chord's segments) = (product of other chord's segments)\n        a = rng.randint(5, 10)  # length of first chord segment\n        b = rng.randint(5, 10)  # length of second chord segment\n        c = rng.randint(5, 10)  # length of third chord segment\n        d = (a * b) // c  # length of fourth chord segment\n        answer = d\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into segments of lengths {a} and {b}, \"\n            f\"while the other chord is divided into segments of lengths {c} and {d}. What is the length of the fourth segment?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a Point Theorem: (product of secant segments) = (product of tangent segments)\n        r = rng.randint(10, 20)  # radius of circle\n        x = rng.randint(1, 5)  # external point to circle\n        y = rng.randint(1, 5)  # length of tangent\n        z = (y**2 + x**2) // r  # length of secant external part\n        secant_whole = z + r  # length of secant whole\n        answer = y\n\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {y} drawn from an external point {x} units away. \"\n            f\"If the secant from the same point intersects the circle at two points, what is the length of the tangent?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of lengths 8 and 5, while the other chord is divided into segments of lengths 7 and 5. What is the length of the fourth segment?",
+        "answer": "5"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 19 has a tangent of length 3 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 11 has a tangent of length 3 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 19 has a tangent of length 2 drawn from an external point 5 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "2"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a tangent of length 4 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "4"
+      }
+    ]
+  },
+  {
+    "program_id": "19138f53d003",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 14,
+    "rq_score": 0.10298974283714349,
+    "p_hat": 0.8,
+    "h_score": 0.6436858927321469,
+    "source_code": "\"\"\"\nLinear Algebra: determinants, matrix equations, eigenvalues.\n\"\"\"\nimport random\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\"det_3x3\", \"solve_system\", \"trace_det\"])\n\n    if problem_type == \"det_3x3\":\n        # 3x3 determinant with small integers\n        m = [[rng.randint(-3, 3) for _ in range(3)] for _ in range(3)]\n        det = (m[0][0] * (m[1][1]*m[2][2] - m[1][2]*m[2][1])\n             - m[0][1] * (m[1][0]*m[2][2] - m[1][2]*m[2][0])\n             + m[0][2] * (m[1][0]*m[2][1] - m[1][1]*m[2][0]))\n        answer = det\n        rows = [f\"  [{m[i][0]:>2}, {m[i][1]:>2}, {m[i][2]:>2}]\" for i in range(3)]\n        matrix_str = \"\\n\".join(rows)\n        problem = (\n            f\"Compute the determinant of the 3×3 matrix:\\n{matrix_str}\"\n        )\n\n    elif problem_type == \"solve_system\":\n        # 2x2 system with integer solution: ax + by = e, cx + dy = f\n        x_sol = rng.randint(-5, 5)\n        y_sol = rng.randint(-5, 5)\n        a = rng.randint(1, 5)\n        b = rng.randint(-5, 5)\n        c = rng.randint(-5, 5)\n        d = rng.randint(1, 5)\n        while a*d - b*c == 0:  # ensure non-singular\n            d = rng.randint(1, 5)\n        e = a * x_sol + b * y_sol\n        f_val = c * x_sol + d * y_sol\n        # ask for x + y\n        answer = x_sol + y_sol\n        problem = (\n            f\"Solve the system of equations:\\n\"\n            f\"  {a}x + {b}y = {e}\\n\"\n            f\"  {c}x + {d}y = {f_val}\\n\"\n            f\"Find x + y.\"\n        )\n\n    else:  # trace_det: 2x2 matrix, compute trace^2 - 2*det\n        # For 2x2 [[a,b],[c,d]]: trace = a+d, det = ad-bc\n        # trace^2 - 2*det = (a+d)^2 - 2(ad-bc) = a^2 + d^2 + 2bc\n        # This equals sum of squares of eigenvalues: λ1² + λ2²\n        a = rng.randint(-4, 4)\n        b = rng.randint(-4, 4)\n        c = rng.randint(-4, 4)\n        d = rng.randint(-4, 4)\n        trace = a + d\n        det = a * d - b * c\n        answer = trace**2 - 2 * det\n        problem = (\n            f\"Let M be the 2×2 matrix [[{a}, {b}], [{c}, {d}]]. \"\n            f\"If λ₁ and λ₂ are the eigenvalues of M, compute λ₁² + λ₂². \"\n            f\"(Hint: use the relation with trace and determinant.)\"\n        )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Solve the system of equations:\n  3x + 3y = -12\n  2x + 4y = -18\nFind x + y.",
+        "answer": "-4"
+      },
+      {
+        "seed": 1,
+        "problem": "Compute the determinant of the 3×3 matrix:\n  [ 1,  3,  3]\n  [ 3, -3, -1]\n  [-3,  0,  3]",
+        "answer": "-54"
+      },
+      {
+        "seed": 2,
+        "problem": "Compute the determinant of the 3×3 matrix:\n  [-3, -3, -1]\n  [ 3, -2,  2]\n  [ 3,  2,  3]",
+        "answer": "27"
+      },
+      {
+        "seed": 3,
+        "problem": "Compute the determinant of the 3×3 matrix:\n  [ 1,  1, -2]\n  [-1,  1,  0]\n  [ 2,  1, -3]",
+        "answer": "0"
+      },
+      {
+        "seed": 4,
+        "problem": "Compute the determinant of the 3×3 matrix:\n  [-1, -3,  2]\n  [ 0,  0, -2]\n  [-3, -3, -3]",
+        "answer": "-12"
+      }
+    ]
+  },
+  {
+    "program_id": "d7799519b72a",
+    "generation": 4,
+    "niche_h": 0,
+    "niche_div": 12,
+    "rq_score": 0.09932957779557573,
+    "p_hat": 0.5,
+    "h_score": 0.39731831118230293,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n    \n    # Step 1: Generate two random integers for the sides of the polygons\n    sides1 = rng.randint(3, 15)  # Increased range for more variety\n    sides2 = rng.randint(3, 15)\n    \n    # Step 2: Calculate the sum of interior angles for each polygon\n    sum_interior_angles1 = (sides1 - 2) * 180\n    sum_interior_angles2 = (sides2 - 2) * 180\n    \n    # Step 3: Calculate the measure of each interior angle for each polygon\n    interior_angle1 = sum_interior_angles1 / sides1\n    interior_angle2 = sum_interior_angles2 / sides2\n    \n    # Step 4: Compute the absolute difference between the two interior angles\n    answer = abs(interior_angle1 - interior_angle2)\n    \n    # Step 5: Construct the problem statement\n    problem = (\n        f\"Consider two regular polygons: one with {sides1} sides and another with {sides2} sides. \"\n        f\"Find the absolute difference between the measure of each interior angle of these two polygons.\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Consider two regular polygons: one with 9 sides and another with 15 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "16.0"
+      },
+      {
+        "seed": 1,
+        "problem": "Consider two regular polygons: one with 5 sides and another with 12 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "42.0"
+      },
+      {
+        "seed": 2,
+        "problem": "Consider two regular polygons: one with 3 sides and another with 4 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "30.0"
+      },
+      {
+        "seed": 3,
+        "problem": "Consider two regular polygons: one with 6 sides and another with 12 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "30.0"
+      },
+      {
+        "seed": 4,
+        "problem": "Consider two regular polygons: one with 6 sides and another with 7 sides. Find the absolute difference between the measure of each interior angle of these two polygons.",
+        "answer": "8.571428571428584"
+      }
+    ]
+  },
+  {
+    "program_id": "4bbdbea7765d",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 6,
+    "rq_score": 0.0991493572988838,
+    "p_hat": 0.7,
+    "h_score": 0.47213979666135136,
+    "source_code": "import random\n\ndef generate(seed):\n    \"\"\"Geometric-arithmetic mixed: sum of geometric series then arithmetic operation.\"\"\"\n    rng = random.Random(seed)\n    # Geometric series: a, ar, ar^2, ..., ar^(n-1)\n    a = rng.randint(2, 5)\n    r = rng.choice([2, 3])\n    n = rng.randint(4, 8)\n\n    # S = a * (r^n - 1) / (r - 1)\n    geo_sum = a * (r**n - 1) // (r - 1)\n\n    # 등차 수열: 첫항 geo_sum, 공차 d, m항까지의 합\n    d = rng.randint(5, 20)\n    m = rng.randint(5, 10)\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2\n\n    answer = arith_sum\n\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms. \"\n        f\"Now consider an arithmetic sequence with first term S and \"\n        f\"common difference {d}. What is the sum of the first {m} terms \"\n        f\"of this arithmetic sequence?\"\n    )\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms. Now consider an arithmetic sequence with first term S and common difference 13. What is the sum of the first 9 terms of this arithmetic sequence?",
+        "answer": "2268"
+      },
+      {
+        "seed": 1,
+        "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. Now consider an arithmetic sequence with first term S and common difference 8. What is the sum of the first 8 terms of this arithmetic sequence?",
+        "answer": "1736"
+      },
+      {
+        "seed": 2,
+        "problem": "A geometric sequence has first term 2 and common ratio 2. Let S be the sum of the first 4 terms. Now consider an arithmetic sequence with first term S and common difference 16. What is the sum of the first 6 terms of this arithmetic sequence?",
+        "answer": "420"
+      },
+      {
+        "seed": 3,
+        "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. Now consider an arithmetic sequence with first term S and common difference 20. What is the sum of the first 10 terms of this arithmetic sequence?",
+        "answer": "2790"
+      },
+      {
+        "seed": 4,
+        "problem": "A geometric sequence has first term 3 and common ratio 3. Let S be the sum of the first 4 terms. Now consider an arithmetic sequence with first term S and common difference 17. What is the sum of the first 8 terms of this arithmetic sequence?",
+        "answer": "1436"
+      }
+    ]
+  },
+  {
+    "program_id": "dd83d4d7d76a",
+    "generation": 3,
+    "niche_h": 0,
+    "niche_div": 0,
+    "rq_score": 0.0845828441331582,
+    "p_hat": 0.2,
+    "h_score": 0.5286427758322386,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Hybrid geometry and probability: circle tangents, secants, and geometric probability.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_secant\", \"intersecting_chords\", \"power_of_point\"])\n\n    if problem_type == \"tangent_secant\":\n        # Tangent-Secant Theorem with geometric probability\n        r = rng.randint(10, 20)  # radius of circle\n        x = rng.randint(1, 5)  # external point to circle\n        y = rng.randint(1, 5)  # length of tangent\n        z = (y**2 + x**2) // r  # length of secant external part\n        secant_whole = z + r  # length of secant whole\n        answer = y\n\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {y} drawn from an external point {x} units away. \"\n            f\"If the secant from the same point intersects the circle at two points, what is the length of the tangent?\"\n        )\n\n    elif problem_type == \"intersecting_chords\":\n        # Intersecting Chords Theorem with geometric probability\n        a = rng.randint(5, 10)  # length of first chord segment\n        b = rng.randint(5, 10)  # length of second chord segment\n        c = rng.randint(5, 10)  # length of third chord segment\n        d = (a * b) // c  # length of fourth chord segment\n        answer = d\n\n        problem = (\n            f\"Two chords intersect inside a circle. One chord is divided into segments of lengths {a} and {b}, \"\n            f\"while the other chord is divided into segments of lengths {c} and {d}. What is the length of the fourth segment?\"\n        )\n\n    elif problem_type == \"power_of_point\":\n        # Power of a Point Theorem with geometric probability\n        r = rng.randint(10, 20)  # radius of circle\n        x = rng.randint(1, 5)  # external point to circle\n        y = rng.randint(1, 5)  # length of tangent\n        z = (y**2 + x**2) // r  # length of secant external part\n        secant_whole = z + r  # length of secant whole\n        answer = y\n\n        problem = (\n            f\"A circle with radius {r} has a tangent of length {y} drawn from an external point {x} units away. \"\n            f\"If the secant from the same point intersects the circle at two points, what is the length of the tangent?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two chords intersect inside a circle. One chord is divided into segments of lengths 8 and 5, while the other chord is divided into segments of lengths 7 and 5. What is the length of the fourth segment?",
+        "answer": "5"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 19 has a tangent of length 3 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 11 has a tangent of length 3 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 19 has a tangent of length 2 drawn from an external point 5 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "2"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 14 has a tangent of length 4 drawn from an external point 1 units away. If the secant from the same point intersects the circle at two points, what is the length of the tangent?",
+        "answer": "4"
+      }
+    ]
+  },
+  {
+    "program_id": "c9e05e8dd681",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 9,
+    "rq_score": 0.046749292968656715,
+    "p_hat": 0.4,
+    "h_score": 0.1947887207027363,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Probability: conditional probability and Bayes' theorem.\n    Problem involves a medical test with false positives and false negatives.\n    \"\"\"\n    rng = random.Random(seed)\n\n    # Define probabilities\n    p_disease = rng.uniform(0.01, 0.10)  # Prevalence of disease (1% to 10%)\n    p_positive_given_disease = rng.uniform(0.90, 0.99)  # True positive rate (90% to 99%)\n    p_positive_given_no_disease = rng.uniform(0.01, 0.10)  # False positive rate (1% to 10%)\n\n    # Compute probabilities\n    p_no_disease = 1 - p_disease\n    p_positive = (p_positive_given_disease * p_disease) + (p_positive_given_no_disease * p_no_disease)\n    p_disease_given_positive = (p_positive_given_disease * p_disease) / p_positive\n\n    # Round to 3 decimal places\n    p_disease_given_positive_rounded = round(p_disease_given_positive, 3)\n\n    # Generate problem\n    problem = (\n        f\"A medical test for a rare disease has the following characteristics:\\n\"\n        f\"- Prevalence of the disease in the population: {p_disease:.2%}\\n\"\n        f\"- True positive rate (probability of testing positive given the person has the disease): {p_positive_given_disease:.2%}\\n\"\n        f\"- False positive rate (probability of testing positive given the person does not have the disease): {p_positive_given_no_disease:.2%}\\n\"\n        f\"If a person tests positive, what is the probability they actually have the disease? Round your answer to 3 decimal places.\"\n    )\n\n    return problem, str(p_disease_given_positive_rounded)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A medical test for a rare disease has the following characteristics:\n- Prevalence of the disease in the population: 8.60%\n- True positive rate (probability of testing positive given the person has the disease): 96.82%\n- False positive rate (probability of testing positive given the person does not have the disease): 4.79%\nIf a person tests positive, what is the probability they actually have the disease? Round your answer to 3 decimal places.",
+        "answer": "0.656"
+      },
+      {
+        "seed": 1,
+        "problem": "A medical test for a rare disease has the following characteristics:\n- Prevalence of the disease in the population: 2.21%\n- True positive rate (probability of testing positive given the person has the disease): 97.63%\n- False positive rate (probability of testing positive given the person does not have the disease): 7.87%\nIf a person tests positive, what is the probability they actually have the disease? Round your answer to 3 decimal places.",
+        "answer": "0.219"
+      },
+      {
+        "seed": 2,
+        "problem": "A medical test for a rare disease has the following characteristics:\n- Prevalence of the disease in the population: 9.60%\n- True positive rate (probability of testing positive given the person has the disease): 98.53%\n- False positive rate (probability of testing positive given the person does not have the disease): 1.51%\nIf a person tests positive, what is the probability they actually have the disease? Round your answer to 3 decimal places.",
+        "answer": "0.874"
+      },
+      {
+        "seed": 3,
+        "problem": "A medical test for a rare disease has the following characteristics:\n- Prevalence of the disease in the population: 3.14%\n- True positive rate (probability of testing positive given the person has the disease): 94.90%\n- False positive rate (probability of testing positive given the person does not have the disease): 4.33%\nIf a person tests positive, what is the probability they actually have the disease? Round your answer to 3 decimal places.",
+        "answer": "0.416"
+      },
+      {
+        "seed": 4,
+        "problem": "A medical test for a rare disease has the following characteristics:\n- Prevalence of the disease in the population: 3.12%\n- True positive rate (probability of testing positive given the person has the disease): 90.93%\n- False positive rate (probability of testing positive given the person does not have the disease): 4.56%\nIf a person tests positive, what is the probability they actually have the disease? Round your answer to 3 decimal places.",
+        "answer": "0.391"
+      }
+    ]
+  },
+  {
+    "program_id": "6018d6a917c9",
+    "generation": 4,
+    "niche_h": 0,
+    "niche_div": 16,
+    "rq_score": 0.04650655012376418,
+    "p_hat": 0.1,
+    "h_score": 0.516739445819602,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Hybrid geometry and probability: circle tangents, secants, and geometric probability.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"tangent_probability\", \"secant_probability\", \"combined\"])\n\n    if problem_type == \"tangent_probability\":\n        # Geometric probability with tangents\n        r = rng.randint(5, 15)  # Radius\n        d = r + rng.randint(1, 10)  # Distance from center\n        length = math.sqrt(d**2 - r**2)\n        probability = length / d\n        answer = str(round(probability, 2))\n\n        problem = (\n            f\"A circle with radius {r} has a tangent line from a point {d} units away. \"\n            f\"What is the probability that a randomly chosen point on the tangent line is within the circle? \"\n            f\"Provide the answer rounded to two decimal places.\"\n        )\n\n    elif problem_type == \"secant_probability\":\n        # Geometric probability with secants\n        r = rng.randint(5, 15)  # Radius\n        d1 = r + rng.randint(1, 10)  # External point to circle\n        d2 = d1 + rng.randint(1, 10)  # Extended secant length\n        product = d1 * d2\n        probability = (r / d1) * (r / d2)\n        answer = str(round(probability, 2))\n\n        problem = (\n            f\"A circle with radius {r} has a secant line from a point {d1} units away. \"\n            f\"The secant extends {d2} units beyond the circle. What is the probability that a randomly chosen point on the secant is within the circle? \"\n            f\"Provide the answer rounded to two decimal places.\"\n        )\n\n    else:  # combined\n        # Combined geometric probability\n        r = rng.randint(5, 15)  # Radius\n        d1 = r + rng.randint(1, 10)  # External point to circle\n        d2 = d1 + rng.randint(1, 10)  # Extended secant length\n        length = math.sqrt(d2**2 - r**2)\n        probability = (length / d1) * (r / d2)\n        answer = str(round(probability, 2))\n\n        problem = (\n            f\"A circle with radius {r} has a tangent line from a point {d1} units away. \"\n            f\"The secant extends {d2} units beyond the circle. What is the probability that a randomly chosen point on the tangent line is within the circle? \"\n            f\"Provide the answer rounded to two decimal places.\"\n        )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 11 has a secant line from a point 12 units away. The secant extends 17 units beyond the circle. What is the probability that a randomly chosen point on the secant is within the circle? Provide the answer rounded to two decimal places.",
+        "answer": "0.59"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 14 has a tangent line from a point 16 units away. What is the probability that a randomly chosen point on the tangent line is within the circle? Provide the answer rounded to two decimal places.",
+        "answer": "0.48"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 6 has a tangent line from a point 8 units away. What is the probability that a randomly chosen point on the tangent line is within the circle? Provide the answer rounded to two decimal places.",
+        "answer": "0.66"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 14 has a tangent line from a point 23 units away. What is the probability that a randomly chosen point on the tangent line is within the circle? Provide the answer rounded to two decimal places.",
+        "answer": "0.79"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 9 has a tangent line from a point 11 units away. What is the probability that a randomly chosen point on the tangent line is within the circle? Provide the answer rounded to two decimal places.",
+        "answer": "0.57"
+      }
+    ]
+  },
+  {
+    "program_id": "720718809532",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 7,
+    "rq_score": 0.0,
+    "p_hat": 0.0,
+    "h_score": 0.8461895375454562,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\ndef generate(seed):\n    \"\"\"Multi-concept math problem combining geometry and algebra.\"\"\"\n    rng = random.Random(seed)\n    \n    # Generate geometric parameters\n    radius = rng.randint(10, 50)\n    height = rng.randint(10, 50)\n    angle_deg = rng.randint(30, 120)\n    \n    # Calculate geometric quantities\n    area = math.pi * radius**2\n    volume = area * height\n    angle_rad = math.radians(angle_deg)\n    sin_val = math.sin(angle_rad)\n    \n    # Create complex expression combining all quantities\n    expr = (volume * sin_val) / (area + height)\n    \n    # Round to 4 decimal places for precision\n    answer = round(expr, 4)\n    \n    # Build problem statement\n    problem = (\n        f\"A cylinder with radius {radius} cm and height {height} cm has a sector \"\n        f\"with central angle {angle_deg}° removed. Calculate the remaining volume \"\n        f\"divided by the sum of the base area and height, rounded to 4 decimal places.\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A cylinder with radius 34 cm and height 36 cm has a sector with central angle 35° removed. Calculate the remaining volume divided by the sum of the base area and height, rounded to 4 decimal places.",
+        "answer": "20.4461"
+      },
+      {
+        "seed": 1,
+        "problem": "A cylinder with radius 18 cm and height 46 cm has a sector with central angle 38° removed. Calculate the remaining volume divided by the sum of the base area and height, rounded to 4 decimal places.",
+        "answer": "27.0959"
+      },
+      {
+        "seed": 2,
+        "problem": "A cylinder with radius 13 cm and height 15 cm has a sector with central angle 40° removed. Calculate the remaining volume divided by the sum of the base area and height, rounded to 4 decimal places.",
+        "answer": "9.3769"
+      },
+      {
+        "seed": 3,
+        "problem": "A cylinder with radius 25 cm and height 47 cm has a sector with central angle 99° removed. Calculate the remaining volume divided by the sum of the base area and height, rounded to 4 decimal places.",
+        "answer": "45.3361"
+      },
+      {
+        "seed": 4,
+        "problem": "A cylinder with radius 25 cm and height 29 cm has a sector with central angle 43° removed. Calculate the remaining volume divided by the sum of the base area and height, rounded to 4 decimal places.",
+        "answer": "19.4901"
+      }
+    ]
+  },
+  {
+    "program_id": "774c1aa5cbc0",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 14,
+    "rq_score": 0.0,
+    "p_hat": 0.0,
+    "h_score": 1.2345929731716423,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced Number Theory: Chinese Remainder Theorem with large moduli.\"\"\"\n    rng = random.Random(seed)\n\n    # Generate coprime moduli (m1, m2) with m1*m2 > 1000\n    m1 = rng.randint(100, 200)\n    m2 = rng.randint(100, 200)\n    while math.gcd(m1, m2) != 1:\n        m1 = rng.randint(100, 200)\n        m2 = rng.randint(100, 200)\n\n    # Generate remainders r1, r2 such that 0 <= r1 < m1 and 0 <= r2 < m2\n    r1 = rng.randint(0, m1 - 1)\n    r2 = rng.randint(0, m2 - 1)\n\n    # Compute solution N using Chinese Remainder Theorem\n    # N ≡ r1 (mod m1)\n    # N ≡ r2 (mod m2)\n    # N = r1 * m2 * (m2_inv mod m1) + r2 * m1 * (m1_inv mod m2)\n    # where m1_inv is the modular inverse of m1 mod m2\n    m1_inv = pow(m1, -1, m2)\n    m2_inv = pow(m2, -1, m1)\n    N = (r1 * m2 * m1_inv + r2 * m1 * m2_inv) % (m1 * m2)\n\n    # Ensure N < m1 * m2\n    if N >= m1 * m2:\n        N -= m1 * m2\n\n    # Construct problem statement\n    problem = (\n        f\"Find the smallest positive integer N that satisfies the following system of congruences:\\n\"\n        f\"  N ≡ {r1} (mod {m1})\\n\"\n        f\"  N ≡ {r2} (mod {m2})\\n\"\n        f\"Give your answer as a single integer.\"\n    )\n\n    return problem, str(N)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Find the smallest positive integer N that satisfies the following system of congruences:\n  N ≡ 107 (mod 149)\n  N ≡ 10 (mod 197)\nGive your answer as a single integer.",
+        "answer": "13247"
+      },
+      {
+        "seed": 1,
+        "problem": "Find the smallest positive integer N that satisfies the following system of congruences:\n  N ≡ 108 (mod 117)\n  N ≡ 16 (mod 172)\nGive your answer as a single integer.",
+        "answer": "7632"
+      },
+      {
+        "seed": 2,
+        "problem": "Find the smallest positive integer N that satisfies the following system of congruences:\n  N ≡ 10 (mod 107)\n  N ≡ 46 (mod 111)\nGive your answer as a single integer.",
+        "answer": "11238"
+      },
+      {
+        "seed": 3,
+        "problem": "Find the smallest positive integer N that satisfies the following system of congruences:\n  N ≡ 94 (mod 169)\n  N ≡ 77 (mod 116)\nGive your answer as a single integer.",
+        "answer": "17775"
+      },
+      {
+        "seed": 4,
+        "problem": "Find the smallest positive integer N that satisfies the following system of congruences:\n  N ≡ 50 (mod 113)\n  N ≡ 122 (mod 192)\nGive your answer as a single integer.",
+        "answer": "21046"
+      }
+    ]
+  },
+  {
+    "program_id": "364f65f67975",
+    "generation": 1,
+    "niche_h": 2,
+    "niche_div": 10,
+    "rq_score": 0.0,
+    "p_hat": 0.0,
+    "h_score": 1.6803109521959325,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Combinatorics: advanced counting problems with multiple constraints.\"\"\"\n    rng = random.Random(seed)\n    \n    # Generate parameters\n    n = rng.randint(5, 10)  # Total items\n    k = rng.randint(2, 4)   # Groups\n    m = rng.randint(1, 3)   # Minimum items per group\n    \n    # Calculate total ways without constraints\n    total_ways = math.comb(n, k)\n    \n    # Apply constraints (e.g. at least m items in each group)\n    # This requires more complex combinatorial reasoning\n    # For simplicity, we'll use a fixed formula here\n    # In a real implementation, this would involve inclusion-exclusion\n    constrained_ways = total_ways * (1 - (k * (m-1) / n))\n    \n    # Round to 4 decimal places\n    answer = round(constrained_ways, 4)\n    \n    # Build problem statement\n    problem = (\n        f\"How many ways can {n} distinct items be divided into {k} groups \"\n        f\"such that each group contains at least {m} items? \"\n        f\"Round to 4 decimal places.\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "How many ways can 8 distinct items be divided into 3 groups such that each group contains at least 1 items? Round to 4 decimal places.",
+        "answer": "56.0"
+      },
+      {
+        "seed": 1,
+        "problem": "How many ways can 6 distinct items be divided into 4 groups such that each group contains at least 1 items? Round to 4 decimal places.",
+        "answer": "15.0"
+      },
+      {
+        "seed": 2,
+        "problem": "How many ways can 5 distinct items be divided into 2 groups such that each group contains at least 1 items? Round to 4 decimal places.",
+        "answer": "10.0"
+      },
+      {
+        "seed": 3,
+        "problem": "How many ways can 6 distinct items be divided into 4 groups such that each group contains at least 3 items? Round to 4 decimal places.",
+        "answer": "-5.0"
+      },
+      {
+        "seed": 4,
+        "problem": "How many ways can 6 distinct items be divided into 3 groups such that each group contains at least 1 items? Round to 4 decimal places.",
+        "answer": "20.0"
+      }
+    ]
+  },
+  {
+    "program_id": "fcc9c61b2058",
+    "generation": 1,
+    "niche_h": 2,
+    "niche_div": 16,
+    "rq_score": 0.0,
+    "p_hat": 0.0,
+    "h_score": 1.7439846184371133,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Number Theory: Modular Arithmetic and Diophantine Equations.\"\"\"\n    rng = random.Random(seed)\n\n    # Choose problem type (3 options)\n    problem_type = rng.choice([\"modular_equation\", \"diophantine_sum\", \"modular_inverse\"])\n\n    if problem_type == \"modular_equation\":\n        # Solve ax ≡ b (mod m) for x\n        a = rng.randint(2, 10)\n        b = rng.randint(1, 20)\n        m = rng.choice([11, 13, 17, 19])  # Prime moduli for unique solutions\n        x = pow(a, -1, m) * b % m\n        answer = str(x)\n\n        problem = (\n            f\"Solve the congruence {a}x ≡ {b} (mod {m}) for x. \"\n            f\"Provide the smallest positive integer solution.\"\n        )\n\n    elif problem_type == \"diophantine_sum\":\n        # Find integer solutions to a + b + c = S with constraints\n        s = rng.randint(10, 30)\n        a = rng.randint(1, s-2)\n        b = rng.randint(1, s-a-1)\n        c = s - a - b\n        answer = str(a) + \", \" + str(b) + \", \" + str(c)\n\n        problem = (\n            f\"Find three positive integers a, b, c such that a + b + c = {s}. \"\n            f\"Provide the values of a, b, and c separated by commas.\"\n        )\n\n    else:  # modular_inverse\n        # Find the modular inverse of a modulo m\n        a = rng.randint(2, 10)\n        m = rng.choice([11, 13, 17, 19])  # Prime moduli for unique inverses\n        inv = pow(a, -1, m)\n        answer = str(inv)\n\n        problem = (\n            f\"Find the modular inverse of {a} modulo {m}. \"\n            f\"Provide the smallest positive integer solution.\"\n        )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Find three positive integers a, b, c such that a + b + c = 23. Provide the values of a, b, and c separated by commas.",
+        "answer": "2, 9, 12"
+      },
+      {
+        "seed": 1,
+        "problem": "Solve the congruence 3x ≡ 9 (mod 11) for x. Provide the smallest positive integer solution.",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "Solve the congruence 3x ≡ 3 (mod 17) for x. Provide the smallest positive integer solution.",
+        "answer": "1"
+      },
+      {
+        "seed": 3,
+        "problem": "Solve the congruence 10x ≡ 5 (mod 17) for x. Provide the smallest positive integer solution.",
+        "answer": "9"
+      },
+      {
+        "seed": 4,
+        "problem": "Solve the congruence 6x ≡ 4 (mod 19) for x. Provide the smallest positive integer solution.",
+        "answer": "7"
+      }
+    ]
+  }
+]

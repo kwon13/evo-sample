@@ -71,22 +71,20 @@ def init_map_elites(
     h_range: tuple,
     ucb_c: float = 1.0,
 ) -> MAPElitesGrid:
+    # D축 = 시드 프로그램 ID 기반
+    seed_ids = [prog.program_id for prog in seeds]
     grid = MAPElitesGrid(
         n_h_bins=n_h_bins,
-        n_div_bins=n_div_bins,
+        n_div_bins=len(seeds),
         h_range=h_range,
         ucb_c=ucb_c,
+        seed_ids=seed_ids,
     )
 
-    # Fit diversity axis from seed problems
-    samples = []
+    # 시드 등록 + root_seed_id 설정
     for prog in seeds:
-        for s in range(5):
-            inst = prog.execute(s)
-            if inst:
-                samples.append(inst.problem)
-    if samples:
-        grid.fit_diversity_axis(samples)
+        prog.root_seed_id = prog.program_id
+        grid.register_seed(prog.program_id)
 
     # Insert seeds with placeholder scores
     for prog in seeds:
@@ -238,8 +236,12 @@ class RQTaskRunner:
             candidates_per_evo=rq_cfg.get("candidates_per_evo", 8),
             num_rollouts=rq_cfg.get("num_rollouts", 16),
             instances_per_program=instances_per_program,
-            in_depth_ratio=rq_cfg.get("in_depth_ratio", 0.7),
+            in_depth_ratio=rq_cfg.get("in_depth_ratio", 0.5),
+            crossover_ratio=rq_cfg.get("crossover_ratio", 0.2),
             h_threshold=rq_cfg.get("h_threshold", 0.1),
+            evolution_pct=rq_cfg.get("evolution_pct", None),
+            target_hard_champions=rq_cfg.get("target_hard_champions", 6),
+            max_evo_attempts=rq_cfg.get("max_evo_attempts", 64),
         )
         trainer.init_workers()
         trainer.fit()

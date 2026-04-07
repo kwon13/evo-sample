@@ -1,0 +1,1371 @@
+[
+  {
+    "program_id": "8d4ff0880047",
+    "generation": 3,
+    "niche_h": 3,
+    "niche_div": 13,
+    "rq_score": 0.560309364422605,
+    "p_hat": 0.3,
+    "h_score": 2.6681398305838337,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate a circle with radius r\n    r = rng.randint(10, 20)\n    area_circle = math.pi * r**2\n\n    # Step 2: Generate a triangle inscribed in the circle\n    a = rng.randint(1, r-1)\n    b = rng.randint(1, r-1)\n    c = math.sqrt(a**2 + b**2)\n\n    # Step 3: Calculate the area of the triangle\n    s = (a + b + c) / 2\n    triangle_area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n\n    # Step 4: Calculate the ratio of the triangle area to the circle area\n    ratio = triangle_area / area_circle\n\n    # Step 5: Generate a problem based on the ratio\n    problem = (\n        f\"A circle with radius {r} has a triangle inscribed in it with sides {a}, {b}, and {c}. \"\n        f\"What is the probability that a randomly chosen point inside the circle lies inside the triangle?\"\n    )\n\n    # Step 6: Compute the answer\n    answer = ratio\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 16 has a triangle inscribed in it with sides 13, 15, and 19.849433241279208. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.12123130430827964"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 12 has a triangle inscribed in it with sides 10, 2, and 10.198039027185569. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.022104853207207686"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 10 has a triangle inscribed in it with sides 2, 2, and 2.8284271247461903. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.006366197723675812"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 13 has a triangle inscribed in it with sides 10, 9, and 13.45362404707371. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.08475707028562474"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 13 has a triangle inscribed in it with sides 5, 2, and 5.385164807134504. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.009417452253958309"
+      }
+    ]
+  },
+  {
+    "program_id": "7feb33abdb47",
+    "generation": 4,
+    "niche_h": 2,
+    "niche_div": 13,
+    "rq_score": 0.4952374717554744,
+    "p_hat": 0.5,
+    "h_score": 1.9809498870218976,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate a circle with radius r\n    r = rng.randint(15, 25)\n    area_circle = math.pi * r**2\n\n    # Step 2: Generate a triangle inscribed in the circle\n    a = rng.randint(10, r-5)\n    b = rng.randint(10, r-5)\n    c = math.sqrt(a**2 + b**2)\n\n    # Step 3: Calculate the area of the triangle\n    s = (a + b + c) / 2\n    triangle_area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n\n    # Step 4: Calculate the ratio of the triangle area to the circle area\n    ratio = triangle_area / area_circle\n\n    # Step 5: Generate a problem based on the ratio\n    problem = (\n        f\"A circle with radius {r} has a triangle inscribed in it with sides {a}, {b}, and {c}. \"\n        f\"What is the probability that a randomly chosen point inside the circle lies inside the triangle?\"\n    )\n\n    # Step 6: Compute the answer\n    answer = ratio\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 21 has a triangle inscribed in it with sides 16, 13, and 20.615528128088304. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.07506627701386444"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 17 has a triangle inscribed in it with sides 12, 10, and 15.620499351813308. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.0660850974776036"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 15 has a triangle inscribed in it with sides 10, 10, and 14.142135623730951. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.0707355302630646"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 18 has a triangle inscribed in it with sides 11, 12, and 16.278820596099706. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.06484090274114256"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 18 has a triangle inscribed in it with sides 12, 10, and 15.620499351813308. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.0589462752192205"
+      }
+    ]
+  },
+  {
+    "program_id": "ce10cdc914e5",
+    "generation": 4,
+    "niche_h": 1,
+    "niche_div": 13,
+    "rq_score": 0.39157562694392956,
+    "p_hat": 0.6,
+    "h_score": 1.6315651122663732,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate a circle with radius r\n    r = rng.randint(15, 25)\n    area_circle = math.pi * r**2\n\n    # Step 2: Generate a triangle inscribed in the circle\n    a = rng.randint(10, 20)\n    b = rng.randint(10, 20)\n    c = math.sqrt(a**2 + b**2)\n\n    # Step 3: Calculate the area of the triangle\n    s = (a + b + c) / 2\n    triangle_area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n\n    # Step 4: Calculate the ratio of the triangle area to the circle area\n    ratio = triangle_area / area_circle\n\n    # Step 5: Generate a problem based on the ratio\n    problem = (\n        f\"A circle with radius {r} has a triangle inscribed in it with sides {a}, {b}, and {c}. \"\n        f\"What is the probability that a randomly chosen point inside the circle lies inside the triangle?\"\n    )\n\n    # Step 6: Compute the answer\n    answer = ratio\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 21 has a triangle inscribed in it with sides 16, 10, and 18.867962264113206. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.05774329001066495"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 17 has a triangle inscribed in it with sides 19, 11, and 21.95449840010015. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.11509821144015961"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 15 has a triangle inscribed in it with sides 11, 11, and 15.556349186104045. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.08558999161830814"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 18 has a triangle inscribed in it with sides 19, 18, and 26.1725046566048. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.16799688437477842"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 18 has a triangle inscribed in it with sides 14, 11, and 17.804493814764857. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.07564771986466629"
+      }
+    ]
+  },
+  {
+    "program_id": "c639f9b6dbdf",
+    "generation": 6,
+    "niche_h": 1,
+    "niche_div": 2,
+    "rq_score": 0.38691595327218553,
+    "p_hat": 0.6,
+    "h_score": 1.612149805300773,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate random dimensions for a rectangle\n    width = rng.randint(10, 20)\n    height = rng.randint(10, 20)\n    \n    # Step 2: Calculate area and diagonal\n    area = width * height\n    diagonal = math.sqrt(width**2 + height**2)\n    \n    # Step 3: Generate random scaling factor\n    scale = rng.uniform(0.5, 2.0)\n    \n    # Step 4: Calculate new dimensions\n    new_width = width * scale\n    new_height = height * scale\n    \n    # Step 5: Calculate new area and diagonal\n    new_area = new_width * new_height\n    new_diagonal = math.sqrt(new_width**2 + new_height**2)\n    \n    # Step 6: Compute the radius of the inscribed circle in the scaled rectangle\n    radius = min(new_width, new_height) / 2\n    \n    # Step 7: Compute the area of the inscribed circle\n    circle_area = math.pi * radius**2\n    \n    # Step 8: Compute the probability of selecting a point within the circle\n    probability = circle_area / new_area\n    \n    # Step 9: Generate problem with ambiguity\n    problem = (\n        f\"A rectangle with dimensions {width}x{height} units is scaled by a factor of {scale:.2f}. \"\n        f\"What is the probability that a randomly selected point within the scaled rectangle lies inside \"\n        f\"the largest circle that can be inscribed in it?\"\n    )\n    \n    # Step 10: Compute answer\n    answer = probability\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A rectangle with dimensions 16x16 units is scaled by a factor of 0.56. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.7853981633974483"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangle with dimensions 12x19 units is scaled by a factor of 1.77. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.49604094530365167"
+      },
+      {
+        "seed": 2,
+        "problem": "A rectangle with dimensions 10x11 units is scaled by a factor of 0.63. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.7139983303613164"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangle with dimensions 13x19 units is scaled by a factor of 1.32. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.5373776907456225"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangle with dimensions 13x14 units is scaled by a factor of 0.65. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.7292982945833448"
+      }
+    ]
+  },
+  {
+    "program_id": "b8f112d52110",
+    "generation": 9,
+    "niche_h": 1,
+    "niche_div": 7,
+    "rq_score": 0.34183286347710995,
+    "p_hat": 0.3,
+    "h_score": 1.6277755403671903,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Generate a circle with radius r\n    radius = rng.randint(10, 20)\n    circle_area = math.pi * radius**2\n\n    # Step 2: Generate a rectangle inscribed in the circle\n    width = rng.randint(1, radius * 2)\n    height = rng.randint(1, radius * 2)\n    while width**2 + height**2 > (2 * radius)**2:\n        width = rng.randint(1, radius * 2)\n        height = rng.randint(1, radius * 2)\n\n    # Step 3: Calculate area of the rectangle\n    rectangle_area = width * height\n\n    # Step 4: Compute the probability of selecting a point within the rectangle\n    probability = rectangle_area / circle_area\n\n    # Step 5: Generate problem with ambiguity\n    problem = (\n        f\"A circle with radius {radius} units has a rectangle inscribed in it with dimensions {width}x{height} units. \"\n        f\"What is the probability that a randomly selected point within the circle lies inside the rectangle?\"\n    )\n\n    # Step 6: Compute answer\n    answer = probability\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 16 units has a rectangle inscribed in it with dimensions 27x3 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.10071523742534003"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 12 units has a rectangle inscribed in it with dimensions 19x3 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.1259976632810838"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 10 units has a rectangle inscribed in it with dimensions 3x3 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.02864788975654116"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 13 units has a rectangle inscribed in it with dimensions 5x12 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.11300942704749965"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 13 units has a rectangle inscribed in it with dimensions 10x4 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.07533961803166643"
+      }
+    ]
+  },
+  {
+    "program_id": "20fd7927a182",
+    "generation": 2,
+    "niche_h": 1,
+    "niche_div": 5,
+    "rq_score": 0.33074135411597216,
+    "p_hat": 0.6,
+    "h_score": 1.3780889754832173,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate a circle with radius r\n    r = rng.randint(5, 15)\n    \n    # Step 2: Generate a right triangle with hypotenuse as the circle's diameter\n    hypotenuse = 2 * r\n    a = rng.randint(1, hypotenuse - 1)\n    b = math.sqrt(hypotenuse**2 - a**2)\n    \n    # Step 3: Calculate area of triangle and circle\n    triangle_area = (a * b) / 2\n    circle_area = math.pi * r**2\n    \n    # Step 4: Create a complex expression involving both areas\n    numerator = triangle_area * (hypotenuse + r)\n    denominator = circle_area - triangle_area\n    \n    # Step 5: Simplify and compute final answer\n    answer = numerator / denominator\n    \n    # Step 6: Build problem statement\n    problem = (\n        f\"A right triangle is inscribed in a circle with radius {r}. \"\n        f\"The hypotenuse of the triangle is the diameter of the circle. \"\n        f\"If the length of one leg is {a}, find the value of \"\n        f\"({triangle_area} * ({hypotenuse} + {r})) / \"\n        f\"({circle_area} - {triangle_area}).\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A right triangle is inscribed in a circle with radius 11. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 14, find the value of (118.79393923933998 * (22 + 11)) / (380.132711084365 - 118.79393923933998).",
+        "answer": "15.000453117698564"
+      },
+      {
+        "seed": 1,
+        "problem": "A right triangle is inscribed in a circle with radius 7. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 10, find the value of (48.98979485566356 * (14 + 7)) / (153.93804002589985 - 48.98979485566356).",
+        "answer": "9.802790797503512"
+      },
+      {
+        "seed": 2,
+        "problem": "A right triangle is inscribed in a circle with radius 5. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 2, find the value of (9.797958971132712 * (10 + 5)) / (78.53981633974483 - 9.797958971132712).",
+        "answer": "2.1379897226067337"
+      },
+      {
+        "seed": 3,
+        "problem": "A right triangle is inscribed in a circle with radius 8. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 10, find the value of (62.44997998398398 * (16 + 8)) / (201.06192982974676 - 62.44997998398398).",
+        "answer": "10.812917077375866"
+      },
+      {
+        "seed": 4,
+        "problem": "A right triangle is inscribed in a circle with radius 8. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 5, find the value of (37.99671038392666 * (16 + 8)) / (201.06192982974676 - 37.99671038392666).",
+        "answer": "5.592370048704555"
+      }
+    ]
+  },
+  {
+    "program_id": "9e9c91e950bf",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 15,
+    "rq_score": 0.28359563654794173,
+    "p_hat": 0.5,
+    "h_score": 1.134382546191767,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\"prime_factorization\", \"modular_arithmetic\", \"continued_fraction\"])\n\n    if problem_type == \"prime_factorization\":\n        # Generate a number with multiple prime factors\n        num = rng.randint(100, 1000)\n        factors = []\n        for i in range(2, int(math.sqrt(num)) + 1):\n            while num % i == 0:\n                factors.append(i)\n                num //= i\n        if num > 1:\n            factors.append(num)\n        \n        answer = \" * \".join(map(str, factors))\n\n        problem = (\n            f\"Find the prime factorization of {num}. \"\n            f\"Express your answer as a product of prime numbers.\"\n        )\n\n    elif problem_type == \"modular_arithmetic\":\n        # Solve a modular equation\n        a = rng.randint(2, 10)\n        b = rng.randint(1, 10)\n        m = rng.randint(11, 20)\n        # Find x such that (a * x) % m = b\n        for x in range(m):\n            if (a * x) % m == b:\n                answer = str(x)\n                break\n        \n        problem = (\n            f\"Solve for x in the equation: ( {a} * x ) % {m} = {b}. \"\n            f\"Express your answer as a single integer.\"\n        )\n\n    else:  # continued_fraction\n        # Generate a continued fraction\n        num_terms = rng.randint(3, 5)\n        terms = [rng.randint(1, 10) for _ in range(num_terms)]\n        answer = terms[0]\n        for term in terms[1:]:\n            answer = term + 1 / answer\n        \n        answer = round(answer, 4)\n\n        problem = (\n            f\"Express the number {answer} as a continued fraction. \"\n            f\"Write your answer in the form [a_0; a_1, a_2, ..., a_n].\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Solve for x in the equation: ( 8 * x ) % 15 = 1. Express your answer as a single integer.",
+        "answer": "2"
+      },
+      {
+        "seed": 1,
+        "problem": "Find the prime factorization of 31. Express your answer as a product of prime numbers.",
+        "answer": "2 * 11 * 31"
+      },
+      {
+        "seed": 2,
+        "problem": "Find the prime factorization of 193. Express your answer as a product of prime numbers.",
+        "answer": "193"
+      },
+      {
+        "seed": 3,
+        "problem": "Find the prime factorization of 353. Express your answer as a product of prime numbers.",
+        "answer": "2 * 353"
+      },
+      {
+        "seed": 4,
+        "problem": "Find the prime factorization of 41. Express your answer as a product of prime numbers.",
+        "answer": "2 * 5 * 41"
+      }
+    ]
+  },
+  {
+    "program_id": "1ce18ead9d67",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 0,
+    "rq_score": 0.2707376121809023,
+    "p_hat": 0.3,
+    "h_score": 1.2892267246709634,
+    "source_code": "\"\"\"\nEquation modeling: multi-step word problems requiring equation setup.\nMerges: age, speed, work_rate, mixture, rectangle categories.\n\"\"\"\nimport random\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\n        \"age_system\", \"speed_legs\", \"work_rate_join\",\n        \"mixture_dilute\", \"rect_optimize\",\n    ])\n\n    if problem_type == \"age_system\":\n        # 3인 나이 연립방정식\n        b = rng.randint(8, 25)\n        d1 = rng.randint(5, 15)\n        d2 = rng.randint(3, b - 2)\n        a = b + d1\n        c = b - d2\n        total = a + b + c\n        answer = b\n        problem = (\n            f\"Three people A, B, and C have ages summing to {total}. \"\n            f\"A is {d1} years older than B, and B is {d2} years older than C. \"\n            f\"What is B's current age?\"\n        )\n\n    elif problem_type == \"speed_legs\":\n        # 3구간 + 휴식 → 평균속도\n        s1 = rng.choice([40, 50, 60, 80])\n        t1 = rng.randint(2, 4)\n        d1 = s1 * t1\n        t_rest = rng.randint(1, 2)\n        s2 = rng.choice([30, 40, 50, 60])\n        t2 = rng.randint(1, 3)\n        d2 = s2 * t2\n        s3 = rng.choice([60, 80, 100])\n        t3 = rng.randint(1, 3)\n        d3 = s3 * t3\n        avg = round((d1 + d2 + d3) / (t1 + t_rest + t2 + t3), 2)\n        if avg == int(avg):\n            avg = int(avg)\n        answer = avg\n        problem = (\n            f\"A driver travels {d1} km at {s1} km/h, rests {t_rest} h, \"\n            f\"then {d2} km at {s2} km/h, then {d3} km at {s3} km/h. \"\n            f\"What is the average speed for the entire trip including rest? \"\n            f\"Round to 2 decimal places.\"\n        )\n\n    elif problem_type == \"work_rate_join\":\n        # A 혼자 h1시간 작업 후 B,C 합류\n        t_a = rng.choice([4, 5, 6, 8, 10])\n        t_b = rng.choice([6, 8, 10, 12, 15])\n        t_c = rng.choice([10, 12, 15, 20])\n        h1 = rng.randint(1, t_a - 1)\n        work_done = h1 / t_a\n        remaining = 1 - work_done\n        rate_all = 1/t_a + 1/t_b + 1/t_c\n        h2 = remaining / rate_all\n        answer = round(h1 + h2, 2)\n        problem = (\n            f\"A can finish a job in {t_a}h, B in {t_b}h, C in {t_c}h. \"\n            f\"A works alone for {h1}h, then B and C join. \"\n            f\"Total time to finish? Round to 2 decimal places.\"\n        )\n\n    elif problem_type == \"mixture_dilute\":\n        # 혼합 → 제거 → 물 추가\n        v_a = rng.randint(5, 15)\n        p_a = rng.choice([20, 25, 30, 40])\n        v_b = rng.randint(5, 15)\n        p_b = rng.choice([50, 60, 70, 80])\n        total = v_a + v_b\n        pure = v_a * p_a / 100 + v_b * p_b / 100\n        conc = pure / total\n        remove = rng.randint(2, min(v_a, v_b))\n        pure2 = pure - remove * conc\n        add_water = rng.randint(3, 10)\n        final_pct = round(pure2 / (total - remove + add_water) * 100, 2)\n        answer = final_pct\n        problem = (\n            f\"Mix {v_a}L of {p_a}% solution with {v_b}L of {p_b}% solution. \"\n            f\"Remove {remove}L of the mixture, add {add_water}L pure water. \"\n            f\"Final concentration (%)? Round to 2 decimal places.\"\n        )\n\n    else:  # rect_optimize\n        # 직사각형 → 대각선 → 외접원\n        import math\n        w = rng.randint(5, 15)\n        l = rng.randint(w + 3, 30)\n        perim = 2 * (w + l)\n        area = w * l\n        diag_sq = w**2 + l**2\n        circle_coeff = round(diag_sq / 4, 2)\n        answer = circle_coeff\n        problem = (\n            f\"A rectangle has perimeter {perim} and area {area}. \"\n            f\"Find the area of the circumscribed circle of the triangle \"\n            f\"formed by its diagonal. Express as a coefficient of pi.\"\n        )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Mix 11L of 20% solution with 9L of 80% solution. Remove 8L of the mixture, add 7L pure water. Final concentration (%)? Round to 2 decimal places.",
+        "answer": "29.68"
+      },
+      {
+        "seed": 1,
+        "problem": "A driver travels 120 km at 40 km/h, rests 1 h, then 120 km at 60 km/h, then 240 km at 80 km/h. What is the average speed for the entire trip including rest? Round to 2 decimal places.",
+        "answer": "53.33"
+      },
+      {
+        "seed": 2,
+        "problem": "Three people A, B, and C have ages summing to 31. A is 6 years older than B, and B is 5 years older than C. What is B's current age?",
+        "answer": "10"
+      },
+      {
+        "seed": 3,
+        "problem": "A driver travels 150 km at 50 km/h, rests 2 h, then 90 km at 30 km/h, then 120 km at 60 km/h. What is the average speed for the entire trip including rest? Round to 2 decimal places.",
+        "answer": "36"
+      },
+      {
+        "seed": 4,
+        "problem": "A driver travels 120 km at 60 km/h, rests 2 h, then 60 km at 60 km/h, then 60 km at 60 km/h. What is the average speed for the entire trip including rest? Round to 2 decimal places.",
+        "answer": "40"
+      }
+    ]
+  },
+  {
+    "program_id": "7e21618e1c75",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 10,
+    "rq_score": 0.26753578302240805,
+    "p_hat": 0.7,
+    "h_score": 1.273979919154324,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Probability and combinatorics: dice rolls and conditional probability.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate two dice rolls\n    die1 = rng.randint(1, 6)\n    die2 = rng.randint(1, 6)\n\n    # Step 2: Calculate the sum of the two dice\n    total_sum = die1 + die2\n\n    # Step 3: Calculate the probability of getting a sum greater than 7\n    favorable_outcomes = 0\n    for i in range(1, 7):\n        for j in range(1, 7):\n            if i + j > 7:\n                favorable_outcomes += 1\n\n    total_outcomes = 6 * 6\n    probability = favorable_outcomes / total_outcomes\n\n    # Step 4: Round the probability to 4 decimal places\n    probability_rounded = round(probability, 4)\n\n    # Step 5: Build the problem statement\n    problem = (\n        f\"What is the probability of rolling two dice and getting a sum greater than 7? \"\n        f\"Round your answer to 4 decimal places.\"\n    )\n\n    return problem, str(probability_rounded)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the probability of rolling two dice and getting a sum greater than 7? Round your answer to 4 decimal places.",
+        "answer": "0.4167"
+      },
+      {
+        "seed": 1,
+        "problem": "What is the probability of rolling two dice and getting a sum greater than 7? Round your answer to 4 decimal places.",
+        "answer": "0.4167"
+      },
+      {
+        "seed": 2,
+        "problem": "What is the probability of rolling two dice and getting a sum greater than 7? Round your answer to 4 decimal places.",
+        "answer": "0.4167"
+      },
+      {
+        "seed": 3,
+        "problem": "What is the probability of rolling two dice and getting a sum greater than 7? Round your answer to 4 decimal places.",
+        "answer": "0.4167"
+      },
+      {
+        "seed": 4,
+        "problem": "What is the probability of rolling two dice and getting a sum greater than 7? Round your answer to 4 decimal places.",
+        "answer": "0.4167"
+      }
+    ]
+  },
+  {
+    "program_id": "ebb182c23e92",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 8,
+    "rq_score": 0.25247131540990925,
+    "p_hat": 0.8,
+    "h_score": 1.577945721311933,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n    # Generate a number using a complex formula\n    num = rng.randint(1, 100) * math.sqrt(rng.randint(1, 100)) + rng.randint(1, 100)\n    # Round the number to the nearest integer\n    num = round(num)\n    # Generate a problem based on the number\n    problem = f\"What is the sum of the digits of {num}?\"\n    # Calculate the answer\n    answer = sum(int(digit) for digit in str(num))\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the sum of the digits of 549?",
+        "answer": "18"
+      },
+      {
+        "seed": 1,
+        "problem": "What is the sum of the digits of 252?",
+        "answer": "9"
+      },
+      {
+        "seed": 2,
+        "problem": "What is the sum of the digits of 39?",
+        "answer": "12"
+      },
+      {
+        "seed": 3,
+        "problem": "What is the sum of the digits of 340?",
+        "answer": "7"
+      },
+      {
+        "seed": 4,
+        "problem": "What is the sum of the digits of 208?",
+        "answer": "10"
+      }
+    ]
+  },
+  {
+    "program_id": "25adc9f6a07f",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 11,
+    "rq_score": 0.24549720184292173,
+    "p_hat": 0.3,
+    "h_score": 1.1690342944901035,
+    "source_code": "\"\"\"\nThree-set Inclusion-Exclusion and advanced counting.\nMATH benchmark category: Counting & Probability (Hendrycks et al., NeurIPS 2021)\n\"\"\"\nimport random\nimport math\n\n\ndef generate(seed):\n    \"\"\"Three-set inclusion-exclusion: students in clubs.\"\"\"\n    rng = random.Random(seed)\n\n    total = rng.randint(80, 150)\n    a = rng.randint(30, total - 20)  # math club\n    b = rng.randint(25, total - 20)  # science club\n    c = rng.randint(20, total - 20)  # art club\n\n    ab = rng.randint(5, min(a, b) - 3)\n    bc = rng.randint(5, min(b, c) - 3)\n    ac = rng.randint(5, min(a, c) - 3)\n    abc = rng.randint(2, min(ab, bc, ac) - 1)\n\n    # |A ∪ B ∪ C| = |A| + |B| + |C| - |A∩B| - |B∩C| - |A∩C| + |A∩B∩C|\n    union = a + b + c - ab - bc - ac + abc\n    # students in none = total - union\n    # clamp to be valid\n    if union > total:\n        total = union + rng.randint(5, 20)\n    none_count = total - union\n\n    # students in exactly one club\n    only_a = a - ab - ac + abc\n    only_b = b - ab - bc + abc\n    only_c = c - ac - bc + abc\n    exactly_one = only_a + only_b + only_c\n\n    answer = exactly_one\n\n    problem = (\n        f\"In a school of {total} students, {a} are in the math club, \"\n        f\"{b} in the science club, and {c} in the art club. \"\n        f\"{ab} are in both math and science, {bc} in both science and art, \"\n        f\"{ac} in both math and art, and {abc} are in all three clubs. \"\n        f\"How many students are in exactly one club?\"\n    )\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In a school of 129 students, 83 are in the math club, 30 in the science club, and 53 in the art club. 21 are in both math and science, 20 in both science and art, 30 in both math and art, and 11 are in all three clubs. How many students are in exactly one club?",
+        "answer": "57"
+      },
+      {
+        "seed": 1,
+        "problem": "In a school of 192 students, 66 are in the math club, 76 in the science club, and 68 in the art club. 9 are in both math and science, 21 in both science and art, 12 in both math and art, and 5 are in all three clubs. How many students are in exactly one club?",
+        "answer": "141"
+      },
+      {
+        "seed": 2,
+        "problem": "In a school of 87 students, 35 are in the math club, 30 in the science club, and 43 in the art club. 10 are in both math and science, 26 in both science and art, 32 in both math and art, and 6 are in all three clubs. How many students are in exactly one club?",
+        "answer": "-10"
+      },
+      {
+        "seed": 3,
+        "problem": "In a school of 110 students, 67 are in the math club, 41 in the science club, and 67 in the art club. 35 are in both math and science, 9 in both science and art, 43 in both math and art, and 2 are in all three clubs. How many students are in exactly one club?",
+        "answer": "7"
+      },
+      {
+        "seed": 4,
+        "problem": "In a school of 125 students, 49 are in the math club, 38 in the science club, and 70 in the art club. 20 are in both math and science, 9 in both science and art, 10 in both math and art, and 2 are in all three clubs. How many students are in exactly one club?",
+        "answer": "85"
+      }
+    ]
+  },
+  {
+    "program_id": "72390ac39c09",
+    "generation": 10,
+    "niche_h": 3,
+    "niche_div": 7,
+    "rq_score": 0.23741547946496672,
+    "p_hat": 0.1,
+    "h_score": 2.637949771832963,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Hybrid problem: geometric probability involving a circle and a polygon.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate a circle with radius r\n    radius = rng.randint(10, 20)\n    circle_area = math.pi * radius**2\n\n    # Step 2: Generate a polygon (triangle or rectangle) inscribed in the circle\n    shape = rng.choice(['triangle', 'rectangle'])\n    if shape == 'triangle':\n        # Generate a triangle inscribed in the circle\n        a = rng.randint(1, radius-1)\n        b = rng.randint(1, radius-1)\n        c = math.sqrt(a**2 + b**2)\n        # Calculate the area of the triangle\n        s = (a + b + c) / 2\n        triangle_area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n    else:\n        # Generate a rectangle inscribed in the circle\n        width = rng.randint(1, radius * 2)\n        height = rng.randint(1, radius * 2)\n        while width**2 + height**2 > (2 * radius)**2:\n            width = rng.randint(1, radius * 2)\n            height = rng.randint(1, radius * 2)\n        # Calculate the area of the rectangle\n        rectangle_area = width * height\n\n    # Step 3: Calculate the probability of selecting a point within the polygon\n    if shape == 'triangle':\n        probability = triangle_area / circle_area\n    else:\n        probability = rectangle_area / circle_area\n\n    # Step 4: Generate problem with ambiguity\n    if shape == 'triangle':\n        problem = (\n            f\"A circle with radius {radius} units has a triangle inscribed in it with sides {a}, {b}, and {c} units. \"\n            f\"What is the probability that a randomly selected point within the circle lies inside the triangle?\"\n        )\n    else:\n        problem = (\n            f\"A circle with radius {radius} units has a rectangle inscribed in it with dimensions {width}x{height} units. \"\n            f\"What is the probability that a randomly selected point within the circle lies inside the rectangle?\"\n        )\n\n    # Step 5: Compute answer\n    answer = probability\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 16 units has a rectangle inscribed in it with dimensions 3x17 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.06341329763817705"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 12 units has a triangle inscribed in it with sides 5, 2, and 5.385164807134504 units. What is the probability that a randomly selected point within the circle lies inside the triangle?",
+        "answer": "0.01105242660360385"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 10 units has a triangle inscribed in it with sides 2, 6, and 6.324555320336759 units. What is the probability that a randomly selected point within the circle lies inside the triangle?",
+        "answer": "0.01909859317102745"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 13 units has a triangle inscribed in it with sides 6, 10, and 11.661903789690601 units. What is the probability that a randomly selected point within the circle lies inside the triangle?",
+        "answer": "0.05650471352374982"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 13 units has a rectangle inscribed in it with dimensions 4x24 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.18081508327599943"
+      }
+    ]
+  },
+  {
+    "program_id": "e1720f6373b3",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 1,
+    "rq_score": 0.2330090693673767,
+    "p_hat": 0.3,
+    "h_score": 1.1095669969875082,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\"prime_factorization\", \"modular_arithmetic\", \"continued_fraction\"])\n\n    if problem_type == \"prime_factorization\":\n        # Generate a large composite number\n        p = rng.randint(100, 1000)\n        q = rng.randint(100, 1000)\n        n = p * q\n        answer = f\"{p} * {q}\"\n        problem = (\n            f\"Find two prime numbers whose product is {n}. \"\n            f\"Express your answer as a multiplication of the two primes.\"\n        )\n\n    elif problem_type == \"modular_arithmetic\":\n        # Generate a modular equation\n        a = rng.randint(1, 100)\n        m = rng.randint(10, 100)\n        x = rng.randint(0, m-1)\n        answer = x\n        problem = (\n            f\"Solve for x in the equation: {a} * x ≡ {a * x % m} (mod {m}). \"\n            f\"Answer with the smallest non-negative integer solution.\"\n        )\n\n    else:  # continued_fraction\n        # Generate a continued fraction\n        a = rng.randint(1, 10)\n        b = rng.randint(1, 10)\n        c = rng.randint(1, 10)\n        value = a + b / (c + 1)\n        answer = round(value, 2)\n        problem = (\n            f\"Express {a} + {b} / ({c} + 1) as a decimal to two decimal places.\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Solve for x in the equation: 98 * x ≡ 7 (mod 63). Answer with the smallest non-negative integer solution.",
+        "answer": "2"
+      },
+      {
+        "seed": 1,
+        "problem": "Find two prime numbers whose product is 659494. Express your answer as a multiplication of the two primes.",
+        "answer": "682 * 967"
+      },
+      {
+        "seed": 2,
+        "problem": "Find two prime numbers whose product is 35898. Express your answer as a multiplication of the two primes.",
+        "answer": "193 * 186"
+      },
+      {
+        "seed": 3,
+        "problem": "Find two prime numbers whose product is 463842. Express your answer as a multiplication of the two primes.",
+        "answer": "706 * 657"
+      },
+      {
+        "seed": 4,
+        "problem": "Find two prime numbers whose product is 84050. Express your answer as a multiplication of the two primes.",
+        "answer": "410 * 205"
+      }
+    ]
+  },
+  {
+    "program_id": "4fa3cbc75b2a",
+    "generation": 2,
+    "niche_h": 1,
+    "niche_div": 12,
+    "rq_score": 0.22273523272881704,
+    "p_hat": 0.5,
+    "h_score": 0.8909409309152682,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n    \n    # Generate two random integers between 1 and 100\n    a = rng.randint(1, 100)\n    b = rng.randint(1, 100)\n    \n    # Compute the greatest common divisor (GCD) of a and b\n    gcd = math.gcd(a, b)\n    \n    # Compute the least common multiple (LCM) of a and b\n    lcm = (a * b) // gcd\n    \n    # Generate a random integer between 1 and 10\n    multiplier = rng.randint(1, 10)\n    \n    # Compute the final answer\n    answer = lcm * multiplier\n    \n    # Build the problem text\n    problem = (\n        f\"Let a = {a} and b = {b}. Compute the least common multiple (LCM) of a \"\n        f\"and b, then multiply by a random integer between 1 and 10. What is the \"\n        f\"final result?\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Let a = 50 and b = 98. Compute the least common multiple (LCM) of a and b, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "17150"
+      },
+      {
+        "seed": 1,
+        "problem": "Let a = 18 and b = 73. Compute the least common multiple (LCM) of a and b, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "2628"
+      },
+      {
+        "seed": 2,
+        "problem": "Let a = 8 and b = 12. Compute the least common multiple (LCM) of a and b, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "48"
+      },
+      {
+        "seed": 3,
+        "problem": "Let a = 31 and b = 76. Compute the least common multiple (LCM) of a and b, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "21204"
+      },
+      {
+        "seed": 4,
+        "problem": "Let a = 31 and b = 39. Compute the least common multiple (LCM) of a and b, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "2418"
+      }
+    ]
+  },
+  {
+    "program_id": "4bbdbea7765d",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 6,
+    "rq_score": 0.21341460102239243,
+    "p_hat": 0.4,
+    "h_score": 0.8892275042599685,
+    "source_code": "import random\n\ndef generate(seed):\n    \"\"\"Geometric-arithmetic mixed: sum of geometric series then arithmetic operation.\"\"\"\n    rng = random.Random(seed)\n    # Geometric series: a, ar, ar^2, ..., ar^(n-1)\n    a = rng.randint(2, 5)\n    r = rng.choice([2, 3])\n    n = rng.randint(4, 8)\n\n    # S = a * (r^n - 1) / (r - 1)\n    geo_sum = a * (r**n - 1) // (r - 1)\n\n    # 등차 수열: 첫항 geo_sum, 공차 d, m항까지의 합\n    d = rng.randint(5, 20)\n    m = rng.randint(5, 10)\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2\n\n    answer = arith_sum\n\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms. \"\n        f\"Now consider an arithmetic sequence with first term S and \"\n        f\"common difference {d}. What is the sum of the first {m} terms \"\n        f\"of this arithmetic sequence?\"\n    )\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms. Now consider an arithmetic sequence with first term S and common difference 13. What is the sum of the first 9 terms of this arithmetic sequence?",
+        "answer": "2268"
+      },
+      {
+        "seed": 1,
+        "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. Now consider an arithmetic sequence with first term S and common difference 8. What is the sum of the first 8 terms of this arithmetic sequence?",
+        "answer": "1736"
+      },
+      {
+        "seed": 2,
+        "problem": "A geometric sequence has first term 2 and common ratio 2. Let S be the sum of the first 4 terms. Now consider an arithmetic sequence with first term S and common difference 16. What is the sum of the first 6 terms of this arithmetic sequence?",
+        "answer": "420"
+      },
+      {
+        "seed": 3,
+        "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. Now consider an arithmetic sequence with first term S and common difference 20. What is the sum of the first 10 terms of this arithmetic sequence?",
+        "answer": "2790"
+      },
+      {
+        "seed": 4,
+        "problem": "A geometric sequence has first term 3 and common ratio 3. Let S be the sum of the first 4 terms. Now consider an arithmetic sequence with first term S and common difference 17. What is the sum of the first 8 terms of this arithmetic sequence?",
+        "answer": "1436"
+      }
+    ]
+  },
+  {
+    "program_id": "32afc0136a33",
+    "generation": 4,
+    "niche_h": 0,
+    "niche_div": 2,
+    "rq_score": 0.19881162203549313,
+    "p_hat": 0.5,
+    "h_score": 0.7952464881419725,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced Geometry Problem: Circle Inscribed in Rectangle with Scaling.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate random dimensions for a rectangle\n    width = rng.randint(10, 20)\n    height = rng.randint(10, 20)\n    \n    # Step 2: Calculate area and diagonal\n    area = width * height\n    diagonal = math.sqrt(width**2 + height**2)\n    \n    # Step 3: Generate random scaling factor\n    scale = rng.uniform(0.5, 2.0)\n    \n    # Step 4: Calculate new dimensions\n    new_width = width * scale\n    new_height = height * scale\n    \n    # Step 5: Calculate new area and diagonal\n    new_area = new_width * new_height\n    new_diagonal = math.sqrt(new_width**2 + new_height**2)\n    \n    # Step 6: Compute the radius of the inscribed circle in the scaled rectangle\n    radius = min(new_width, new_height) / 2\n    \n    # Step 7: Compute the area of the inscribed circle\n    circle_area = math.pi * radius**2\n    \n    # Step 8: Compute the probability of selecting a point within the circle\n    probability = circle_area / new_area\n    \n    # Step 9: Generate problem with ambiguity\n    problem = (\n        f\"A rectangle with dimensions {width}x{height} units is scaled by a factor of {scale:.2f}. \"\n        f\"What is the probability that a randomly selected point within the scaled rectangle lies inside \"\n        f\"the largest circle that can be inscribed in it?\"\n    )\n    \n    # Step 10: Compute answer\n    answer = probability\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A rectangle with dimensions 16x16 units is scaled by a factor of 0.56. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.7853981633974483"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangle with dimensions 12x19 units is scaled by a factor of 1.77. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.49604094530365167"
+      },
+      {
+        "seed": 2,
+        "problem": "A rectangle with dimensions 10x11 units is scaled by a factor of 0.63. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.7139983303613164"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangle with dimensions 13x19 units is scaled by a factor of 1.32. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.5373776907456225"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangle with dimensions 13x14 units is scaled by a factor of 0.65. What is the probability that a randomly selected point within the scaled rectangle lies inside the largest circle that can be inscribed in it?",
+        "answer": "0.7292982945833448"
+      }
+    ]
+  },
+  {
+    "program_id": "9f256d59034d",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 3,
+    "rq_score": 0.198646842516637,
+    "p_hat": 0.4,
+    "h_score": 0.8276951771526542,
+    "source_code": "import random\n\ndef generate(seed):\n    \"\"\"Chinese Remainder Theorem style: find N given multiple remainder conditions.\"\"\"\n    rng = random.Random(seed)\n    # N ≡ r1 (mod m1), N ≡ r2 (mod m2)\n    # m1, m2 coprime → unique solution mod m1*m2\n    m1 = rng.choice([3, 5, 7])\n    m2 = rng.choice([4, 7, 9, 11])\n    while m2 == m1 or __import__('math').gcd(m1, m2) != 1:\n        m2 = rng.choice([4, 7, 9, 11, 13])\n\n    r1 = rng.randint(1, m1 - 1)\n    r2 = rng.randint(1, m2 - 1)\n\n    # CRT로 최소 양수 해 구하기\n    product = m1 * m2\n    for n in range(1, product + 1):\n        if n % m1 == r1 and n % m2 == r2:\n            answer = n\n            break\n\n    # 범위 내에서 몇 개인지\n    upper = rng.randint(200, 500)\n    count = 0\n    val = answer\n    while val <= upper:\n        count += 1\n        val += product\n\n    problem = (\n        f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n        f\"and a remainder of {r2} when divided by {m2}. \"\n        f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n    )\n    return problem, str(count)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 5, and a remainder of 5 when divided by 11. How many such integers N exist in the range 1 to 461, inclusive?",
+        "answer": "9"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 1 when divided by 4. How many such integers N exist in the range 1 to 453, inclusive?",
+        "answer": "38"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 3, and a remainder of 2 when divided by 4. How many such integers N exist in the range 1 to 286, inclusive?",
+        "answer": "24"
+      },
+      {
+        "seed": 3,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 5 when divided by 7. How many such integers N exist in the range 1 to 442, inclusive?",
+        "answer": "21"
+      },
+      {
+        "seed": 4,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 2 when divided by 4. How many such integers N exist in the range 1 to 279, inclusive?",
+        "answer": "24"
+      }
+    ]
+  },
+  {
+    "program_id": "8d4ff0880047",
+    "generation": 4,
+    "niche_h": 0,
+    "niche_div": 13,
+    "rq_score": 0.19357041685665477,
+    "p_hat": 0.4,
+    "h_score": 0.8065434035693949,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate a circle with radius r\n    r = rng.randint(10, 20)\n    area_circle = math.pi * r**2\n\n    # Step 2: Generate a triangle inscribed in the circle\n    a = rng.randint(1, r-1)\n    b = rng.randint(1, r-1)\n    c = math.sqrt(a**2 + b**2)\n\n    # Step 3: Calculate the area of the triangle\n    s = (a + b + c) / 2\n    triangle_area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n\n    # Step 4: Calculate the ratio of the triangle area to the circle area\n    ratio = triangle_area / area_circle\n\n    # Step 5: Generate a problem based on the ratio\n    problem = (\n        f\"A circle with radius {r} has a triangle inscribed in it with sides {a}, {b}, and {c}. \"\n        f\"What is the probability that a randomly chosen point inside the circle lies inside the triangle?\"\n    )\n\n    # Step 6: Compute the answer\n    answer = ratio\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 16 has a triangle inscribed in it with sides 13, 15, and 19.849433241279208. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.12123130430827964"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 12 has a triangle inscribed in it with sides 10, 2, and 10.198039027185569. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.022104853207207686"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 10 has a triangle inscribed in it with sides 2, 2, and 2.8284271247461903. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.006366197723675812"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 13 has a triangle inscribed in it with sides 10, 9, and 13.45362404707371. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.08475707028562474"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 13 has a triangle inscribed in it with sides 5, 2, and 5.385164807134504. What is the probability that a randomly chosen point inside the circle lies inside the triangle?",
+        "answer": "0.009417452253958309"
+      }
+    ]
+  },
+  {
+    "program_id": "1a560f5484bb",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 3,
+    "rq_score": 0.19029588909221454,
+    "p_hat": 0.7,
+    "h_score": 0.9061709004391167,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept probability problem: geometric distribution and expected value.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate success probability p (0 < p < 1)\n    p = rng.uniform(0.1, 0.9)\n    \n    # Step 2: Calculate expected value E(X) for geometric distribution\n    E_X = 1 / p\n    \n    # Step 3: Generate a range for the problem\n    upper_bound = int(E_X) + 10  # Ensure range is meaningful\n    \n    # Step 4: Compute the probability of first success occurring within this range\n    # P(X ≤ k) = 1 - (1 - p)^k\n    k = rng.randint(1, upper_bound)\n    probability = 1 - (1 - p) ** k\n    \n    # Step 5: Construct the problem statement\n    problem = (\n        f\"What is the probability that the first success occurs within the first {k} trials \"\n        f\"in a geometric distribution with success probability {p:.2f}?\"\n    )\n    \n    # Step 6: Return the problem and its exact answer\n    return problem, f\"{probability:.4f}\"",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the probability that the first success occurs within the first 7 trials in a geometric distribution with success probability 0.78?",
+        "answer": "1.0000"
+      },
+      {
+        "seed": 1,
+        "problem": "What is the probability that the first success occurs within the first 14 trials in a geometric distribution with success probability 0.21?",
+        "answer": "0.9614"
+      },
+      {
+        "seed": 2,
+        "problem": "What is the probability that the first success occurs within the first 1 trials in a geometric distribution with success probability 0.86?",
+        "answer": "0.8648"
+      },
+      {
+        "seed": 3,
+        "problem": "What is the probability that the first success occurs within the first 9 trials in a geometric distribution with success probability 0.29?",
+        "answer": "0.9544"
+      },
+      {
+        "seed": 4,
+        "problem": "What is the probability that the first success occurs within the first 2 trials in a geometric distribution with success probability 0.29?",
+        "answer": "0.4942"
+      }
+    ]
+  },
+  {
+    "program_id": "20fd7927a182",
+    "generation": 2,
+    "niche_h": 0,
+    "niche_div": 5,
+    "rq_score": 0.17543082312125366,
+    "p_hat": 0.5,
+    "h_score": 0.7017232924850146,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate a circle with radius r\n    r = rng.randint(5, 15)\n    \n    # Step 2: Generate a right triangle with hypotenuse as the circle's diameter\n    hypotenuse = 2 * r\n    a = rng.randint(1, hypotenuse - 1)\n    b = math.sqrt(hypotenuse**2 - a**2)\n    \n    # Step 3: Calculate area of triangle and circle\n    triangle_area = (a * b) / 2\n    circle_area = math.pi * r**2\n    \n    # Step 4: Create a complex expression involving both areas\n    numerator = triangle_area * (hypotenuse + r)\n    denominator = circle_area - triangle_area\n    \n    # Step 5: Simplify and compute final answer\n    answer = numerator / denominator\n    \n    # Step 6: Build problem statement\n    problem = (\n        f\"A right triangle is inscribed in a circle with radius {r}. \"\n        f\"The hypotenuse of the triangle is the diameter of the circle. \"\n        f\"If the length of one leg is {a}, find the value of \"\n        f\"({triangle_area} * ({hypotenuse} + {r})) / \"\n        f\"({circle_area} - {triangle_area}).\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A right triangle is inscribed in a circle with radius 11. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 14, find the value of (118.79393923933998 * (22 + 11)) / (380.132711084365 - 118.79393923933998).",
+        "answer": "15.000453117698564"
+      },
+      {
+        "seed": 1,
+        "problem": "A right triangle is inscribed in a circle with radius 7. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 10, find the value of (48.98979485566356 * (14 + 7)) / (153.93804002589985 - 48.98979485566356).",
+        "answer": "9.802790797503512"
+      },
+      {
+        "seed": 2,
+        "problem": "A right triangle is inscribed in a circle with radius 5. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 2, find the value of (9.797958971132712 * (10 + 5)) / (78.53981633974483 - 9.797958971132712).",
+        "answer": "2.1379897226067337"
+      },
+      {
+        "seed": 3,
+        "problem": "A right triangle is inscribed in a circle with radius 8. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 10, find the value of (62.44997998398398 * (16 + 8)) / (201.06192982974676 - 62.44997998398398).",
+        "answer": "10.812917077375866"
+      },
+      {
+        "seed": 4,
+        "problem": "A right triangle is inscribed in a circle with radius 8. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 5, find the value of (37.99671038392666 * (16 + 8)) / (201.06192982974676 - 37.99671038392666).",
+        "answer": "5.592370048704555"
+      }
+    ]
+  },
+  {
+    "program_id": "28c928e02ced",
+    "generation": 3,
+    "niche_h": 0,
+    "niche_div": 8,
+    "rq_score": 0.16060181493997028,
+    "p_hat": 0.3,
+    "h_score": 0.7647705473331918,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n    \n    # Choose problem type: geometry or probability\n    problem_type = rng.choice([\"geometry\", \"probability\"])\n    \n    if problem_type == \"geometry\":\n        # Geometry problem: circle and triangle\n        r = rng.randint(5, 15)\n        hypotenuse = 2 * r\n        a = rng.randint(1, hypotenuse - 1)\n        b = math.sqrt(hypotenuse**2 - a**2)\n        \n        triangle_area = (a * b) / 2\n        circle_area = math.pi * r**2\n        \n        numerator = triangle_area * (hypotenuse + r)\n        denominator = circle_area - triangle_area\n        \n        answer = numerator / denominator\n        \n        problem = (\n            f\"A right triangle is inscribed in a circle with radius {r}. \"\n            f\"The hypotenuse of the triangle is the diameter of the circle. \"\n            f\"If the length of one leg is {a}, find the value of \"\n            f\"({triangle_area} * ({hypotenuse} + {r})) / \"\n            f\"({circle_area} - {triangle_area}).\"\n        )\n        \n    else:  # probability problem\n        # Probability problem: dice rolls\n        num_dice = rng.randint(2, 5)\n        target_sum = rng.randint(num_dice, 6 * num_dice)\n        \n        # Calculate probability of getting target sum\n        total_outcomes = 6 ** num_dice\n        favorable_outcomes = 0\n        \n        for i in range(1, 7):\n            for j in range(1, 7):\n                if num_dice == 2 and i + j == target_sum:\n                    favorable_outcomes += 1\n                elif num_dice == 3:\n                    for k in range(1, 7):\n                        if i + j + k == target_sum:\n                            favorable_outcomes += 1\n                elif num_dice == 4:\n                    for k in range(1, 7):\n                        for l in range(1, 7):\n                            if i + j + k + l == target_sum:\n                                favorable_outcomes += 1\n                elif num_dice == 5:\n                    for k in range(1, 7):\n                        for l in range(1, 7):\n                            for m in range(1, 7):\n                                if i + j + k + l + m == target_sum:\n                                    favorable_outcomes += 1\n        \n        answer = favorable_outcomes / total_outcomes\n        \n        problem = (\n            f\"What is the probability of rolling a sum of {target_sum} \"\n            f\"with {num_dice} standard six-sided dice?\"\n        )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the probability of rolling a sum of 6 with 5 standard six-sided dice?",
+        "answer": "0.0006430041152263374"
+      },
+      {
+        "seed": 1,
+        "problem": "A right triangle is inscribed in a circle with radius 14. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 26, find the value of (135.09996299037243 * (28 + 14)) / (615.7521601035994 - 135.09996299037243).",
+        "answer": "11.805206508312235"
+      },
+      {
+        "seed": 2,
+        "problem": "A right triangle is inscribed in a circle with radius 6. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 2, find the value of (11.832159566199232 * (12 + 6)) / (113.09733552923255 - 11.832159566199232).",
+        "answer": "2.1031797966690324"
+      },
+      {
+        "seed": 3,
+        "problem": "A right triangle is inscribed in a circle with radius 14. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 18, find the value of (193.02849530574494 * (28 + 14)) / (615.7521601035994 - 193.02849530574494).",
+        "answer": "19.178478703618666"
+      },
+      {
+        "seed": 4,
+        "problem": "A right triangle is inscribed in a circle with radius 9. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 4, find the value of (35.09985754956849 * (18 + 9)) / (254.46900494077323 - 35.09985754956849).",
+        "answer": "4.32009772161947"
+      }
+    ]
+  },
+  {
+    "program_id": "20e86f154c6b",
+    "generation": 2,
+    "niche_h": 2,
+    "niche_div": 11,
+    "rq_score": 0.15998534302317358,
+    "p_hat": 0.9,
+    "h_score": 1.7776149224797066,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Advanced multi-concept problem: geometry, algebra, and combinatorics.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate complex parameters\n    r = rng.randint(10, 20)  # Circle radius\n    n = rng.randint(5, 10)   # Combinatorics parameter\n    k = rng.randint(2, n-1)  # Combinatorics parameter\n\n    # Step 2: Compute intermediate values\n    area = math.pi * r**2  # Circle area\n    angle = rng.uniform(math.pi/3, 2*math.pi/3)  # Random angle\n    side1 = 2 * r * math.sin(angle/2)  # Triangle side 1\n    side2 = 2 * r * math.sin(angle/2)  # Triangle side 2\n    side3 = 2 * r * math.sin(math.pi - angle)  # Triangle side 3\n    s = (side1 + side2 + side3) / 2  # Semi-perimeter\n    triangle_area = math.sqrt(s * (s - side1) * (s - side2) * (s - side3))  # Triangle area\n    ratio = triangle_area / area  # Area ratio\n\n    # Step 3: Compute final answer\n    comb = math.comb(n, k)  # Combinatorics value\n    answer = str(comb)  # Final answer\n\n    # Step 4: Build problem statement\n    problem = (\n        f\"A triangle is inscribed in a circle with radius {r}. \"\n        f\"The ratio of the triangle's area to the circle's area is {ratio:.3f}. \"\n        f\"If n = {n} and k = {k}, what is the number of ways to choose k elements from n?\"\n    )\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A triangle is inscribed in a circle with radius 16. The ratio of the triangle's area to the circle's area is 0.231. If n = 8 and k = 2, what is the number of ways to choose k elements from n?",
+        "answer": "28"
+      },
+      {
+        "seed": 1,
+        "problem": "A triangle is inscribed in a circle with radius 12. The ratio of the triangle's area to the circle's area is 0.397. If n = 9 and k = 8, what is the number of ways to choose k elements from n?",
+        "answer": "9"
+      },
+      {
+        "seed": 2,
+        "problem": "A triangle is inscribed in a circle with radius 10. The ratio of the triangle's area to the circle's area is 0.269. If n = 5 and k = 2, what is the number of ways to choose k elements from n?",
+        "answer": "10"
+      },
+      {
+        "seed": 3,
+        "problem": "A triangle is inscribed in a circle with radius 13. The ratio of the triangle's area to the circle's area is 0.184. If n = 9 and k = 6, what is the number of ways to choose k elements from n?",
+        "answer": "84"
+      },
+      {
+        "seed": 4,
+        "problem": "A triangle is inscribed in a circle with radius 13. The ratio of the triangle's area to the circle's area is 0.381. If n = 7 and k = 2, what is the number of ways to choose k elements from n?",
+        "answer": "21"
+      }
+    ]
+  },
+  {
+    "program_id": "51215e96f5d0",
+    "generation": 8,
+    "niche_h": 0,
+    "niche_div": 7,
+    "rq_score": 0.15914834896358881,
+    "p_hat": 0.3,
+    "h_score": 0.7578492807789944,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Generate a circle with radius r\n    radius = rng.randint(5, 15)\n    circle_area = math.pi * radius**2\n\n    # Step 2: Generate a rectangle inscribed in the circle\n    width = rng.randint(1, radius * 2)\n    height = rng.randint(1, radius * 2)\n    while width**2 + height**2 > (2 * radius)**2:\n        width = rng.randint(1, radius * 2)\n        height = rng.randint(1, radius * 2)\n\n    # Step 3: Calculate area of the rectangle\n    rectangle_area = width * height\n\n    # Step 4: Compute the probability of selecting a point within the rectangle\n    probability = rectangle_area / circle_area\n\n    # Step 5: Generate problem with ambiguity\n    problem = (\n        f\"A circle with radius {radius} units has a rectangle inscribed in it with dimensions {width}x{height} units. \"\n        f\"What is the probability that a randomly selected point within the circle lies inside the rectangle?\"\n    )\n\n    # Step 6: Compute answer\n    answer = probability\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 11 units has a rectangle inscribed in it with dimensions 14x2 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.073658486059059"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 units has a rectangle inscribed in it with dimensions 2x5 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.0649612012619981"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 5 units has a rectangle inscribed in it with dimensions 2x2 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.05092958178940651"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 8 units has a rectangle inscribed in it with dimensions 5x12 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.2984155182973038"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 8 units has a rectangle inscribed in it with dimensions 10x4 units. What is the probability that a randomly selected point within the circle lies inside the rectangle?",
+        "answer": "0.1989436788648692"
+      }
+    ]
+  },
+  {
+    "program_id": "6423b656d190",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 6,
+    "rq_score": 0.1568333399308997,
+    "p_hat": 0.4,
+    "h_score": 0.6534722497120822,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate a circle with radius r...\n    r = rng.randint(5, 15)\n    circle_area = math.pi * r**2\n    \n    # Step 2: Generate an inscribed equilateral triangle\n    triangle_side = r * math.sqrt(3)\n    triangle_area = (math.sqrt(3) / 4) * triangle_side**2\n    \n    # Step 3: Calculate the ratio of areas\n    area_ratio = triangle_area / circle_area\n    \n    # Step 4: Introduce an algebraic component\n    x = rng.randint(2, 5)\n    y = rng.randint(3, 7)\n    equation = f\"({x} * {y}) / {r}\"\n    \n    # Step 5: Compute the final answer\n    answer = eval(equation)\n    \n    # Build the problem statement\n    problem = (\n        f\"A circle with radius {r} has an inscribed equilateral triangle. \"\n        f\"If the area of the triangle is {triangle_area:.2f} and the area of the circle is {circle_area:.2f}, \"\n        f\"what is the value of ({x} * {y}) / {r}?\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 11 has an inscribed equilateral triangle. If the area of the triangle is 157.18 and the area of the circle is 380.13, what is the value of (5 * 3) / 11?",
+        "answer": "1.3636363636363635"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 has an inscribed equilateral triangle. If the area of the triangle is 63.65 and the area of the circle is 153.94, what is the value of (2 * 5) / 7?",
+        "answer": "1.4285714285714286"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 5 has an inscribed equilateral triangle. If the area of the triangle is 32.48 and the area of the circle is 78.54, what is the value of (2 * 3) / 5?",
+        "answer": "1.2"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 8 has an inscribed equilateral triangle. If the area of the triangle is 83.14 and the area of the circle is 201.06, what is the value of (3 * 5) / 8?",
+        "answer": "1.875"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 8 has an inscribed equilateral triangle. If the area of the triangle is 83.14 and the area of the circle is 201.06, what is the value of (4 * 3) / 8?",
+        "answer": "1.5"
+      }
+    ]
+  },
+  {
+    "program_id": "f0744212e8aa",
+    "generation": 2,
+    "niche_h": 0,
+    "niche_div": 10,
+    "rq_score": 0.14002386989326154,
+    "p_hat": 0.4,
+    "h_score": 0.5834327912219232,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate a circle with radius r\n    r = rng.randint(5, 15)\n    \n    # Step 2: Generate a triangle with base b and height h\n    b = rng.randint(10, 20)\n    h = rng.randint(10, 20)\n    \n    # Step 3: Calculate the area of the circle\n    circle_area = math.pi * r**2\n    \n    # Step 4: Calculate the area of the triangle\n    triangle_area = 0.5 * b * h\n    \n    # Step 5: Calculate the combined area\n    combined_area = circle_area + triangle_area\n    \n    # Step 6: Round the combined area to 2 decimal places\n    combined_area_rounded = round(combined_area, 2)\n    \n    # Step 7: Build the problem statement\n    problem = (\n        f\"A circle with radius {r} cm is inscribed in a triangle with base {b} cm and height {h} cm. \"\n        f\"What is the combined area of the circle and triangle? Round your answer to 2 decimal places.\"\n    )\n    \n    return problem, str(combined_area_rounded)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 11 cm is inscribed in a triangle with base 16 cm and height 10 cm. What is the combined area of the circle and triangle? Round your answer to 2 decimal places.",
+        "answer": "460.13"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 cm is inscribed in a triangle with base 19 cm and height 11 cm. What is the combined area of the circle and triangle? Round your answer to 2 decimal places.",
+        "answer": "258.44"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 5 cm is inscribed in a triangle with base 11 cm and height 11 cm. What is the combined area of the circle and triangle? Round your answer to 2 decimal places.",
+        "answer": "139.04"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 8 cm is inscribed in a triangle with base 19 cm and height 18 cm. What is the combined area of the circle and triangle? Round your answer to 2 decimal places.",
+        "answer": "372.06"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 8 cm is inscribed in a triangle with base 14 cm and height 11 cm. What is the combined area of the circle and triangle? Round your answer to 2 decimal places.",
+        "answer": "278.06"
+      }
+    ]
+  },
+  {
+    "program_id": "c4edcf782312",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 9,
+    "rq_score": 0.1399339758550188,
+    "p_hat": 0.2,
+    "h_score": 0.8745873490938674,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Number Theory: Modular Arithmetic and Chinese Remainder Theorem.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate two coprime moduli\n    moduli = []\n    while len(moduli) < 2:\n        m = rng.randint(5, 20)\n        if all(math.gcd(m, n) == 1 for n in moduli):\n            moduli.append(m)\n\n    m1, m2 = moduli\n    M = m1 * m2\n\n    # Step 2: Generate remainders for each modulus\n    r1 = rng.randint(0, m1 - 1)\n    r2 = rng.randint(0, m2 - 1)\n\n    # Step 3: Use Chinese Remainder Theorem to find solution\n    # x ≡ r1 (mod m1)\n    # x ≡ r2 (mod m2)\n    # Solution: x = r1*M1*y1 + r2*M2*y2 (mod M)\n    M1 = M // m1\n    M2 = M // m2\n    y1 = pow(M1, -1, m1)\n    y2 = pow(M2, -1, m2)\n\n    # Step 4: Compute final answer\n    x = (r1 * M1 * y1 + r2 * M2 * y2) % M\n\n    # Step 5: Build problem statement\n    problem = (\n        f\"Find the smallest positive integer x that satisfies the following system of congruences:\\n\"\n        f\"x ≡ {r1} (mod {m1})\\n\"\n        f\"x ≡ {r2} (mod {m2})\\n\"\n        f\"What is the value of x?\"\n    )\n\n    return problem, str(x)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Find the smallest positive integer x that satisfies the following system of congruences:\nx ≡ 1 (mod 17)\nx ≡ 8 (mod 18)\nWhat is the value of x?",
+        "answer": "188"
+      },
+      {
+        "seed": 1,
+        "problem": "Find the smallest positive integer x that satisfies the following system of congruences:\nx ≡ 4 (mod 9)\nx ≡ 0 (mod 7)\nWhat is the value of x?",
+        "answer": "49"
+      },
+      {
+        "seed": 2,
+        "problem": "Find the smallest positive integer x that satisfies the following system of congruences:\nx ≡ 0 (mod 6)\nx ≡ 2 (mod 7)\nWhat is the value of x?",
+        "answer": "30"
+      },
+      {
+        "seed": 3,
+        "problem": "Find the smallest positive integer x that satisfies the following system of congruences:\nx ≡ 9 (mod 12)\nx ≡ 0 (mod 7)\nWhat is the value of x?",
+        "answer": "21"
+      },
+      {
+        "seed": 4,
+        "problem": "Find the smallest positive integer x that satisfies the following system of congruences:\nx ≡ 7 (mod 12)\nx ≡ 4 (mod 17)\nWhat is the value of x?",
+        "answer": "55"
+      }
+    ]
+  },
+  {
+    "program_id": "e3bfc19abd45",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 12,
+    "rq_score": 0.1340144392427236,
+    "p_hat": 0.4,
+    "h_score": 0.5583934968446816,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n    \n    # Generate a random number between 1 and 1000\n    num = rng.randint(1, 1000)\n    \n    # Compute the square root of the number\n    sqrt_num = math.sqrt(num)\n    \n    # Compute the floor of the square root\n    floor_sqrt = math.floor(sqrt_num)\n    \n    # Compute the ceiling of the square root\n    ceil_sqrt = math.ceil(sqrt_num)\n    \n    # Compute the difference between the ceiling and floor\n    difference = ceil_sqrt - floor_sqrt\n    \n    # Generate a random integer between 1 and 10\n    multiplier = rng.randint(1, 10)\n    \n    # Compute the final answer\n    answer = difference * multiplier\n    \n    # Build the problem text\n    problem = (\n        f\"Let n = {num}. Compute the difference between the ceiling and floor \"\n        f\"of the square root of n, then multiply by a random integer between 1 \"\n        f\"and 10. What is the final result?\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Let n = 865. Compute the difference between the ceiling and floor of the square root of n, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "7"
+      },
+      {
+        "seed": 1,
+        "problem": "Let n = 138. Compute the difference between the ceiling and floor of the square root of n, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "10"
+      },
+      {
+        "seed": 2,
+        "problem": "Let n = 979. Compute the difference between the ceiling and floor of the square root of n, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "1"
+      },
+      {
+        "seed": 3,
+        "problem": "Let n = 244. Compute the difference between the ceiling and floor of the square root of n, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "10"
+      },
+      {
+        "seed": 4,
+        "problem": "Let n = 242. Compute the difference between the ceiling and floor of the square root of n, then multiply by a random integer between 1 and 10. What is the final result?",
+        "answer": "5"
+      }
+    ]
+  },
+  {
+    "program_id": "2326bbc628ed",
+    "generation": 3,
+    "niche_h": 0,
+    "niche_div": 0,
+    "rq_score": 0.12452450212056249,
+    "p_hat": 0.6,
+    "h_score": 0.5188520921690104,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate a circle with radius r\n    r = rng.randint(5, 15)\n    circle_area = math.pi * r**2\n    \n    # Step 2: Generate a right triangle with hypotenuse as the circle's diameter\n    hypotenuse = 2 * r\n    a = rng.randint(1, hypotenuse - 1)\n    b = math.sqrt(hypotenuse**2 - a**2)\n    triangle_area = (a * b) / 2\n    \n    # Step 3: Create a complex expression involving both areas\n    numerator = triangle_area * (hypotenuse + r)\n    denominator = circle_area - triangle_area\n    answer = numerator / denominator\n    \n    # Step 4: Build problem statement with added complexity\n    problem = (\n        f\"A right triangle is inscribed in a circle with radius {r}. \"\n        f\"The hypotenuse of the triangle is the diameter of the circle. \"\n        f\"If the length of one leg is {a}, find the value of \"\n        f\"({triangle_area} * ({hypotenuse} + {r})) / \"\n        f\"({circle_area} - {triangle_area}).\"\n    )\n    \n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A right triangle is inscribed in a circle with radius 11. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 14, find the value of (118.79393923933998 * (22 + 11)) / (380.132711084365 - 118.79393923933998).",
+        "answer": "15.000453117698564"
+      },
+      {
+        "seed": 1,
+        "problem": "A right triangle is inscribed in a circle with radius 7. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 10, find the value of (48.98979485566356 * (14 + 7)) / (153.93804002589985 - 48.98979485566356).",
+        "answer": "9.802790797503512"
+      },
+      {
+        "seed": 2,
+        "problem": "A right triangle is inscribed in a circle with radius 5. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 2, find the value of (9.797958971132712 * (10 + 5)) / (78.53981633974483 - 9.797958971132712).",
+        "answer": "2.1379897226067337"
+      },
+      {
+        "seed": 3,
+        "problem": "A right triangle is inscribed in a circle with radius 8. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 10, find the value of (62.44997998398398 * (16 + 8)) / (201.06192982974676 - 62.44997998398398).",
+        "answer": "10.812917077375866"
+      },
+      {
+        "seed": 4,
+        "problem": "A right triangle is inscribed in a circle with radius 8. The hypotenuse of the triangle is the diameter of the circle. If the length of one leg is 5, find the value of (37.99671038392666 * (16 + 8)) / (201.06192982974676 - 37.99671038392666).",
+        "answer": "5.592370048704555"
+      }
+    ]
+  },
+  {
+    "program_id": "ea9c44009ad8",
+    "generation": 2,
+    "niche_h": 0,
+    "niche_div": 11,
+    "rq_score": 0.12064700241044798,
+    "p_hat": 0.2,
+    "h_score": 0.7540437650652998,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Hybrid problem: geometric probability with circle and triangle.\"\"\"\n    rng = random.Random(seed)\n\n    # Step 1: Generate a circle with radius r\n    r = rng.randint(5, 15)\n\n    # Step 2: Generate a triangle inscribed in the circle\n    # Randomly choose the type of triangle: equilateral, isosceles, or scalene\n    triangle_type = rng.choice([\"equilateral\", \"isosceles\", \"scalene\"])\n\n    if triangle_type == \"equilateral\":\n        # Equilateral triangle: all sides equal\n        side_length = math.sqrt(3) * r\n    elif triangle_type == \"isosceles\":\n        # Isosceles triangle: two sides equal\n        side_length = 2 * r\n    else:  # scalene\n        # Scalene triangle: all sides different\n        side_length = rng.randint(int(1.5 * r), int(2.5 * r))\n\n    # Step 3: Calculate the area of the circle\n    circle_area = math.pi * r**2\n\n    # Step 4: Calculate the area of the triangle\n    if triangle_type == \"equilateral\":\n        triangle_area = (math.sqrt(3) / 4) * side_length**2\n    elif triangle_type == \"isosceles\":\n        triangle_area = (side_length**2 * math.sqrt(4 - (side_length / r)**2)) / 2\n    else:  # scalene\n        # Use Heron's formula for scalene triangle\n        s = (side_length + side_length + side_length) / 2\n        triangle_area = math.sqrt(s * (s - side_length) * (s - side_length) * (s - side_length))\n\n    # Step 5: Calculate the probability that a random point in the circle lies inside the triangle\n    probability = triangle_area / circle_area\n\n    # Step 6: Round the probability to 4 decimal places\n    probability_rounded = round(probability, 4)\n\n    # Step 7: Build the problem statement\n    problem = (\n        f\"A circle with radius {r} contains a {triangle_type} triangle. \"\n        f\"What is the probability that a randomly chosen point inside the circle lies inside the triangle? \"\n        f\"Round your answer to 4 decimal places.\"\n    )\n\n    return problem, str(probability_rounded)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 11 contains a isosceles triangle. What is the probability that a randomly chosen point inside the circle lies inside the triangle? Round your answer to 4 decimal places.",
+        "answer": "0.0"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 contains a scalene triangle. What is the probability that a randomly chosen point inside the circle lies inside the triangle? Round your answer to 4 decimal places.",
+        "answer": "0.3404"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 5 contains a equilateral triangle. What is the probability that a randomly chosen point inside the circle lies inside the triangle? Round your answer to 4 decimal places.",
+        "answer": "0.4135"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 8 contains a scalene triangle. What is the probability that a randomly chosen point inside the circle lies inside the triangle? Round your answer to 4 decimal places.",
+        "answer": "0.8615"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 8 contains a isosceles triangle. What is the probability that a randomly chosen point inside the circle lies inside the triangle? Round your answer to 4 decimal places.",
+        "answer": "0.0"
+      }
+    ]
+  },
+  {
+    "program_id": "807ef0e5f72b",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 4,
+    "rq_score": 0.11330768018968246,
+    "p_hat": 0.2,
+    "h_score": 0.7081730011855152,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-step probability problem: coin flips and conditional probability.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate number of flips (between 5 and 15)\n    n_flips = rng.randint(5, 15)\n    \n    # Step 2: Generate number of heads (between 1 and n_flips-1)\n    n_heads = rng.randint(1, n_flips - 1)\n    \n    # Step 3: Compute probability of getting exactly n_heads in n_flips\n    p_head = 0.5\n    p_exact = math.comb(n_flips, n_heads) * (p_head ** n_heads) * ((1 - p_head) ** (n_flips - n_heads))\n    \n    # Step 4: Compute conditional probability of getting at least one tail given exactly n_heads\n    p_at_least_one_tail_given_n_heads = 1 - (1 / math.comb(n_flips, n_heads))\n    \n    # Step 5: Compute final answer as product of p_exact and p_at_least_one_tail_given_n_heads\n    answer = p_exact * p_at_least_one_tail_given_n_heads\n    \n    # Step 6: Build problem statement\n    problem = (\n        f\"What is the probability of getting exactly {n_heads} heads \"\n        f\"in {n_flips} coin flips, given that there is at least one tail \"\n        f\"among the flips?\"\n    )\n    \n    return problem, f\"{answer:.4f}\"",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the probability of getting exactly 7 heads in 11 coin flips, given that there is at least one tail among the flips?",
+        "answer": "0.1606"
+      },
+      {
+        "seed": 1,
+        "problem": "What is the probability of getting exactly 5 heads in 7 coin flips, given that there is at least one tail among the flips?",
+        "answer": "0.1562"
+      },
+      {
+        "seed": 2,
+        "problem": "What is the probability of getting exactly 1 heads in 5 coin flips, given that there is at least one tail among the flips?",
+        "answer": "0.1250"
+      },
+      {
+        "seed": 3,
+        "problem": "What is the probability of getting exactly 5 heads in 8 coin flips, given that there is at least one tail among the flips?",
+        "answer": "0.2148"
+      },
+      {
+        "seed": 4,
+        "problem": "What is the probability of getting exactly 3 heads in 8 coin flips, given that there is at least one tail among the flips?",
+        "answer": "0.2148"
+      }
+    ]
+  },
+  {
+    "program_id": "3297a3abd405",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 1,
+    "rq_score": 0.1050201817654339,
+    "p_hat": 0.8,
+    "h_score": 0.6563761360339619,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate a random number of dice (2 to 10)\n    num_dice = rng.randint(2, 10)\n\n    # Generate random dice values (1 to 6)\n    dice_values = [rng.randint(1, 6) for _ in range(num_dice)]\n\n    # Calculate the sum of the dice\n    total_sum = sum(dice_values)\n\n    # Create the problem statement\n    problem = f\"Rolling {num_dice} dice, the values obtained are {', '.join(map(str, dice_values))}. What is the sum of these values?\"\n\n    # The answer is the sum of the dice values\n    answer = str(total_sum)\n\n    return problem, answer",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Rolling 8 dice, the values obtained are 4, 1, 3, 5, 4, 4, 3, 4. What is the sum of these values?",
+        "answer": "28"
+      },
+      {
+        "seed": 1,
+        "problem": "Rolling 4 dice, the values obtained are 5, 1, 3, 1. What is the sum of these values?",
+        "answer": "10"
+      },
+      {
+        "seed": 2,
+        "problem": "Rolling 2 dice, the values obtained are 1, 1. What is the sum of these values?",
+        "answer": "2"
+      },
+      {
+        "seed": 3,
+        "problem": "Rolling 5 dice, the values obtained are 5, 5, 2, 3, 5. What is the sum of these values?",
+        "answer": "20"
+      },
+      {
+        "seed": 4,
+        "problem": "Rolling 5 dice, the values obtained are 3, 1, 6, 4, 4. What is the sum of these values?",
+        "answer": "18"
+      }
+    ]
+  },
+  {
+    "program_id": "a4d93e5c5ec1",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 16,
+    "rq_score": 0.093193790626958,
+    "p_hat": 0.2,
+    "h_score": 0.5824611914184874,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type\n    problem_type = rng.choice([\"ineq_optimize\", \"prob_geometry\", \"counting_paths\"])\n\n    if problem_type == \"ineq_optimize\":\n        # Optimize with constraints using inequalities\n        # Example: Minimize x^2 + y^2 subject to x + y = 10\n        s = rng.randint(4, 16)\n        min_val = s**2 / 2\n        answer = str(round(min_val, 2))\n        if min_val == int(min_val):\n            answer = str(int(min_val))\n\n        problem = (\n            f\"Let x and y be real numbers with x + y = {s}. \"\n            f\"What is the minimum value of x² + y²?\"\n        )\n\n    elif problem_type == \"prob_geometry\":\n        # Geometric probability\n        # Example: Probability a randomly chosen point in a square lies within a circle\n        side = rng.randint(5, 15)\n        radius = rng.randint(2, side // 2)\n        area_square = side**2\n        area_circle = math.pi * radius**2\n        prob = round(area_circle / area_square, 4)\n        answer = str(prob)\n\n        problem = (\n            f\"What is the probability that a randomly chosen point in a square \"\n            f\"with side length {side} lies within a circle of radius {radius} \"\n            f\"inscribed in the square?\"\n        )\n\n    else:  # counting_paths\n        # Counting paths in a grid\n        # Example: Number of paths from (0,0) to (3,3) in a grid\n        x = rng.randint(2, 5)\n        y = rng.randint(2, 5)\n        paths = math.comb(x + y, x)\n        answer = str(paths)\n\n        problem = (\n            f\"How many different paths are there from (0,0) to ({x},{y}) \"\n            f\"in a grid, moving only right or up?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the probability that a randomly chosen point in a square with side length 11 lies within a circle of radius 2 inscribed in the square?",
+        "answer": "0.1039"
+      },
+      {
+        "seed": 1,
+        "problem": "Let x and y be real numbers with x + y = 13. What is the minimum value of x² + y²?",
+        "answer": "84.5"
+      },
+      {
+        "seed": 2,
+        "problem": "Let x and y be real numbers with x + y = 5. What is the minimum value of x² + y²?",
+        "answer": "12.5"
+      },
+      {
+        "seed": 3,
+        "problem": "Let x and y be real numbers with x + y = 13. What is the minimum value of x² + y²?",
+        "answer": "84.5"
+      },
+      {
+        "seed": 4,
+        "problem": "Let x and y be real numbers with x + y = 8. What is the minimum value of x² + y²?",
+        "answer": "32"
+      }
+    ]
+  },
+  {
+    "program_id": "4149f448571b",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 9,
+    "rq_score": 0.07825092534670149,
+    "p_hat": 0.3,
+    "h_score": 0.3726234540319119,
+    "source_code": "\"\"\"\nTrigonometry: law of cosines, area computation, combined problems.\nMATH benchmark category: Precalculus / Geometry (Hendrycks et al., NeurIPS 2021)\n\"\"\"\nimport random\nimport math\n\n\ndef generate(seed):\n    \"\"\"Triangle: law of cosines → find side, then compute area using Heron's formula.\"\"\"\n    rng = random.Random(seed)\n\n    a = rng.randint(5, 15)\n    b = rng.randint(5, 15)\n    angle_C_deg = rng.choice([60, 90, 120])\n    angle_C_rad = math.radians(angle_C_deg)\n\n    # Law of cosines: c^2 = a^2 + b^2 - 2ab*cos(C)\n    c_sq = a**2 + b**2 - 2*a*b*math.cos(angle_C_rad)\n    c = math.sqrt(c_sq)\n\n    # Heron's formula for area\n    s = (a + b + c) / 2\n    area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n    area_rounded = round(area, 2)\n\n    # Also compute inradius r = area / s\n    inradius = round(area / s, 2)\n\n    problem = (\n        f\"A triangle has sides a = {a}, b = {b}, and the included angle C = {angle_C_deg}°. \"\n        f\"First find side c using the law of cosines, then use Heron's formula \"\n        f\"to compute the area of the triangle. Finally, find the inradius \"\n        f\"r = Area / s, where s is the semi-perimeter. \"\n        f\"What is the inradius? Round to 2 decimal places.\"\n    )\n    return problem, str(inradius)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A triangle has sides a = 11, b = 11, and the included angle C = 60°. First find side c using the law of cosines, then use Heron's formula to compute the area of the triangle. Finally, find the inradius r = Area / s, where s is the semi-perimeter. What is the inradius? Round to 2 decimal places.",
+        "answer": "3.18"
+      },
+      {
+        "seed": 1,
+        "problem": "A triangle has sides a = 7, b = 14, and the included angle C = 60°. First find side c using the law of cosines, then use Heron's formula to compute the area of the triangle. Finally, find the inradius r = Area / s, where s is the semi-perimeter. What is the inradius? Round to 2 decimal places.",
+        "answer": "2.56"
+      },
+      {
+        "seed": 2,
+        "problem": "A triangle has sides a = 5, b = 6, and the included angle C = 60°. First find side c using the law of cosines, then use Heron's formula to compute the area of the triangle. Finally, find the inradius r = Area / s, where s is the semi-perimeter. What is the inradius? Round to 2 decimal places.",
+        "answer": "1.57"
+      },
+      {
+        "seed": 3,
+        "problem": "A triangle has sides a = 8, b = 14, and the included angle C = 120°. First find side c using the law of cosines, then use Heron's formula to compute the area of the triangle. Finally, find the inradius r = Area / s, where s is the semi-perimeter. What is the inradius? Round to 2 decimal places.",
+        "answer": "2.35"
+      },
+      {
+        "seed": 4,
+        "problem": "A triangle has sides a = 8, b = 9, and the included angle C = 60°. First find side c using the law of cosines, then use Heron's formula to compute the area of the triangle. Finally, find the inradius r = Area / s, where s is the semi-perimeter. What is the inradius? Round to 2 decimal places.",
+        "answer": "2.44"
+      }
+    ]
+  },
+  {
+    "program_id": "36d67fc6cf52",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 15,
+    "rq_score": 0.05182178459910332,
+    "p_hat": 0.9,
+    "h_score": 0.5757976066567037,
+    "source_code": "\"\"\"\nCalculus foundations: limits, derivatives, definite integrals.\nAnswers are always single numerical values.\n\"\"\"\nimport random\nimport math\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\"derivative_eval\", \"definite_integral\", \"limit\"])\n\n    if problem_type == \"derivative_eval\":\n        # f(x) = ax^n + bx^m, find f'(c)\n        a = rng.randint(1, 5)\n        n = rng.randint(2, 4)\n        b = rng.randint(-5, 5)\n        m = rng.randint(1, n - 1)\n        c = rng.randint(1, 4)\n        # f'(x) = a*n*x^(n-1) + b*m*x^(m-1)\n        deriv_at_c = a * n * c**(n-1) + b * m * c**(m-1)\n        answer = deriv_at_c\n\n        f_str = f\"{a}x^{n}\"\n        if b > 0:\n            f_str += f\" + {b}x^{m}\"\n        elif b < 0:\n            f_str += f\" - {-b}x^{m}\"\n\n        problem = (\n            f\"Let f(x) = {f_str}. Compute f'({c}), \"\n            f\"the derivative of f evaluated at x = {c}.\"\n        )\n\n    elif problem_type == \"definite_integral\":\n        # ∫_0^a (px^q) dx = p * a^(q+1) / (q+1)\n        p = rng.randint(1, 6)\n        q = rng.randint(1, 3)\n        a = rng.randint(1, 4)\n        # result = p * a^(q+1) / (q+1)\n        numerator = p * a**(q+1)\n        denominator = q + 1\n        g = math.gcd(abs(numerator), denominator)\n        num = numerator // g\n        den = denominator // g\n\n        if den == 1:\n            answer = str(num)\n        else:\n            answer = f\"{num}/{den}\"\n\n        problem = (\n            f\"Evaluate the definite integral ∫₀^{a} {p}x^{q} dx. \"\n            f\"Express your answer as a fraction or integer.\"\n        )\n\n    else:  # limit\n        # lim_{x→a} (x^2 - a^2) / (x - a) = 2a\n        a = rng.randint(2, 10)\n        answer = 2 * a\n\n        problem = (\n            f\"Compute the limit: lim(x→{a}) (x² − {a**2}) / (x − {a}).\"\n        )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Evaluate the definite integral ∫₀^3 4x^1 dx. Express your answer as a fraction or integer.",
+        "answer": "18"
+      },
+      {
+        "seed": 1,
+        "problem": "Let f(x) = 5x^2 - 1x^1. Compute f'(4), the derivative of f evaluated at x = 4.",
+        "answer": "39"
+      },
+      {
+        "seed": 2,
+        "problem": "Let f(x) = 1x^2. Compute f'(3), the derivative of f evaluated at x = 3.",
+        "answer": "6"
+      },
+      {
+        "seed": 3,
+        "problem": "Let f(x) = 5x^4 - 3x^2. Compute f'(4), the derivative of f evaluated at x = 4.",
+        "answer": "1256"
+      },
+      {
+        "seed": 4,
+        "problem": "Let f(x) = 3x^2 + 1x^1. Compute f'(2), the derivative of f evaluated at x = 2.",
+        "answer": "13"
+      }
+    ]
+  },
+  {
+    "program_id": "19138f53d003",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 14,
+    "rq_score": 0.0427139513889534,
+    "p_hat": 0.9,
+    "h_score": 0.47459945987726004,
+    "source_code": "\"\"\"\nLinear Algebra: determinants, matrix equations, eigenvalues.\n\"\"\"\nimport random\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\"det_3x3\", \"solve_system\", \"trace_det\"])\n\n    if problem_type == \"det_3x3\":\n        # 3x3 determinant with small integers\n        m = [[rng.randint(-3, 3) for _ in range(3)] for _ in range(3)]\n        det = (m[0][0] * (m[1][1]*m[2][2] - m[1][2]*m[2][1])\n             - m[0][1] * (m[1][0]*m[2][2] - m[1][2]*m[2][0])\n             + m[0][2] * (m[1][0]*m[2][1] - m[1][1]*m[2][0]))\n        answer = det\n        rows = [f\"  [{m[i][0]:>2}, {m[i][1]:>2}, {m[i][2]:>2}]\" for i in range(3)]\n        matrix_str = \"\\n\".join(rows)\n        problem = (\n            f\"Compute the determinant of the 3×3 matrix:\\n{matrix_str}\"\n        )\n\n    elif problem_type == \"solve_system\":\n        # 2x2 system with integer solution: ax + by = e, cx + dy = f\n        x_sol = rng.randint(-5, 5)\n        y_sol = rng.randint(-5, 5)\n        a = rng.randint(1, 5)\n        b = rng.randint(-5, 5)\n        c = rng.randint(-5, 5)\n        d = rng.randint(1, 5)\n        while a*d - b*c == 0:  # ensure non-singular\n            d = rng.randint(1, 5)\n        e = a * x_sol + b * y_sol\n        f_val = c * x_sol + d * y_sol\n        # ask for x + y\n        answer = x_sol + y_sol\n        problem = (\n            f\"Solve the system of equations:\\n\"\n            f\"  {a}x + {b}y = {e}\\n\"\n            f\"  {c}x + {d}y = {f_val}\\n\"\n            f\"Find x + y.\"\n        )\n\n    else:  # trace_det: 2x2 matrix, compute trace^2 - 2*det\n        # For 2x2 [[a,b],[c,d]]: trace = a+d, det = ad-bc\n        # trace^2 - 2*det = (a+d)^2 - 2(ad-bc) = a^2 + d^2 + 2bc\n        # This equals sum of squares of eigenvalues: λ1² + λ2²\n        a = rng.randint(-4, 4)\n        b = rng.randint(-4, 4)\n        c = rng.randint(-4, 4)\n        d = rng.randint(-4, 4)\n        trace = a + d\n        det = a * d - b * c\n        answer = trace**2 - 2 * det\n        problem = (\n            f\"Let M be the 2×2 matrix [[{a}, {b}], [{c}, {d}]]. \"\n            f\"If λ₁ and λ₂ are the eigenvalues of M, compute λ₁² + λ₂². \"\n            f\"(Hint: use the relation with trace and determinant.)\"\n        )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Solve the system of equations:\n  3x + 3y = -12\n  2x + 4y = -18\nFind x + y.",
+        "answer": "-4"
+      },
+      {
+        "seed": 1,
+        "problem": "Compute the determinant of the 3×3 matrix:\n  [ 1,  3,  3]\n  [ 3, -3, -1]\n  [-3,  0,  3]",
+        "answer": "-54"
+      },
+      {
+        "seed": 2,
+        "problem": "Compute the determinant of the 3×3 matrix:\n  [-3, -3, -1]\n  [ 3, -2,  2]\n  [ 3,  2,  3]",
+        "answer": "27"
+      },
+      {
+        "seed": 3,
+        "problem": "Compute the determinant of the 3×3 matrix:\n  [ 1,  1, -2]\n  [-1,  1,  0]\n  [ 2,  1, -3]",
+        "answer": "0"
+      },
+      {
+        "seed": 4,
+        "problem": "Compute the determinant of the 3×3 matrix:\n  [-1, -3,  2]\n  [ 0,  0, -2]\n  [-3, -3, -3]",
+        "answer": "-12"
+      }
+    ]
+  },
+  {
+    "program_id": "0eb6cd967503",
+    "generation": 1,
+    "niche_h": 2,
+    "niche_div": 6,
+    "rq_score": 0.0,
+    "p_hat": 0.0,
+    "h_score": 1.7056774562028552,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    \"\"\"Multi-concept geometry problem: circle, triangle, and algebra.\"\"\"\n    rng = random.Random(seed)\n    \n    # Step 1: Generate a circle with radius r...\n    r = rng.randint(5, 15)\n    # Step 2: Generate a triangle with base b and height h...\n    b = rng.randint(10, 20)\n    h = rng.randint(10, 20)\n    # Step 3: Calculate the area of the triangle...\n    area_triangle = (b * h) / 2\n    # Step 4: Calculate the circumference of the circle...\n    circumference = 2 * math.pi * r\n    # Step 5: Calculate the area of the circle...\n    area_circle = math.pi * r**2\n    # Step 6: Calculate the ratio of the area of the triangle to the area of the circle...\n    ratio = area_triangle / area_circle\n    # Step 7: Calculate the perimeter of the triangle...\n    perimeter_triangle = b + h + math.sqrt(b**2 + h**2)\n    # Step 8: Calculate the ratio of the perimeter of the triangle to the circumference of the circle...\n    ratio_perimeter = perimeter_triangle / circumference\n    # Step 9: Calculate the final answer...\n    answer = ratio + ratio_perimeter\n    # Step 10: Build the problem text...\n    problem = (\n        f\"A circle with radius {r} and a triangle with base {b} and height {h} are given. \"\n        f\"What is the sum of the ratio of the area of the triangle to the area of the circle \"\n        f\"and the ratio of the perimeter of the triangle to the circumference of the circle?\"\n    )\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A circle with radius 11 and a triangle with base 16 and height 10 are given. What is the sum of the ratio of the area of the triangle to the area of the circle and the ratio of the perimeter of the triangle to the circumference of the circle?",
+        "answer": "0.8596308155656195"
+      },
+      {
+        "seed": 1,
+        "problem": "A circle with radius 7 and a triangle with base 19 and height 11 are given. What is the sum of the ratio of the area of the triangle to the area of the circle and the ratio of the perimeter of the triangle to the circumference of the circle?",
+        "answer": "1.8601038726501526"
+      },
+      {
+        "seed": 2,
+        "problem": "A circle with radius 5 and a triangle with base 11 and height 11 are given. What is the sum of the ratio of the area of the triangle to the area of the circle and the ratio of the perimeter of the triangle to the circumference of the circle?",
+        "answer": "1.965765648055521"
+      },
+      {
+        "seed": 3,
+        "problem": "A circle with radius 8 and a triangle with base 19 and height 18 are given. What is the sum of the ratio of the area of the triangle to the area of the circle and the ratio of the perimeter of the triangle to the circumference of the circle?",
+        "answer": "2.1072612750966195"
+      },
+      {
+        "seed": 4,
+        "problem": "A circle with radius 8 and a triangle with base 14 and height 11 are given. What is the sum of the ratio of the area of the triangle to the area of the circle and the ratio of the perimeter of the triangle to the circumference of the circle?",
+        "answer": "1.2345349289606589"
+      }
+    ]
+  },
+  {
+    "program_id": "f08bf98c5606",
+    "generation": 1,
+    "niche_h": 4,
+    "niche_div": 11,
+    "rq_score": 0.0,
+    "p_hat": 0.0,
+    "h_score": 3.463590206882642,
+    "source_code": "import random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n    \n    # Generate complex numbers with fractions\n    a = rng.randint(100, 500) / 10\n    b = rng.randint(100, 500) / 10\n    c = rng.randint(100, 500) / 10\n    \n    # Generate nested operations\n    x = (a + b) * c\n    y = math.sqrt(x) + math.log(c, 2)\n    z = math.sin(y) * math.cos(b)\n    \n    # Generate final answer with multiple steps\n    final = round(z * 100) / 100\n    \n    # Build problem with multiple concepts\n    problem = (\n        f\"A complex system has three components with values a={a}, b={b}, c={c}. \"\n        f\"First, compute the sum of a and b, then multiply by c. \"\n        f\"Take the square root of this result and add the base-2 logarithm of c. \"\n        f\"Compute the sine of this value multiplied by the cosine of b. \"\n        f\"Round the final result to two decimal places. \"\n        f\"What is the final value?\"\n    )\n    \n    return problem, str(final)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A complex system has three components with values a=29.7, b=48.8, c=31.5. First, compute the sum of a and b, then multiply by c. Take the square root of this result and add the base-2 logarithm of c. Compute the sine of this value multiplied by the cosine of b. Round the final result to two decimal places. What is the final value?",
+        "answer": "-0.1"
+      },
+      {
+        "seed": 1,
+        "problem": "A complex system has three components with values a=16.8, b=39.1, c=49.1. First, compute the sum of a and b, then multiply by c. Take the square root of this result and add the base-2 logarithm of c. Compute the sine of this value multiplied by the cosine of b. Round the final result to two decimal places. What is the final value?",
+        "answer": "0.17"
+      },
+      {
+        "seed": 2,
+        "problem": "A complex system has three components with values a=12.8, b=14.6, c=14.3. First, compute the sum of a and b, then multiply by c. Take the square root of this result and add the base-2 logarithm of c. Compute the sine of this value multiplied by the cosine of b. Round the final result to two decimal places. What is the final value?",
+        "answer": "0.45"
+      },
+      {
+        "seed": 3,
+        "problem": "A complex system has three components with values a=22.1, b=40.3, c=37.8. First, compute the sum of a and b, then multiply by c. Take the square root of this result and add the base-2 logarithm of c. Compute the sine of this value multiplied by the cosine of b. Round the final result to two decimal places. What is the final value?",
+        "answer": "0.33"
+      },
+      {
+        "seed": 4,
+        "problem": "A complex system has three components with values a=22.0, b=25.5, c=15.2. First, compute the sum of a and b, then multiply by c. Take the square root of this result and add the base-2 logarithm of c. Compute the sine of this value multiplied by the cosine of b. Round the final result to two decimal places. What is the final value?",
+        "answer": "-0.54"
+      }
+    ]
+  }
+]

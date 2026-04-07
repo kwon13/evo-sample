@@ -40,7 +40,7 @@ actor_rollout_ref:
     name: vllm
     tensor_model_parallel_size: 1
     gpu_memory_utilization: 0.5
-    n: 16                        # G rollouts per problem
+    n: 4                         # REINFORCE++: 4로 축소 가능 (GRPO는 16 필요)
     temperature: 0.7
     top_p: 0.95
     max_tokens: 2048
@@ -63,10 +63,10 @@ data:
   dataloader_num_workers: 0   # MapElitesDynamicDataset thread-safety를 위해 0
   trust_remote_code: true
 
-# ── Algorithm (GRPO) ──────────────────────────────────────────────────
+# ── Algorithm (REINFORCE++) ───────────────────────────────────────────
 algorithm:
-  adv_estimator: grpo
-  norm_adv_by_std_in_grpo: true
+  adv_estimator: reinforce_plus_plus
+  gamma: 1.0
   use_kl_in_reward: false
   kl_penalty: kl
   kl_ctrl:
@@ -98,20 +98,29 @@ rq:
   n_div_bins: 6
   h_range: [0.0, 5.0]
 
-  # Evolution 빈도: GRPO step 몇 번마다 evolution 1회 실행
+  # Evolution 빈도 (둘 중 하나 설정, pct 우선)
+  # evolution_pct: total_steps의 비율 (e.g. 0.1 = 10%마다 진화)
+  # evolution_freq: 고정 step 수 (pct 미설정 시 fallback)
+  evolution_pct: 0.1
   evolution_freq: 50
 
-  # Evolution 1회당 mutation 후보 수
+  # Evolution 라운드당 mutation batch size
   candidates_per_evo: 8
 
+  # Batch-filling: H2 이상 champion 최소 수 / 최대 시도 수
+  target_hard_champions: 6
+  max_evo_attempts: 64
+
   # p_hat 추정용 rollout 수 (G)
-  num_rollouts: 16
+  num_rollouts: 8
 
   # 챔피언 → training data 변환 시 seed 수
   instances_per_program: 3
 
-  # In-depth mutation 비율 (나머지는 in-breadth)
-  in_depth_ratio: 0.7
+  # 연산자 비율 (Mouret & Clune, 2015)
+  # crossover: crossover_ratio, in-depth: in_depth_ratio, in-breadth: 나머지
+  crossover_ratio: 0.2
+  in_depth_ratio: 0.5
 
   # H pre-filter 임계값
   h_threshold: 0.1
