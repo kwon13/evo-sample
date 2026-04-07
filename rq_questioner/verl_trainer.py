@@ -29,7 +29,7 @@ from verl.trainer.ppo.ray_trainer import RayPPOTrainer
 
 from .map_elites import MAPElitesGrid
 from .program import ProblemProgram
-from .rq_score import compute_rq_full, h_prefilter
+from .rq_score import compute_rq_full, h_prefilter, p_hat_filter
 from .verl_dataset import MapElitesDynamicDataset
 
 logger = logging.getLogger(__name__)
@@ -493,6 +493,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             "grid_mean_rq": stats["mean_rq"],
             "grid_max_rq": stats["max_rq"],
             "grid_champions": stats["num_champions"],
+            "hard_champions": stats["hard_champions"],
         }
 
     def _evolution_round(self, batch_size: int) -> tuple[int, int]:
@@ -680,6 +681,10 @@ class RQEvolveTrainer(RayPPOTrainer):
 
             if h_bar is None or not h_prefilter(h_bar, self.h_threshold):
                 logger.debug(f"[Evolution] H={h_bar} below threshold, skip")
+                continue
+
+            if not p_hat_filter(p_hat):
+                logger.debug(f"[Evolution] p_hat={p_hat:.2f} extreme, skip")
                 continue
 
             rq_result = compute_rq_full(flags, h_bar)

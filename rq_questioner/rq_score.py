@@ -85,6 +85,11 @@ def h_prefilter(h_bar: float, threshold: float = 0.1) -> bool:
     return h_bar >= threshold
 
 
+def p_hat_filter(p_hat: float) -> bool:
+    """p=0 또는 p=1이면 R_Q=0이므로 필터링."""
+    return 0.0 < p_hat < 1.0
+
+
 def compute_rq_full(
     correct_flags: list[bool],
     h_bar: float,

@@ -45,7 +45,7 @@ sys.path.insert(0, str(ROOT))
 
 from rq_questioner.program import ProblemProgram, ProblemInstance
 from rq_questioner.map_elites import MAPElitesGrid
-from rq_questioner.rq_score import compute_rq_full, h_prefilter
+from rq_questioner.rq_score import compute_rq_full, h_prefilter, p_hat_filter
 from dotenv import load_dotenv
 load_dotenv()
 # ---------------------------------------------------------------------------
@@ -923,6 +923,12 @@ def evolution_step(
             skipped_h += 1
             if verbose:
                 print(f"  H={h_bar:.3f} < threshold, skip")
+            continue
+
+        if not p_hat_filter(p_hat):
+            skipped_h += 1
+            if verbose:
+                print(f"  p={p_hat:.2f} extreme (0 or 1), skip")
             continue
 
         rq_result = compute_rq_full(flags, h_bar)
