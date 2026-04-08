@@ -7,5 +7,5 @@ from .verl_dataset import MapElitesDynamicDataset
 
 try:
     from .verl_trainer import RQEvolveTrainer
-except ImportError:
-    pass  # verl not installed; RQEvolveTrainer unavailable
+except Exception:
+    pass  # verl not installed or incompatible; RQEvolveTrainer unavailable

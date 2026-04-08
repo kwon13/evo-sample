@@ -27,9 +27,8 @@ actor_rollout_ref:
     optim:
       lr: 1.0e-6
       weight_decay: 0.01
-      warmup_ratio: 0.05
     ppo_mini_batch_size: 64
-    ppo_micro_batch_size: 8
+    ppo_micro_batch_size_per_gpu: 4
     clip_ratio: 0.2
     entropy_coeff: 0.001
     use_kl_loss: false
@@ -43,9 +42,7 @@ actor_rollout_ref:
     n: 4                         # REINFORCE++: 4로 축소 가능 (GRPO는 16 필요)
     temperature: 0.7
     top_p: 0.95
-    max_tokens: 2048
-    # entropy 계산 활성화 (compute_log_prob에서 calculate_entropy=True 사용)
-    entropy_from_logits_with_chunking: false
+    response_length: 8192
 
   ref:
     log_prob_micro_batch_size: 8
@@ -55,7 +52,7 @@ actor_rollout_ref:
 # ── Data (dynamic dataset은 코드에서 주입, val만 파일 필요) ─────────────
 data:
   train_files: null            # RQEvolveTrainer가 MapElitesDynamicDataset 직접 사용
-  val_files: null              # validation 없을 경우 null
+  val_files: ./data/math500_val.parquet
   train_batch_size: 256
   max_prompt_length: 1024
   max_response_length: 2048

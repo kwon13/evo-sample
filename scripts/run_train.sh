@@ -3,21 +3,27 @@
 # Model: Qwen/Qwen3-8B-Base, 4 GPUs, REINFORCE++
 
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-export WANDB_MODE=online  # wandb 끄려면 disabled, 쓰려면 online
+export WANDB_MODE=online
+export RAY_TMPDIR=/tmp/ray_kwon113
+export RAY_OBJECT_STORE_MEMORY=10000000000
 
 python run_verl.py \
+    +ray_kwargs.ray_init.address=local \
+    +ray_kwargs.ray_init.num_cpus=32 \
+    +ray_kwargs.ray_init.num_gpus=4 \
     actor_rollout_ref.model.path=Qwen/Qwen3-8B-Base \
     actor_rollout_ref.actor.strategy=fsdp \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.actor.ppo_mini_batch_size=64 \
-    actor_rollout_ref.actor.ppo_micro_batch_size=4 \
+    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=4 \
     actor_rollout_ref.actor.fsdp_config.dtype=bfloat16 \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.tensor_model_parallel_size=2 \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.5 \
     actor_rollout_ref.rollout.n=10 \
     actor_rollout_ref.rollout.temperature=0.7 \
-    actor_rollout_ref.rollout.max_tokens=8192 \
+    actor_rollout_ref.rollout.response_length=8192 \
+    actor_rollout_ref.rollout.log_prob_micro_batch_size=4 \
     algorithm.adv_estimator=reinforce_plus_plus \
     algorithm.gamma=1.0 \
     data.train_batch_size=256 \
@@ -32,6 +38,7 @@ python run_verl.py \
     trainer.project_name=rq_evolve \
     trainer.experiment_name=qwen3_8b_base_rpp \
     trainer.default_local_dir=./rq_output/verl_ckpt \
+    trainer.resume_mode=disable \
     rq.seed_programs_dir=./seed_programs \
     rq.n_h_bins=6 \
     rq.evolution_pct=0.1 \
@@ -39,7 +46,7 @@ python run_verl.py \
     rq.max_evo_attempts=64 \
     rq.candidates_per_evo=8 \
     rq.num_rollouts=10 \
-    rq.instances_per_program=3 \
+    rq.instances_per_program=16 \
     rq.crossover_ratio=0.2 \
     rq.in_depth_ratio=0.5 \
     rq.h_threshold=0.1 \

@@ -205,16 +205,19 @@ class RQTaskRunner:
         map_elites = init_map_elites(seeds, n_h_bins, n_div_bins, h_range, ucb_c)
         dynamic_dataset = build_seed_dataset(seeds, instances_per_program)
 
-        # ---- Validation dataset (use val_files from config) ----
-        from verl.trainer.main_ppo import create_rl_dataset
-        val_dataset = create_rl_dataset(
-            config.data.val_files,
-            config.data,
-            tokenizer,
-            processor,
-            is_train=False,
-            max_samples=config.data.get("val_max_samples", -1),
-        )
+        # ---- Validation dataset (use val_files from config, skip if null) ----
+        val_dataset = None
+        val_files = config.data.get("val_files", None)
+        if val_files:
+            from verl.trainer.main_ppo import create_rl_dataset
+            val_dataset = create_rl_dataset(
+                val_files,
+                config.data,
+                tokenizer,
+                processor,
+                is_train=False,
+                max_samples=config.data.get("val_max_samples", -1),
+            )
         train_sampler = create_rl_sampler(config.data, dynamic_dataset)
 
         # ---- Trainer ----
@@ -255,6 +258,8 @@ class RQTaskRunner:
     config_path="configs",
     config_name="rq_ppo_trainer",
     version_base=None,
+    # veRL 내부 config을 search path에 추가하기 위해
+    # searchpath에 verl/trainer/config 자동 포함됨 (pkg://verl.trainer.config)
 )
 def main(config):
     config = migrate_legacy_reward_impl(config)

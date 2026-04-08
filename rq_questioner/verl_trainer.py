@@ -28,7 +28,7 @@ from verl import DataProto
 from verl.trainer.ppo.ray_trainer import RayPPOTrainer
 
 from .map_elites import MAPElitesGrid
-from .program import ProblemProgram
+from .program import ProblemProgram, ProblemInstance
 from .rq_score import compute_rq_full, h_prefilter, p_hat_filter
 from .verl_dataset import MapElitesDynamicDataset
 
