@@ -1,0 +1,90 @@
+data:
+  train_files: null
+  val_files: ./data/math500_val.parquet
+  max_prompt_length: 1024
+  max_response_length: 2048
+  rollout_batch_size: 32
+  val_batch_size: 500
+  shuffle: true
+
+algorithm:
+  adv_estimator: reinforce_plus_plus
+  kl_penalty: low_var_kl
+  kl_coef: 1.0e-2
+  use_kl_loss: false
+
+worker:
+  hybrid_engine: true
+  actor:
+    strategy: fsdp
+    global_batch_size: 32
+    micro_batch_size_per_device_for_update: 2
+    micro_batch_size_per_device_for_experience: 2
+    use_torch_compile: false
+    fsdp:
+      enable_full_shard: true
+      enable_cpu_offload: false
+      torch_dtype: bfloat16
+    model:
+      model_path: Qwen/Qwen3-4B-Base
+      trust_remote_code: true
+      enable_gradient_checkpointing: true
+    optim:
+      lr: 1e-6
+      weight_decay: 1e-2
+      strategy: adamw
+      lr_warmup_ratio: 0.0
+
+  ref:
+    fsdp:
+      enable_full_shard: true
+      enable_cpu_offload: false
+      torch_dtype: bfloat16
+
+  rollout:
+    name: vllm
+    temperature: 0.7
+    max_model_len: 4096
+    dtype: bfloat16
+    tensor_parallel_size: 1
+    enable_chunked_prefill: false
+    enforce_eager: false
+    n: 1
+    gpu_memory_utilization: 0.5
+    ignore_eos: false
+    disable_log_stats: true
+
+  reward:
+    reward_type: batch
+    reward_function: ./reward_fn.py:compute_score
+    num_cpus: 1
+
+trainer:
+  total_epochs: 1
+  max_steps: 256
+  project_name: rq_evolve
+  experiment_name: qwen3_4b_base_rpp
+  default_local_dir: ./rq_output/verl_ckpt
+  logger:
+    - console
+    - wandb
+  n_gpus_per_node: 4
+  nnodes: 1
+  save_freq: 50
+  val_freq: 50
+  val_before_train: true
+  val_only: false
+
+rq:
+  seed_programs_dir: ./seed_programs
+  n_h_bins: 6
+  evolution_pct: 0.1
+  target_hard_champions: 6
+  max_evo_attempts: 64
+  candidates_per_evo: 8
+  num_rollouts: 10
+  instances_per_program: 16
+  crossover_ratio: 0.2
+  in_depth_ratio: 0.5
+  h_threshold: 0.1
+  ucb_c: 1.0

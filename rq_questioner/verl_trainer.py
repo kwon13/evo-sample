@@ -18,14 +18,21 @@ FSDP actor forward:    H = -Σ_v p_v log p_v   (이 방식, 정확)
 """
 
 import re
+import sys
 import uuid
 import random
 import logging
 import numpy as np
 import torch
 
-from verl import DataProto
-from verl.trainer.ppo.ray_trainer import RayPPOTrainer
+# 프로젝트 내장 verl (0.3.1) 우선 로드
+import pathlib as _pathlib
+_PROJECT_ROOT = str(_pathlib.Path(__file__).parent.parent.resolve())
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from verl.protocol import DataProto
+from verl.trainer.ray_trainer import RayPPOTrainer
 
 from .map_elites import MAPElitesGrid
 from .program import ProblemProgram, ProblemInstance
@@ -394,8 +401,9 @@ class RQEvolveTrainer(RayPPOTrainer):
             return self._computed_evolution_freq
 
         if self.evolution_pct is not None:
-            total = self.config.trainer.total_training_steps
-            if total is None:
+            total = getattr(self.config.trainer, 'max_steps', None) or \
+                    getattr(self.config.trainer, 'total_training_steps', None)
+            if total is None or total <= 0:
                 total = len(self.train_dataloader) * self.config.trainer.total_epochs
             self._computed_evolution_freq = max(1, int(total * self.evolution_pct))
             logger.info(
