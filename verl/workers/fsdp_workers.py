@@ -197,7 +197,7 @@ class FSDPWorker(Worker):
 
         if self._is_critic:
             auto_class = AutoModelForTokenClassification
-        elif type(self.model_config) in AutoModelForVision2Seq._model_mapping.keys():
+        elif AutoModelForVision2Seq is not None and type(self.model_config) in AutoModelForVision2Seq._model_mapping.keys():
             auto_class = AutoModelForVision2Seq
         else:
             auto_class = AutoModelForCausalLM

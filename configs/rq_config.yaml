@@ -1,5 +1,5 @@
 data:
-  train_files: null
+  train_files: ""
   val_files: ./data/math500_val.parquet
   max_prompt_length: 1024
   max_response_length: 2048

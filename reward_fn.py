@@ -84,30 +84,33 @@ def _match(pred: str, gt: str) -> bool:
     return False
 
 
-def compute_score(
-    data_source: str,
-    solution_str: str,
-    ground_truth: str,
-    extra_info: dict = None,
-) -> float:
-    """
-    Compute reward score for a single response.
-
-    Args:
-        data_source: Dataset identifier (e.g., "rq_evolved")
-        solution_str: Model's full response text
-        ground_truth: Expected answer string
-        extra_info: Optional dict with program_id, niche, rq_score
-
-    Returns:
-        float: 1.0 (correct), 0.1 (format ok, wrong answer), 0.0 (no format)
-    """
+def _score_single(solution_str: str, ground_truth: str) -> float:
+    """단일 응답 채점: 1.0 (정답), 0.1 (boxed 있지만 오답), 0.0 (boxed 없음)"""
     predicted = _extract_boxed(solution_str)
-
     if predicted is None:
         return 0.0
-
     if _match(predicted, ground_truth):
         return 1.0
-
     return 0.1
+
+
+def compute_score(response_str_list: list[str], ground_truth_list: list[str]) -> list[dict]:
+    """
+    verl 0.3.1 BatchRewardFunction 형식.
+
+    Args:
+        response_str_list: 모델 응답 텍스트 리스트
+        ground_truth_list: 정답 리스트
+
+    Returns:
+        list of {"overall": float, "accuracy": float, "format": float}
+    """
+    results = []
+    for resp, gt in zip(response_str_list, ground_truth_list):
+        score = _score_single(resp, gt)
+        results.append({
+            "overall": score,
+            "accuracy": 1.0 if score == 1.0 else 0.0,
+            "format": 1.0 if score > 0.0 else 0.0,
+        })
+    return results

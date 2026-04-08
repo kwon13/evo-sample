@@ -124,12 +124,30 @@ class AblationConfig:
     enable_solver: bool = True
 
 @dataclass
+class RQConfig:
+    seed_programs_dir: str = "./seed_programs"
+    n_h_bins: int = 6
+    h_range: list = field(default_factory=lambda: [0.0, 5.0])
+    evolution_pct: float = 0.1
+    evolution_freq: int = 50
+    target_hard_champions: int = 6
+    max_evo_attempts: int = 64
+    candidates_per_evo: int = 8
+    num_rollouts: int = 10
+    instances_per_program: int = 16
+    crossover_ratio: float = 0.2
+    in_depth_ratio: float = 0.5
+    h_threshold: float = 0.1
+    ucb_c: float = 1.0
+
+@dataclass
 class PPOConfig:
     data: DataConfig = field(default_factory=DataConfig)
     worker: WorkerConfig = field(default_factory=WorkerConfig)
     algorithm: AlgorithmConfig = field(default_factory=AlgorithmConfig)
     trainer: TrainerConfig = field(default_factory=TrainerConfig)
     ablation: AblationConfig = field(default_factory=AblationConfig)
+    rq: RQConfig = field(default_factory=RQConfig)
 
     def post_init(self):
         self.worker.rollout.prompt_length = self.data.max_prompt_length

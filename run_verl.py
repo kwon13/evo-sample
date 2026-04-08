@@ -185,7 +185,7 @@ class RQTaskRunner:
 
         # DataLoaders
         from torchdata.stateful_dataloader import StatefulDataLoader
-        from verl.utils.dataset.rl_dataset import collate_fn
+        from verl.utils.dataset import collate_fn
 
         train_dataloader = StatefulDataLoader(
             dataset=dynamic_dataset,
@@ -196,14 +196,29 @@ class RQTaskRunner:
         )
 
         # Val dataloader
-        val_dataloader = None
         if config.data.val_files:
-            _, val_dataloader = create_dataloader(config.data, tokenizer, processor)
+            from verl.utils.dataset import RLHFDataset
+            val_dataset = RLHFDataset(
+                data_path=config.data.val_files,
+                tokenizer=tokenizer,
+                processor=processor,
+                prompt_key=config.data.prompt_key,
+                answer_key=config.data.answer_key,
+                max_prompt_length=config.data.max_prompt_length,
+            )
+            val_bs = config.data.val_batch_size if config.data.val_batch_size > 0 else len(val_dataset)
+            val_dataloader = StatefulDataLoader(
+                dataset=val_dataset,
+                batch_size=val_bs,
+                num_workers=0,
+                shuffle=False,
+                drop_last=False,
+                collate_fn=collate_fn,
+            )
         else:
-            # Dummy val dataloader
             val_dataloader = StatefulDataLoader(
                 dataset=dynamic_dataset,
-                batch_size=min(len(dynamic_dataset), config.data.val_batch_size or 32),
+                batch_size=min(len(dynamic_dataset), 32),
                 num_workers=0,
                 drop_last=False,
                 collate_fn=collate_fn,
