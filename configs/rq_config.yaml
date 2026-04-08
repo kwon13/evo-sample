@@ -60,7 +60,7 @@ worker:
     num_cpus: 1
 
 trainer:
-  total_epochs: 1
+  total_epochs: 100
   max_steps: 256
   project_name: rq_evolve
   experiment_name: qwen3_4b_base_rpp

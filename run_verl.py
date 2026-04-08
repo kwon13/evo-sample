@@ -181,6 +181,7 @@ class RQTaskRunner:
 
         map_elites = init_map_elites(seeds, n_h_bins, h_range, ucb_c)
         dynamic_dataset = build_seed_dataset(seeds, instances_per_program)
+        dynamic_dataset.set_tokenizer(tokenizer, max_prompt_length=config.data.max_prompt_length)
         print(f"[Runner] MAP-Elites grid: {n_h_bins} x {len(seeds)}, dataset: {len(dynamic_dataset)} problems")
 
         # DataLoaders

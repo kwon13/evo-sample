@@ -70,6 +70,6 @@ htmlcov/
 *.log
 data/
 logs/
-
-
+rq_output/
+wandb/
 # MODEL=Qwen/Qwen3-8B-Base WANDB_MODE=online WANDB_API_KEY=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 WANDB_PROJECT=rq_evolve TP=4 bash scripts/run_full.sh
