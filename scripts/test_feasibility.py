@@ -860,7 +860,6 @@ def evolution_step(
                 source_code=code,
                 parent_id=f"{pa.program_id}×{pb.program_id}",
                 generation=max(pa.generation, pb.generation) + 1,
-                root_seed_id=pa.root_seed_id,
                 metadata={"op": "crossover"},
             )
         else:
@@ -868,7 +867,6 @@ def evolution_step(
                 source_code=code,
                 parent_id=task["parent"].program_id,
                 generation=task["parent"].generation + 1,
-                root_seed_id=task["parent"].root_seed_id,
                 metadata={"op": task["op"]},
             )
 
@@ -970,7 +968,6 @@ def evolution_step(
             "inserted": was_inserted,
             "niche": (int(child.niche_h), int(child.niche_div)) if was_inserted else None,
             "generation": child.generation,
-            "root_seed_id": child.root_seed_id,
             "rollouts": rollout_logs,
         })
 
@@ -1400,10 +1397,8 @@ def main():
     parser.add_argument("--seed_dir", default="./seed_programs")
     parser.add_argument("--n_evo", type=int, default=10, help="evolution steps (outer loop)")
     parser.add_argument("--candidates", type=int, default=8, help="batch size per round")
-    parser.add_argument("--target_hard", type=int, default=6,
-                        help="batch-filling: H2 이상 champion 최소 수 (default: 6)")
-    parser.add_argument("--max_attempts", type=int, default=64,
-                        help="batch-filling: step당 최대 시도 수 (default: 64)")
+    parser.add_argument("--max_rounds", type=int, default=8,
+                        help="fixed budget: rounds per evolution step (default: 8)")
     parser.add_argument("--n_rollouts", type=int, default=10)
     parser.add_argument("--n_h_bins", type=int, default=6)
     parser.add_argument("--n_div_bins", type=int, default=6)
@@ -1416,6 +1411,8 @@ def main():
                         help="in-depth mutation 비율 (default: 0.5, 나머지=in-breadth)")
     parser.add_argument("--ucb_c", type=float, default=1.0,
                         help="UCB1 exploration coefficient (0 = greedy, higher = more exploration)")
+    parser.add_argument("--epsilon", type=float, default=0.3,
+                        help="ε-greedy: uniform random selection probability (default: 0.3)")
     parser.add_argument("--seed", type=int, default=42)
     # vLLM 실제 시나리오 (mutation + rollout + entropy 모두 실제 모델)
     parser.add_argument("--vllm_model", type=str, default=None,
@@ -1495,26 +1492,29 @@ def main():
 
     # ---- 2. MAP-Elites init ----
     print("\n[Phase 0] Initializing MAP-Elites grid...")
-    # D축 = 시드 프로그램 ID 기반 (수학 유형 보장)
-    seed_ids = [prog.program_id for prog in seeds]
     grid = MAPElitesGrid(
         n_h_bins=args.n_h_bins,
-        n_div_bins=len(seeds),
+        n_div_bins=args.n_div_bins,
         h_range=tuple(args.h_range),
         ucb_c=args.ucb_c,
-        seed_ids=seed_ids,
+        epsilon=args.epsilon,
     )
 
-    # 시드 등록 + root_seed_id 설정 + D축 라벨 생성
-    seed_labels: dict[int, str] = {}
+    # Embedding 기반 D축: seed 문제 텍스트로 PCA fitting
+    seed_problems = []
     for prog in seeds:
-        prog.root_seed_id = prog.program_id
-        d_bin = grid.register_seed(prog.program_id)
-        # 파일명에서 라벨 추출: "01_equation_modeling.py" → "equation_mod"
-        fname = prog.metadata.get("source_file", f"seed_{d_bin}")
-        label = fname.replace(".py", "").split("_", 1)[-1] if "_" in fname else fname
-        seed_labels[d_bin] = label[:14]
-    print(f"  D axis: {len(seeds)} seed-based bins (1 bin per math type)")
+        for s in range(5):
+            inst = prog.execute(seed=s)
+            if inst:
+                seed_problems.append(inst.problem)
+    if seed_problems:
+        grid.fit_diversity_axis(seed_problems)
+        print(f"  D-axis fitted with {len(seed_problems)} seed problems")
+
+    seed_labels: dict[int, str] = {}
+    for i in range(args.n_div_bins):
+        seed_labels[i] = f"D{i}"
+    print(f"  Grid: {args.n_h_bins} H-bins x {args.n_div_bins} D-bins (embedding-based)")
 
     # Insert seeds — vLLM 모드면 실제 entropy/rollout, 아니면 mock
     print(f"  Scoring {len(seeds)} seeds ({'vLLM' if vllm_runner else 'mock'})...")
@@ -1563,25 +1563,11 @@ def main():
         t0 = time.time()
         print(f"── Step {step}/{args.n_evo} " + "─" * 40)
 
-        # Batch-filling: 최소 1라운드 실행 + target 미달 시 추가 라운드
+        # Fixed-budget evolution: max_rounds per step (no early termination)
         step_attempted = 0
         step_inserted = 0
-        round_num = 0
 
-        while True:
-            # 최소 1라운드는 반드시 실행
-            if round_num > 0:
-                hard = grid.count_hard_champions(min_h_bin=2)
-                if hard >= args.target_hard:
-                    print(f"  [batch-fill] H2+ target reached: {hard} >= {args.target_hard}")
-                    break
-                if step_attempted >= args.max_attempts:
-                    print(f"  [batch-fill] max attempts: {step_attempted}")
-                    break
-
-            batch_size = min(args.candidates, args.max_attempts - step_attempted)
-            round_num += 1
-
+        for round_num in range(1, args.max_rounds + 1):
             round_result = evolution_step(
                 grid=grid,
                 candidates=batch_size,
@@ -1617,7 +1603,7 @@ def main():
             "champions": stats["num_champions"],
             "attempted": step_attempted,
             "inserted": step_inserted,
-            "rounds": round_num,
+            "rounds": args.max_rounds,
             "skipped_execute": 0,
             "skipped_h": 0,
         })

@@ -428,13 +428,12 @@ class RQEvolveTrainer(RayPPOTrainer):
         evolution_freq: int = 50,
         evolution_pct: float | None = None,
         candidates_per_evo: int = 8,
+        max_rounds: int = 8,
         num_rollouts: int = 16,
         instances_per_program: int = 3,
         in_depth_ratio: float = 0.5,
         crossover_ratio: float = 0.2,
         h_threshold: float = 0.1,
-        target_hard_champions: int = 6,
-        max_evo_attempts: int = 64,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -443,14 +442,13 @@ class RQEvolveTrainer(RayPPOTrainer):
         self.evolution_freq = evolution_freq
         self.evolution_pct = evolution_pct
         self.candidates_per_evo = candidates_per_evo
+        self.max_rounds = max_rounds
         self.num_rollouts = num_rollouts
         self.instances_per_program = instances_per_program
         self.in_depth_ratio = in_depth_ratio
         self.crossover_ratio = crossover_ratio
         self.h_threshold = h_threshold
-        self.target_hard_champions = target_hard_champions
-        self.max_evo_attempts = max_evo_attempts
-        self._computed_evolution_freq = None   # pct 기반 계산 결과 (lazy)
+        self._computed_evolution_freq = None
 
     # ------------------------------------------------------------------
     # Hook: called per mini-batch update
@@ -516,43 +514,25 @@ class RQEvolveTrainer(RayPPOTrainer):
 
     def _evolution_step(self) -> dict:
         """
-        Batch-filling evolution (Bae et al. 2025, Appendix B 스타일).
-
-        target_champions 이상 확보되거나 max_evo_attempts에 도달할 때까지
-        _evolution_round()를 반복. 최종 1회 _refresh_dataset().
+        Fixed-budget evolution (FunSearch 스타일).
+        매 step 고정 라운드 수(max_rounds)만큼 탐색. 조기 종료 없음.
         """
         logger.info(
             f"[Evolution] step at global_step={getattr(self, 'global_step', '?')} "
-            f"(target_hard={self.target_hard_champions}, max_attempts={self.max_evo_attempts})"
+            f"(max_rounds={self.max_rounds}, candidates_per_round={self.candidates_per_evo})"
         )
 
         total_attempted = 0
         total_inserted = 0
-        round_num = 0
 
-        while True:
-            # 최소 1라운드 반드시 실행, 이후 target/max 체크
-            if round_num > 0:
-                hard = self.map_elites.count_hard_champions(min_h_bin=2)
-                if hard >= self.target_hard_champions:
-                    logger.info(f"[Evolution] H2+ target reached: {hard} >= {self.target_hard_champions}")
-                    break
-                if total_attempted >= self.max_evo_attempts:
-                    logger.info(f"[Evolution] Max attempts reached: {total_attempted}")
-                    break
-
-            batch_size = min(
-                self.candidates_per_evo,
-                self.max_evo_attempts - total_attempted,
-            )
-            round_num += 1
+        for round_num in range(1, self.max_rounds + 1):
             hard = self.map_elites.count_hard_champions(min_h_bin=2)
             logger.info(
-                f"[Evolution] Round {round_num}: {batch_size} candidates "
-                f"(H2+ champions={hard}/{self.target_hard_champions})"
+                f"[Evolution] Round {round_num}/{self.max_rounds}: "
+                f"{self.candidates_per_evo} candidates (H2+={hard})"
             )
 
-            attempted, inserted = self._evolution_round(batch_size)
+            attempted, inserted = self._evolution_round(self.candidates_per_evo)
             total_attempted += attempted
             total_inserted += inserted
 
@@ -750,7 +730,6 @@ class RQEvolveTrainer(RayPPOTrainer):
                     source_code=source_code,
                     parent_id=f"{parent.program_id}×{parent_b.program_id}",
                     generation=max(parent.generation, parent_b.generation) + 1,
-                    root_seed_id=parent.root_seed_id,  # parent_a의 계열 계승
                     metadata={"op": "crossover"},
                 )
             else:
@@ -758,7 +737,6 @@ class RQEvolveTrainer(RayPPOTrainer):
                     source_code=source_code,
                     parent_id=parent.program_id,
                     generation=parent.generation + 1,
-                    root_seed_id=parent.root_seed_id,  # 부모의 시드 계열 계승
                     metadata={"op": op},
                 )
 

@@ -75,17 +75,28 @@ def load_seeds(seed_dir: str) -> list[ProblemProgram]:
     return programs
 
 
-def init_map_elites(seeds, n_h_bins, h_range, ucb_c) -> MAPElitesGrid:
-    seed_ids = [p.program_id for p in seeds]
+def init_map_elites(seeds, n_h_bins, n_div_bins, h_range, ucb_c, epsilon) -> MAPElitesGrid:
     grid = MAPElitesGrid(
         n_h_bins=n_h_bins,
-        n_div_bins=len(seeds),
+        n_div_bins=n_div_bins,
         h_range=tuple(h_range) if isinstance(h_range, list) else h_range,
         ucb_c=ucb_c,
-        seed_ids=seed_ids,
+        epsilon=epsilon,
     )
+
+    # Embedding 기반 D축: seed 문제 텍스트로 PCA fitting
+    seed_problems = []
     for prog in seeds:
-        grid.register_seed(prog.program_id)
+        for s in range(5):
+            inst = prog.execute(seed=s)
+            if inst:
+                seed_problems.append(inst.problem)
+    if seed_problems:
+        grid.fit_diversity_axis(seed_problems)
+        print(f"  D-axis fitted with {len(seed_problems)} seed problems")
+
+    # Seed champion 삽입
+    for prog in seeds:
         inst = prog.execute(seed=0)
         if inst:
             grid.try_insert(program=prog, h_value=1.0,
@@ -168,8 +179,10 @@ class RQTaskRunner:
 
         seed_dir = rq_cfg_get("seed_programs_dir", "./seed_programs")
         n_h_bins = rq_cfg_get("n_h_bins", 6)
+        n_div_bins = rq_cfg_get("n_div_bins", 10)
         h_range = rq_cfg_get("h_range", [0.0, 5.0])
         ucb_c = rq_cfg_get("ucb_c", 1.0)
+        epsilon = rq_cfg_get("epsilon", 0.3)
         instances_per_program = rq_cfg_get("instances_per_program", 16)
 
         # Seeds + MAP-Elites
@@ -179,10 +192,10 @@ class RQTaskRunner:
             raise ValueError(f"No valid seed programs in {seed_dir}")
         print(f"[Runner] {len(seeds)} seeds loaded")
 
-        map_elites = init_map_elites(seeds, n_h_bins, h_range, ucb_c)
+        map_elites = init_map_elites(seeds, n_h_bins, n_div_bins, h_range, ucb_c, epsilon)
         dynamic_dataset = build_seed_dataset(seeds, instances_per_program)
         dynamic_dataset.set_tokenizer(tokenizer, max_prompt_length=config.data.max_prompt_length)
-        print(f"[Runner] MAP-Elites grid: {n_h_bins} x {len(seeds)}, dataset: {len(dynamic_dataset)} problems")
+        print(f"[Runner] MAP-Elites grid: {n_h_bins} x {n_div_bins}, dataset: {len(dynamic_dataset)} problems")
 
         # DataLoaders
         from torchdata.stateful_dataloader import StatefulDataLoader
@@ -246,13 +259,12 @@ class RQTaskRunner:
             evolution_pct=rq_cfg_get("evolution_pct", 0.1),
             evolution_freq=rq_cfg_get("evolution_freq", 50),
             candidates_per_evo=rq_cfg_get("candidates_per_evo", 8),
+            max_rounds=rq_cfg_get("max_rounds", 8),
             num_rollouts=rq_cfg_get("num_rollouts", 10),
             instances_per_program=instances_per_program,
             in_depth_ratio=rq_cfg_get("in_depth_ratio", 0.5),
             crossover_ratio=rq_cfg_get("crossover_ratio", 0.2),
             h_threshold=rq_cfg_get("h_threshold", 0.1),
-            target_hard_champions=rq_cfg_get("target_hard_champions", 6),
-            max_evo_attempts=rq_cfg_get("max_evo_attempts", 64),
         )
         print("[Runner] trainer constructed")
 

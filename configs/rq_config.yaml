@@ -78,13 +78,14 @@ trainer:
 rq:
   seed_programs_dir: ./seed_programs
   n_h_bins: 6
+  n_div_bins: 10
   evolution_pct: 0.1
-  target_hard_champions: 6
-  max_evo_attempts: 64
   candidates_per_evo: 8
+  max_rounds: 8
   num_rollouts: 10
   instances_per_program: 16
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
   h_threshold: 0.1
   ucb_c: 1.0
+  epsilon: 0.3
