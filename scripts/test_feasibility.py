@@ -941,7 +941,7 @@ def evolution_step(
 
         # 삽입 전 기존 챔피언 정보 저장 (before→after 비교용)
         target_h = grid.h_to_bin(h_bar)
-        target_d = grid.program_to_div_bin(child)
+        target_d = grid.problem_to_div_bin(inst.problem)
         old_niche = grid.grid.get((target_h, target_d))
         old_rq = old_niche.champion_rq if (old_niche and old_niche.champion) else -1
         old_problem = None
@@ -1570,7 +1570,7 @@ def main():
         for round_num in range(1, args.max_rounds + 1):
             round_result = evolution_step(
                 grid=grid,
-                candidates=batch_size,
+                candidates=args.candidates,
                 n_rollouts=args.n_rollouts,
                 h_threshold=args.h_threshold,
                 rng=rng,
