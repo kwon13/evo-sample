@@ -1,0 +1,668 @@
+[
+  {
+    "program_id": "dbee6eb0de4d",
+    "generation": 9,
+    "niche_h": 4,
+    "niche_div": 0,
+    "rq_score": 0.8672415930223196,
+    "p_hat": 0.5,
+    "h_score": 3.4689663720892785,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\"],\n        weights=[0.25, 0.25, 0.25, 0.25],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem with more complex dimensions\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem with larger radii and angles\n        R = rng.randint(20, 30)\n        r = rng.randint(15, 19)\n        theta = rng.randint(45, 135)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem with larger triangle sides\n        a = rng.randint(20, 30)\n        b = rng.randint(20, 30)\n        c = rng.randint(20, 30)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # nested_mod\n        # Nested modular arithmetic problem with larger numbers\n        m1 = rng.choice([17, 19, 23])\n        m2 = rng.choice([29, 31, 37])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(1000, 2000)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 9 when divided by 19, and a remainder of 17 when divided by 29. How many such integers N exist in the range 1 to 1497, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 16 cm, 19 cm, and 16 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "29.55"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 3 when divided by 17, and a remainder of 12 when divided by 29. How many such integers N exist in the range 1 to 1855, inclusive?",
+        "answer": "4"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 23 cm, 17 cm, and 20 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.9"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 16 cm, 21 cm, and 22 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.37"
+      }
+    ]
+  },
+  {
+    "program_id": "19e4b5ec37a9",
+    "generation": 2,
+    "niche_h": 3,
+    "niche_div": 3,
+    "rq_score": 0.6650338079045807,
+    "p_hat": 0.6,
+    "h_score": 2.7709741996024198,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"nested_mod\", \"box_diagonal\", \"annulus_sector\", \"inscribed_circle\"],\n        weights=[0.2, 0.3, 0.2, 0.3],\n        k=1\n    )[0]\n\n    if problem_type == \"nested_mod\":\n        # Nested modular arithmetic problem\n        m1 = rng.choice([7, 11, 13])\n        m2 = rng.choice([17, 19, 23])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(200, 500)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    elif problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(15, 25)\n        r = rng.randint(10, 14)\n        theta = rng.randint(30, 120)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    else:  # inscribed_circle\n        # Inscribed circle problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A triangle has side lengths of 16 cm, 10 cm, and 14 cm. What is the radius of its inscribed circle, rounded to two decimal places?",
+        "answer": "3.46"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 7, and a remainder of 16 when divided by 19. How many such integers N exist in the range 1 to 430, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "A triangle has side lengths of 10 cm, 11 cm, and 11 cm. What is the radius of its inscribed circle, rounded to two decimal places?",
+        "answer": "3.06"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 18 cm, 12 cm, and 15 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "26.32"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 11 cm, 16 cm, and 17 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "25.81"
+      }
+    ]
+  },
+  {
+    "program_id": "dbee6eb0de4d",
+    "generation": 10,
+    "niche_h": 3,
+    "niche_div": 0,
+    "rq_score": 0.6476345816537691,
+    "p_hat": 0.4,
+    "h_score": 2.6984774235573714,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\"],\n        weights=[0.25, 0.25, 0.25, 0.25],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem with more complex dimensions\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem with larger radii and angles\n        R = rng.randint(20, 30)\n        r = rng.randint(15, 19)\n        theta = rng.randint(45, 135)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem with larger triangle sides\n        a = rng.randint(20, 30)\n        b = rng.randint(20, 30)\n        c = rng.randint(20, 30)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # nested_mod\n        # Nested modular arithmetic problem with larger numbers\n        m1 = rng.choice([17, 19, 23])\n        m2 = rng.choice([29, 31, 37])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(1000, 2000)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 9 when divided by 19, and a remainder of 17 when divided by 29. How many such integers N exist in the range 1 to 1497, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 16 cm, 19 cm, and 16 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "29.55"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 3 when divided by 17, and a remainder of 12 when divided by 29. How many such integers N exist in the range 1 to 1855, inclusive?",
+        "answer": "4"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 23 cm, 17 cm, and 20 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.9"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 16 cm, 21 cm, and 22 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.37"
+      }
+    ]
+  },
+  {
+    "program_id": "c234000b1101",
+    "generation": 11,
+    "niche_h": 2,
+    "niche_div": 2,
+    "rq_score": 0.4932085993235252,
+    "p_hat": 0.6,
+    "h_score": 2.0550358305146883,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\", \"complex_sequence\"],\n        weights=[0.2, 0.2, 0.2, 0.2, 0.2],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem with more complex dimensions\n        a = rng.randint(20, 30)\n        b = rng.randint(20, 30)\n        c = rng.randint(20, 30)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem with larger radii and angles\n        R = rng.randint(30, 40)\n        r = rng.randint(25, 29)\n        theta = rng.randint(60, 150)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem with larger triangle sides\n        a = rng.randint(30, 40)\n        b = rng.randint(30, 40)\n        c = rng.randint(30, 40)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"nested_mod\":\n        # Nested modular arithmetic problem with larger numbers\n        m1 = rng.choice([23, 29, 31])\n        m2 = rng.choice([37, 41, 43])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(5000, 10000)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    else:  # complex_sequence\n        # Complex sequence problem with Fibonacci-like pattern\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        n = rng.randint(10, 15)\n        seq = [a, b]\n        for _ in range(2, n):\n            seq.append(seq[-1] + seq[-2])\n        answer = seq[-1]\n        problem = (\n            f\"Consider a sequence where the first two terms are {a} and {b}, \"\n            f\"and each subsequent term is the sum of the previous two. \"\n            f\"What is the {n}th term of this sequence?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Consider a sequence where the first two terms are 16 and 10, and each subsequent term is the sum of the previous two. What is the 12th term of this sequence?",
+        "answer": "1770"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 21 cm, 24 cm, and 21 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "38.18"
+      },
+      {
+        "seed": 2,
+        "problem": "Consider a sequence where the first two terms are 10 and 11, and each subsequent term is the sum of the previous two. What is the 10th term of this sequence?",
+        "answer": "584"
+      },
+      {
+        "seed": 3,
+        "problem": "An annulus has outer radius 38 cm and inner radius 26 cm. What is the area of a sector with central angle 107°, rounded to two decimal places?",
+        "answer": "717.12"
+      },
+      {
+        "seed": 4,
+        "problem": "An annulus has outer radius 31 cm and inner radius 28 cm. What is the area of a sector with central angle 121°, rounded to two decimal places?",
+        "answer": "186.9"
+      }
+    ]
+  },
+  {
+    "program_id": "dbee6eb0de4d",
+    "generation": 11,
+    "niche_h": 2,
+    "niche_div": 0,
+    "rq_score": 0.42556907767604873,
+    "p_hat": 0.3,
+    "h_score": 2.026519417504994,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\"],\n        weights=[0.25, 0.25, 0.25, 0.25],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem with more complex dimensions\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem with larger radii and angles\n        R = rng.randint(20, 30)\n        r = rng.randint(15, 19)\n        theta = rng.randint(45, 135)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem with larger triangle sides\n        a = rng.randint(20, 30)\n        b = rng.randint(20, 30)\n        c = rng.randint(20, 30)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # nested_mod\n        # Nested modular arithmetic problem with larger numbers\n        m1 = rng.choice([17, 19, 23])\n        m2 = rng.choice([29, 31, 37])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(1000, 2000)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 9 when divided by 19, and a remainder of 17 when divided by 29. How many such integers N exist in the range 1 to 1497, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 16 cm, 19 cm, and 16 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "29.55"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 3 when divided by 17, and a remainder of 12 when divided by 29. How many such integers N exist in the range 1 to 1855, inclusive?",
+        "answer": "4"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 23 cm, 17 cm, and 20 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.9"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 16 cm, 21 cm, and 22 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.37"
+      }
+    ]
+  },
+  {
+    "program_id": "bf6caef718ad",
+    "generation": 6,
+    "niche_h": 2,
+    "niche_div": 1,
+    "rq_score": 0.4230365797963424,
+    "p_hat": 0.5,
+    "h_score": 1.6921463191853696,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\"],\n        weights=[0.25, 0.25, 0.25, 0.25],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(15, 25)\n        r = rng.randint(10, 14)\n        theta = rng.randint(30, 120)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # nested_mod\n        # Nested modular arithmetic problem\n        m1 = rng.choice([7, 11, 13])\n        m2 = rng.choice([17, 19, 23])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(200, 500)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 5 when divided by 11, and a remainder of 16 when divided by 17. How many such integers N exist in the range 1 to 407, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 11 cm, 14 cm, and 11 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "20.93"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 7, and a remainder of 12 when divided by 17. How many such integers N exist in the range 1 to 286, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 18 cm, 12 cm, and 15 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "26.32"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 11 cm, 16 cm, and 17 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "25.81"
+      }
+    ]
+  },
+  {
+    "program_id": "b34234b2f5b9",
+    "generation": 6,
+    "niche_h": 2,
+    "niche_div": 4,
+    "rq_score": 0.3889832900255268,
+    "p_hat": 0.7,
+    "h_score": 1.8523013810739368,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"nested_mod\", \"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"trig_identity\"],\n        weights=[0.15, 0.15, 0.15, 0.15, 0.40],\n        k=1\n    )[0]\n\n    if problem_type == \"nested_mod\":\n        # Nested modular arithmetic problem\n        m1 = rng.choice([11, 13, 17])\n        m2 = rng.choice([19, 23, 29])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(1000, 2000)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    elif problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(20, 30)\n        r = rng.randint(15, 20)\n        theta = rng.randint(45, 135)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # trig_identity\n        # Trigonometric identity problem\n        theta = rng.randint(1, 360)\n        identity = rng.choice([\"sin\", \"cos\", \"tan\"])\n        if identity == \"sin\":\n            answer = round(math.sin(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of sin({theta}°), rounded to two decimal places?\"\n            )\n        elif identity == \"cos\":\n            answer = round(math.cos(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of cos({theta}°), rounded to two decimal places?\"\n            )\n        else:  # tan\n            answer = round(math.tan(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of tan({theta}°), rounded to two decimal places?\"\n            )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the value of sin(216°), rounded to two decimal places?",
+        "answer": "-0.59"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 11, and a remainder of 16 when divided by 23. How many such integers N exist in the range 1 to 1779, inclusive?",
+        "answer": "7"
+      },
+      {
+        "seed": 2,
+        "problem": "What is the value of sin(29°), rounded to two decimal places?",
+        "answer": "0.48"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 23 cm, 17 cm, and 20 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.9"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 16 cm, 21 cm, and 22 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.37"
+      }
+    ]
+  },
+  {
+    "program_id": "dbee6eb0de4d",
+    "generation": 8,
+    "niche_h": 1,
+    "niche_div": 0,
+    "rq_score": 0.38106237591448405,
+    "p_hat": 0.4,
+    "h_score": 1.5877598996436837,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\"],\n        weights=[0.25, 0.25, 0.25, 0.25],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem with more complex dimensions\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem with larger radii and angles\n        R = rng.randint(20, 30)\n        r = rng.randint(15, 19)\n        theta = rng.randint(45, 135)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem with larger triangle sides\n        a = rng.randint(20, 30)\n        b = rng.randint(20, 30)\n        c = rng.randint(20, 30)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # nested_mod\n        # Nested modular arithmetic problem with larger numbers\n        m1 = rng.choice([17, 19, 23])\n        m2 = rng.choice([29, 31, 37])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(1000, 2000)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 9 when divided by 19, and a remainder of 17 when divided by 29. How many such integers N exist in the range 1 to 1497, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 16 cm, 19 cm, and 16 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "29.55"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 3 when divided by 17, and a remainder of 12 when divided by 29. How many such integers N exist in the range 1 to 1855, inclusive?",
+        "answer": "4"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 23 cm, 17 cm, and 20 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.9"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 16 cm, 21 cm, and 22 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.37"
+      }
+    ]
+  },
+  {
+    "program_id": "bf6caef718ad",
+    "generation": 7,
+    "niche_h": 1,
+    "niche_div": 1,
+    "rq_score": 0.3597002975876119,
+    "p_hat": 0.4,
+    "h_score": 1.4987512399483829,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\"],\n        weights=[0.25, 0.25, 0.25, 0.25],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(15, 25)\n        r = rng.randint(10, 14)\n        theta = rng.randint(30, 120)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # nested_mod\n        # Nested modular arithmetic problem\n        m1 = rng.choice([7, 11, 13])\n        m2 = rng.choice([17, 19, 23])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(200, 500)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 5 when divided by 11, and a remainder of 16 when divided by 17. How many such integers N exist in the range 1 to 407, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 11 cm, 14 cm, and 11 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "20.93"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 7, and a remainder of 12 when divided by 17. How many such integers N exist in the range 1 to 286, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 18 cm, 12 cm, and 15 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "26.32"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 11 cm, 16 cm, and 17 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "25.81"
+      }
+    ]
+  },
+  {
+    "program_id": "b34234b2f5b9",
+    "generation": 5,
+    "niche_h": 1,
+    "niche_div": 4,
+    "rq_score": 0.3317113852937307,
+    "p_hat": 0.7,
+    "h_score": 1.5795780252082412,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"nested_mod\", \"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"trig_identity\"],\n        weights=[0.15, 0.15, 0.15, 0.15, 0.40],\n        k=1\n    )[0]\n\n    if problem_type == \"nested_mod\":\n        # Nested modular arithmetic problem\n        m1 = rng.choice([11, 13, 17])\n        m2 = rng.choice([19, 23, 29])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(1000, 2000)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    elif problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(20, 30)\n        r = rng.randint(15, 20)\n        theta = rng.randint(45, 135)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # trig_identity\n        # Trigonometric identity problem\n        theta = rng.randint(1, 360)\n        identity = rng.choice([\"sin\", \"cos\", \"tan\"])\n        if identity == \"sin\":\n            answer = round(math.sin(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of sin({theta}°), rounded to two decimal places?\"\n            )\n        elif identity == \"cos\":\n            answer = round(math.cos(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of cos({theta}°), rounded to two decimal places?\"\n            )\n        else:  # tan\n            answer = round(math.tan(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of tan({theta}°), rounded to two decimal places?\"\n            )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the value of sin(216°), rounded to two decimal places?",
+        "answer": "-0.59"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 11, and a remainder of 16 when divided by 23. How many such integers N exist in the range 1 to 1779, inclusive?",
+        "answer": "7"
+      },
+      {
+        "seed": 2,
+        "problem": "What is the value of sin(29°), rounded to two decimal places?",
+        "answer": "0.48"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 23 cm, 17 cm, and 20 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.9"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 16 cm, 21 cm, and 22 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.37"
+      }
+    ]
+  },
+  {
+    "program_id": "19e4b5ec37a9",
+    "generation": 4,
+    "niche_h": 1,
+    "niche_div": 3,
+    "rq_score": 0.32565740672808474,
+    "p_hat": 0.5,
+    "h_score": 1.302629626912339,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"nested_mod\", \"box_diagonal\", \"annulus_sector\", \"inscribed_circle\"],\n        weights=[0.2, 0.3, 0.2, 0.3],\n        k=1\n    )[0]\n\n    if problem_type == \"nested_mod\":\n        # Nested modular arithmetic problem\n        m1 = rng.choice([7, 11, 13])\n        m2 = rng.choice([17, 19, 23])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(200, 500)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    elif problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(15, 25)\n        r = rng.randint(10, 14)\n        theta = rng.randint(30, 120)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    else:  # inscribed_circle\n        # Inscribed circle problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A triangle has side lengths of 16 cm, 10 cm, and 14 cm. What is the radius of its inscribed circle, rounded to two decimal places?",
+        "answer": "3.46"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 7, and a remainder of 16 when divided by 19. How many such integers N exist in the range 1 to 430, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "A triangle has side lengths of 10 cm, 11 cm, and 11 cm. What is the radius of its inscribed circle, rounded to two decimal places?",
+        "answer": "3.06"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 18 cm, 12 cm, and 15 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "26.32"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 11 cm, 16 cm, and 17 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "25.81"
+      }
+    ]
+  },
+  {
+    "program_id": "256f0c60d28b",
+    "generation": 2,
+    "niche_h": 1,
+    "niche_div": 2,
+    "rq_score": 0.30313075394569794,
+    "p_hat": 0.6,
+    "h_score": 1.2630448081070749,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"modular_arithmetic\", \"number_theory\", \"probability\"],\n        weights=[0.33, 0.33, 0.34]\n    )[0]\n\n    if problem_type == \"modular_arithmetic\":\n        # Generate a modular arithmetic problem\n        a = rng.randint(1, 100)\n        b = rng.randint(1, 100)\n        m = rng.randint(2, 100)\n        answer = (a * b) % m\n        problem = (\n            f\"What is the remainder when {a} * {b} is divided by {m}?\"\n        )\n\n    elif problem_type == \"number_theory\":\n        # Generate a number theory problem\n        n = rng.randint(100, 1000)\n        answer = sum(int(digit) for digit in str(n) if int(digit) % 2 == 0)\n        problem = (\n            f\"What is the sum of the even digits in the number {n}?\"\n        )\n\n    elif problem_type == \"probability\":\n        # Generate a probability problem\n        n = rng.randint(1, 10)\n        k = rng.randint(1, n)\n        answer = Fraction(math.comb(n, k), 2**n)\n        problem = (\n            f\"What is the probability of getting exactly {k} heads in {n} coin flips?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the probability of getting exactly 1 heads in 7 coin flips?",
+        "answer": "7/128"
+      },
+      {
+        "seed": 1,
+        "problem": "What is the remainder when 98 * 9 is divided by 34?",
+        "answer": "32"
+      },
+      {
+        "seed": 2,
+        "problem": "What is the probability of getting exactly 1 heads in 1 coin flips?",
+        "answer": "1/2"
+      },
+      {
+        "seed": 3,
+        "problem": "What is the remainder when 70 * 17 is divided by 49?",
+        "answer": "14"
+      },
+      {
+        "seed": 4,
+        "problem": "What is the remainder when 14 * 93 is divided by 52?",
+        "answer": "2"
+      }
+    ]
+  },
+  {
+    "program_id": "bf6caef718ad",
+    "generation": 7,
+    "niche_h": 0,
+    "niche_div": 1,
+    "rq_score": 0.2056313620562752,
+    "p_hat": 0.5,
+    "h_score": 0.8225254482251008,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\"],\n        weights=[0.25, 0.25, 0.25, 0.25],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(15, 25)\n        r = rng.randint(10, 14)\n        theta = rng.randint(30, 120)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # nested_mod\n        # Nested modular arithmetic problem\n        m1 = rng.choice([7, 11, 13])\n        m2 = rng.choice([17, 19, 23])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(200, 500)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 5 when divided by 11, and a remainder of 16 when divided by 17. How many such integers N exist in the range 1 to 407, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 11 cm, 14 cm, and 11 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "20.93"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 7, and a remainder of 12 when divided by 17. How many such integers N exist in the range 1 to 286, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 18 cm, 12 cm, and 15 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "26.32"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 11 cm, 16 cm, and 17 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "25.81"
+      }
+    ]
+  },
+  {
+    "program_id": "dbee6eb0de4d",
+    "generation": 10,
+    "niche_h": 0,
+    "niche_div": 0,
+    "rq_score": 0.2056230233343373,
+    "p_hat": 0.5,
+    "h_score": 0.8224920933373492,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"nested_mod\"],\n        weights=[0.25, 0.25, 0.25, 0.25],\n        k=1\n    )[0]\n\n    if problem_type == \"box_diagonal\":\n        # Box diagonal problem with more complex dimensions\n        a = rng.randint(15, 25)\n        b = rng.randint(15, 25)\n        c = rng.randint(15, 25)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem with larger radii and angles\n        R = rng.randint(20, 30)\n        r = rng.randint(15, 19)\n        theta = rng.randint(45, 135)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem with larger triangle sides\n        a = rng.randint(20, 30)\n        b = rng.randint(20, 30)\n        c = rng.randint(20, 30)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # nested_mod\n        # Nested modular arithmetic problem with larger numbers\n        m1 = rng.choice([17, 19, 23])\n        m2 = rng.choice([29, 31, 37])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(1000, 2000)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 9 when divided by 19, and a remainder of 17 when divided by 29. How many such integers N exist in the range 1 to 1497, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 1,
+        "problem": "A rectangular prism has side lengths of 16 cm, 19 cm, and 16 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "29.55"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 3 when divided by 17, and a remainder of 12 when divided by 29. How many such integers N exist in the range 1 to 1855, inclusive?",
+        "answer": "4"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 23 cm, 17 cm, and 20 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.9"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 16 cm, 21 cm, and 22 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "34.37"
+      }
+    ]
+  },
+  {
+    "program_id": "19e4b5ec37a9",
+    "generation": 11,
+    "niche_h": 0,
+    "niche_div": 3,
+    "rq_score": 0.20366407519036778,
+    "p_hat": 0.5,
+    "h_score": 0.8146563007614711,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"nested_mod\", \"box_diagonal\", \"annulus_sector\", \"inscribed_circle\"],\n        weights=[0.2, 0.3, 0.2, 0.3],\n        k=1\n    )[0]\n\n    if problem_type == \"nested_mod\":\n        # Nested modular arithmetic problem\n        m1 = rng.choice([7, 11, 13])\n        m2 = rng.choice([17, 19, 23])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(200, 500)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    elif problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(15, 25)\n        r = rng.randint(10, 14)\n        theta = rng.randint(30, 120)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    else:  # inscribed_circle\n        # Inscribed circle problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A triangle has side lengths of 16 cm, 10 cm, and 14 cm. What is the radius of its inscribed circle, rounded to two decimal places?",
+        "answer": "3.46"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 7, and a remainder of 16 when divided by 19. How many such integers N exist in the range 1 to 430, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "A triangle has side lengths of 10 cm, 11 cm, and 11 cm. What is the radius of its inscribed circle, rounded to two decimal places?",
+        "answer": "3.06"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 18 cm, 12 cm, and 15 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "26.32"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 11 cm, 16 cm, and 17 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "25.81"
+      }
+    ]
+  },
+  {
+    "program_id": "75c7de385673",
+    "generation": 6,
+    "niche_h": 0,
+    "niche_div": 4,
+    "rq_score": 0.20002294285963446,
+    "p_hat": 0.5,
+    "h_score": 0.8000917714385378,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"nested_mod\", \"box_diagonal\", \"annulus_sector\", \"inscribed_circle\", \"trig_identity\"],\n        weights=[0.15, 0.15, 0.15, 0.15, 0.40],\n        k=1\n    )[0]\n\n    if problem_type == \"nested_mod\":\n        # Nested modular arithmetic problem\n        m1 = rng.choice([7, 11, 13])\n        m2 = rng.choice([17, 19, 23])\n        r1 = rng.randint(1, m1 - 1)\n        r2 = rng.randint(1, m2 - 1)\n        product = m1 * m2\n        base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n        upper = rng.randint(200, 500)\n        count = 0\n        val = base\n        while val <= upper:\n            count += 1\n            val += product\n        answer = count\n        problem = (\n            f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n            f\"and a remainder of {r2} when divided by {m2}. \"\n            f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n        )\n\n    elif problem_type == \"box_diagonal\":\n        # Box diagonal problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        d = math.sqrt(a**2 + b**2 + c**2)\n        answer = round(d, 2)\n        problem = (\n            f\"A rectangular prism has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the length of its space diagonal, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"annulus_sector\":\n        # Annulus sector problem\n        R = rng.randint(15, 25)\n        r = rng.randint(10, 14)\n        theta = rng.randint(30, 120)\n        area = Fraction(1, 2) * (R**2 - r**2) * (theta * math.pi / 180)\n        answer = round(float(area), 2)\n        problem = (\n            f\"An annulus has outer radius {R} cm and inner radius {r} cm. \"\n            f\"What is the area of a sector with central angle {theta}°, rounded to two decimal places?\"\n        )\n\n    elif problem_type == \"inscribed_circle\":\n        # Inscribed circle problem\n        a = rng.randint(10, 20)\n        b = rng.randint(10, 20)\n        c = rng.randint(10, 20)\n        s = (a + b + c) / 2\n        area = math.sqrt(s * (s - a) * (s - b) * (s - c))\n        radius = area / s\n        answer = round(radius, 2)\n        problem = (\n            f\"A triangle has side lengths of {a} cm, {b} cm, and {c} cm. \"\n            f\"What is the radius of its inscribed circle, rounded to two decimal places?\"\n        )\n\n    else:  # trig_identity\n        # Trigonometric identity problem\n        theta = rng.randint(1, 360)\n        identity = rng.choice([\"sin\", \"cos\", \"tan\"])\n        if identity == \"sin\":\n            answer = round(math.sin(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of sin({theta}°), rounded to two decimal places?\"\n            )\n        elif identity == \"cos\":\n            answer = round(math.cos(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of cos({theta}°), rounded to two decimal places?\"\n            )\n        else:  # tan\n            answer = round(math.tan(math.radians(theta)), 2)\n            problem = (\n                f\"What is the value of tan({theta}°), rounded to two decimal places?\"\n            )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "What is the value of sin(216°), rounded to two decimal places?",
+        "answer": "-0.59"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 7, and a remainder of 16 when divided by 19. How many such integers N exist in the range 1 to 430, inclusive?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "What is the value of sin(29°), rounded to two decimal places?",
+        "answer": "0.48"
+      },
+      {
+        "seed": 3,
+        "problem": "A rectangular prism has side lengths of 18 cm, 12 cm, and 15 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "26.32"
+      },
+      {
+        "seed": 4,
+        "problem": "A rectangular prism has side lengths of 11 cm, 16 cm, and 17 cm. What is the length of its space diagonal, rounded to two decimal places?",
+        "answer": "25.81"
+      }
+    ]
+  },
+  {
+    "program_id": "8476c9e8d106",
+    "generation": 9,
+    "niche_h": 0,
+    "niche_div": 2,
+    "rq_score": 0.1841348904422109,
+    "p_hat": 0.4,
+    "h_score": 0.7672287101758788,
+    "source_code": "import random\nimport math\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Choose problem type with weighted probabilities\n    problem_type = rng.choices(\n        [\"nested_log\", \"trig_identity\", \"complex_roots\", \"recursive_sequence\"],\n        weights=[0.3, 0.2, 0.2, 0.3],\n        k=1\n    )[0]\n\n    if problem_type == \"nested_log\":\n        # Nested logarithm problem with larger bases and arguments\n        base = rng.randint(10, 20)\n        arg = rng.randint(100, 1000)\n        inner_log = math.log(arg, base)\n        outer_log = math.log(inner_log, base)\n        answer = round(outer_log, 2)\n        problem = (\n            f\"Given that log_{base}({arg}) = x, find log_{base}(x), rounded to two decimal places.\"\n        )\n\n    elif problem_type == \"trig_identity\":\n        # Trigonometric identity problem with larger angles\n        angle = rng.randint(1, 360)\n        radians = math.radians(angle)\n        sin_val = math.sin(radians)\n        cos_val = math.cos(radians)\n        tan_val = math.tan(radians)\n        identity = sin_val**2 + cos_val**2\n        answer = round(identity, 2)\n        problem = (\n            f\"Using the identity sin^2(θ) + cos^2(θ) = 1, find the value of sin^2({angle}°) + cos^2({angle}°), rounded to two decimal places.\"\n        )\n\n    elif problem_type == \"complex_roots\":\n        # Complex roots problem with larger coefficients\n        a = rng.randint(1, 5)\n        b = rng.randint(1, 5)\n        c = rng.randint(1, 5)\n        discriminant = b**2 - 4*a*c\n        if discriminant < 0:\n            real_part = -b / (2*a)\n            imaginary_part = math.sqrt(-discriminant) / (2*a)\n            answer = f\"{real_part} + {imaginary_part}i\"\n            problem = (\n                f\"Find the complex roots of the quadratic equation {a}x^2 + {b}x + {c} = 0.\"\n            )\n        else:\n            root1 = (-b + math.sqrt(discriminant)) / (2*a)\n            root2 = (-b - math.sqrt(discriminant)) / (2*a)\n            answer = f\"{root1}, {root2}\"\n            problem = (\n                f\"Find the real roots of the quadratic equation {a}x^2 + {b}x + {c} = 0.\"\n            )\n\n    else:  # recursive_sequence\n        # Recursive sequence problem with larger terms\n        a1 = rng.randint(1, 10)\n        a2 = rng.randint(1, 10)\n        n = rng.randint(10, 20)\n        sequence = [a1, a2]\n        for i in range(2, n):\n            next_term = sequence[i-1] + sequence[i-2]\n            sequence.append(next_term)\n        answer = sequence[-1]\n        problem = (\n            f\"In the recursive sequence defined by a_1 = {a1}, a_2 = {a2}, and a_n = a_{n-1} + a_{n-2}, find a_{n}.\"\n        )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "In the recursive sequence defined by a_1 = 7, a_2 = 1, and a_n = a_13 + a_12, find a_14.",
+        "answer": "1241"
+      },
+      {
+        "seed": 1,
+        "problem": "Given that log_11(361) = x, find log_11(x), rounded to two decimal places.",
+        "answer": "0.37"
+      },
+      {
+        "seed": 2,
+        "problem": "In the recursive sequence defined by a_1 = 1, a_2 = 2, and a_n = a_10 + a_9, find a_11.",
+        "answer": "144"
+      },
+      {
+        "seed": 3,
+        "problem": "Given that log_18(233) = x, find log_18(x), rounded to two decimal places.",
+        "answer": "0.22"
+      },
+      {
+        "seed": 4,
+        "problem": "Given that log_11(838) = x, find log_11(x), rounded to two decimal places.",
+        "answer": "0.43"
+      }
+    ]
+  },
+  {
+    "program_id": "8171f60449ef",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 5,
+    "rq_score": 0.10397340622394613,
+    "p_hat": 0.2,
+    "h_score": 0.6498337888996631,
+    "source_code": "import random\nimport math\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    problem_type = rng.choice([\"centroid_distance\", \"line_intersection\"])\n\n    if problem_type == \"centroid_distance\":\n        x1, y1 = rng.randint(-5, 5), rng.randint(-5, 5)\n        x2, y2 = rng.randint(-5, 5), rng.randint(-5, 5)\n        x3, y3 = rng.randint(-5, 5), rng.randint(-5, 5)\n        area2 = abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))\n        while area2 == 0:\n            x3, y3 = rng.randint(-5, 5), rng.randint(-5, 5)\n            area2 = abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))\n        cx = (x1 + x2 + x3) / 3\n        cy = (y1 + y2 + y3) / 3\n        A_c = y2 - y1\n        B_c = -(x2 - x1)\n        C_c = (x2 - x1) * y1 - (y2 - y1) * x1\n        dist = abs(A_c * cx + B_c * cy + C_c) / math.sqrt(A_c ** 2 + B_c ** 2)\n        answer = round(dist, 4)\n        problem = (\n            f\"A triangle has vertices A({x1}, {y1}), B({x2}, {y2}), C({x3}, {y3}). \"\n            f\"Find the distance from the centroid to side AB. Round to 4 decimal places.\"\n        )\n\n    else:\n        a1 = rng.randint(1, 5)\n        b1 = rng.randint(-5, 5)\n        c1 = rng.randint(-20, 20)\n        a2 = rng.randint(-5, 5)\n        b2 = rng.randint(1, 5)\n        while a1 * b2 == a2 * b1:\n            b2 = rng.randint(1, 5)\n        c2 = rng.randint(-20, 20)\n        det = a1 * b2 - a2 * b1\n        x = (c1 * b2 - c2 * b1) / det\n        y = (a1 * c2 - a2 * c1) / det\n        dist_origin = round(math.sqrt(x ** 2 + y ** 2), 4)\n        answer = dist_origin\n        problem = (\n            f\"Two lines are defined by {a1}x + {b1}y = {c1} and \"\n            f\"{a2}x + {b2}y = {c2}. Find the distance from their \"\n            f\"intersection point to the origin. Round to 4 decimal places.\"\n        )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two lines are defined by 4x + -5y = -4 and 3x + 4y = 5. Find the distance from their intersection point to the origin. Round to 4 decimal places.",
+        "answer": "1.0723"
+      },
+      {
+        "seed": 1,
+        "problem": "A triangle has vertices A(4, -4), B(-1, -4), C(2, 2). Find the distance from the centroid to side AB. Round to 4 decimal places.",
+        "answer": "2.0"
+      },
+      {
+        "seed": 2,
+        "problem": "A triangle has vertices A(-4, -4), B(0, -3), C(5, -1). Find the distance from the centroid to side AB. Round to 4 decimal places.",
+        "answer": "0.2425"
+      },
+      {
+        "seed": 3,
+        "problem": "A triangle has vertices A(4, 3), B(-3, 0), C(4, 2). Find the distance from the centroid to side AB. Round to 4 decimal places.",
+        "answer": "0.3064"
+      },
+      {
+        "seed": 4,
+        "problem": "A triangle has vertices A(-1, -4), B(1, 2), C(-3, -4). Find the distance from the centroid to side AB. Round to 4 decimal places.",
+        "answer": "0.6325"
+      }
+    ]
+  }
+]
