@@ -28,6 +28,10 @@ veRL 없이 evolution 로직 전체의 동작 가능성을 검증한다.
   python scripts/test_feasibility.py --n_evo 3 --candidates 4
 """
 
+import multiprocessing
+if multiprocessing.get_start_method(allow_none=True) != "spawn":
+    multiprocessing.set_start_method("spawn", force=True)
+
 import argparse
 import random
 import re
