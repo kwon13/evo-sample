@@ -1,20 +1,19 @@
 """
 RQ-Evolve Trainer: veRL RayPPOTrainer + MAP-Elites evolution.
 
-설계 원칙:
-  - 모델은 단 한 번 GPU에 로드 (vLLM rollout + FSDP actor 공유)
-  - RayPPOTrainer.fit()를 그대로 사용하고 _update_actor()만 override
-  - _update_actor()가 GRPO step을 수행한 뒤 evolution_freq마다 _evolution_step() 호출
-  - evolution_step 내부:
-      1. generate_sequences (mutation prompt)    → 변이 Python 코드
-      2. generate_sequences (solver, n=G)        → p_hat 추정
-      3. actor_rollout_wg.compute_log_prob(      → 정확한 Shannon entropy
-             calculate_entropy=True)               (전체 vocab logits, FSDP actor)
-      4. R_Q 계산 → MAP-Elites 갱신
-      5. dynamic_dataset 갱신
+Online 학습 파이프라인:
+  RayPPOTrainer.fit() 루프를 그대로 사용하며,
+  _pre_actor_update_hook()으로 evolution을 주입.
 
-vLLM logprobs=1 근사:  H ≈ -log p_top        (이전 방식)
-FSDP actor forward:    H = -Σ_v p_v log p_v   (이 방식, 정확)
+  매 step:
+    1. Solver 학습: dynamic_dataset → rollout → reward → REINFORCE++ update
+    2. evolution_freq마다 진화:
+       a. MAP-Elites에서 parent 샘플링 → LLM mutation → 문제 생성 프로그램 변이
+       b. 자가 검증 (multi-seed 실행 + SymPy)
+       c. H pre-filter → rollout(G회) → p_hat 추정
+       d. R_Q = p(1-p) · H_bar 계산 → grid 갱신
+       e. _refresh_dataset() → dataloader 재구성
+    3. val_freq마다 validation (수학 능력 추적)
 """
 
 import re
@@ -31,8 +30,11 @@ _PROJECT_ROOT = str(_pathlib.Path(__file__).parent.parent.resolve())
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
+from torchdata.stateful_dataloader import StatefulDataLoader
+
 from verl.protocol import DataProto
 from verl.trainer.ray_trainer import RayPPOTrainer
+from verl.utils.dataset import collate_fn as verl_collate_fn
 
 from .map_elites import MAPElitesGrid
 from .program import ProblemProgram, ProblemInstance
@@ -306,31 +308,82 @@ def _extract_code(text: str) -> str | None:
 
 
 def _make_gen_batch(
-    raw_prompts: list[list[dict]],
+    tokenizer,
+    prompts_text: list[str],
     answers: list[str],
     temperature: float,
     eos_token_id: int,
     pad_token_id: int,
-    global_steps: int,
+    max_prompt_length: int = 1024,
     n_repeat: int = 1,
 ) -> DataProto:
     """
-    SingleTurnAgentLoop이 기대하는 DataProto 포맷 생성.
-    raw_prompt: messages list (apply_chat_template은 AgentLoop 내부에서 수행)
+    verl 0.3.1 generate_sequences용 DataProto 생성.
+    tokenize하여 input_ids, attention_mask, position_ids, raw_prompt_ids 포함.
     """
-    B = len(raw_prompts)
+    from tensordict import TensorDict
+    from verl.utils import torch_functional as VF
+
+    all_input_ids = []
+    all_attention_mask = []
+    all_position_ids = []
+    all_raw_prompt_ids = []
+
+    for prompt in prompts_text:
+        encoded = tokenizer([prompt], add_special_tokens=False, return_tensors="pt")
+        input_ids = encoded["input_ids"][0]
+        attention_mask = encoded["attention_mask"][0]
+        position_ids = torch.clip(attention_mask.cumsum(dim=0) - 1, min=0)
+
+        input_ids, attention_mask, position_ids = VF.postprocess_data(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            max_length=max_prompt_length,
+            pad_token_id=pad_token_id,
+            left_pad=True,
+            truncation="left",
+        )
+        raw_prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+        if len(raw_prompt_ids) > max_prompt_length:
+            raw_prompt_ids = raw_prompt_ids[-max_prompt_length:]
+
+        all_input_ids.append(input_ids)
+        all_attention_mask.append(attention_mask)
+        all_position_ids.append(position_ids)
+        all_raw_prompt_ids.append(raw_prompt_ids)
+
+    B = len(prompts_text)
+
+    # n_repeat > 1: non_tensor_batch도 repeat (vllm rollout이 tensor만 repeat하므로)
+    if n_repeat > 1:
+        rep_raw_ids = []
+        rep_answers = []
+        for i in range(B):
+            for _ in range(n_repeat):
+                rep_raw_ids.append(all_raw_prompt_ids[i])
+                rep_answers.append(answers[i])
+        input_ids_t = torch.stack(all_input_ids).repeat_interleave(n_repeat, dim=0)
+        attn_mask_t = torch.stack(all_attention_mask).repeat_interleave(n_repeat, dim=0)
+        pos_ids_t = torch.stack(all_position_ids).repeat_interleave(n_repeat, dim=0)
+        actual_B = B * n_repeat
+    else:
+        rep_raw_ids = all_raw_prompt_ids
+        rep_answers = answers
+        input_ids_t = torch.stack(all_input_ids)
+        attn_mask_t = torch.stack(all_attention_mask)
+        pos_ids_t = torch.stack(all_position_ids)
+        actual_B = B
+
     batch = DataProto(
-        batch={"dummy_tensor": torch.zeros(B, dtype=torch.uint8)},
+        batch=TensorDict({
+            "input_ids": input_ids_t,
+            "attention_mask": attn_mask_t,
+            "position_ids": pos_ids_t,
+        }, batch_size=[actual_B]),
         non_tensor_batch={
-            "raw_prompt": np.array(raw_prompts, dtype=object),
-            "data_source": np.array(["rq_evolved"] * B, dtype=object),
-            "reward_model": np.array(
-                [{"ground_truth": a} for a in answers], dtype=object
-            ),
-            "extra_info": np.array([{}] * B, dtype=object),
-            "uid": np.array(
-                [str(uuid.uuid4()) for _ in range(B)], dtype=object
-            ),
+            "raw_prompt_ids": np.array(rep_raw_ids, dtype=object),
+            "ground_truth": np.array(rep_answers, dtype=object),
         },
     )
     batch.meta_info = {
@@ -338,10 +391,8 @@ def _make_gen_batch(
         "pad_token_id": pad_token_id,
         "temperature": temperature,
         "do_sample": True,
-        "global_steps": global_steps,
+        "n": 1,  # 이미 repeat했으므로 vllm은 n=1
     }
-    if n_repeat > 1:
-        batch = batch.repeat(repeat_times=n_repeat, interleave=True)
     return batch
 
 
@@ -353,8 +404,20 @@ class RQEvolveTrainer(RayPPOTrainer):
     """
     RayPPOTrainer + MAP-Elites evolution.
 
-    _update_actor()를 override해서 evolution_freq마다 _evolution_step() 삽입.
-    fit() 자체는 RayPPOTrainer 그대로 사용 (재구현 없음).
+    Online 학습 흐름:
+      fit() 루프 (RayPPOTrainer 그대로 사용):
+        매 step:
+          1. dynamic_dataset에서 배치 → Solver rollout → reward → REINFORCE++ update
+          2. evolution_freq마다 _pre_actor_update_hook() 트리거:
+             Inner Loop (_evolution_step):
+               mutation → verify → rollout(p_hat) → entropy(H) → R_Q 계산
+               → MAP-Elites grid 갱신 → _refresh_dataset() → dataloader 재구성
+          3. val_freq마다 validation (수학 능력 추적)
+
+    로깅:
+      - evo/* : grid 상태, champion 분포, accept rate (Tracker 경유)
+      - val/*  : solver accuracy on val set (Tracker 경유)
+      - evolution_logs/*.json : grid 스냅샷 (파일)
     """
 
     def __init__(
@@ -387,9 +450,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         self.h_threshold = h_threshold
         self.target_hard_champions = target_hard_champions
         self.max_evo_attempts = max_evo_attempts
-        self._update_actor_call_count = 0
         self._computed_evolution_freq = None   # pct 기반 계산 결과 (lazy)
-        self._last_evo_metrics = None
 
     # ------------------------------------------------------------------
     # Hook: called per mini-batch update
@@ -416,33 +477,38 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         return self._computed_evolution_freq
 
-    def _update_actor(self, batch: DataProto) -> DataProto:
+    def _pre_actor_update_hook(self, global_step: int) -> dict | None:
         """
-        Evolution-first ordering:
-          1. evolution_freq마다 _evolution_step() 실행 (dataset 교체)
-          2. 그 다음 GRPO/REINFORCE++ update (새 문제로 학습)
-
-        count=0에서 첫 evolution 실행 → 시드에서 바로 진화.
+        verl 0.3.1 fit() 루프에서 update_actor 전에 호출되는 hook.
+        evolution_freq마다 _evolution_step() 실행.
         """
         freq = self._get_evolution_freq()
-
-        # Evolution FIRST
-        if self._update_actor_call_count % freq == 0:
+        if global_step % freq == 0:
+            logger.info(f"[Evolution] Triggered at step {global_step}")
             evo_metrics = self._evolution_step()
-            self._last_evo_metrics = evo_metrics
 
-        # Then RL update (GRPO or REINFORCE++)
-        actor_output = super()._update_actor(batch)
-        self._update_actor_call_count += 1
+            # 핵심 지표 요약 출력 (console에서 한눈에 파악)
+            print(
+                f"\n{'='*60}\n"
+                f"[Evolution Summary] step={global_step}\n"
+                f"  Mutation: {evo_metrics['attempted']} attempted, "
+                f"{evo_metrics['inserted']} inserted "
+                f"({evo_metrics['accept_rate']:.0%} accept)\n"
+                f"  Grid: {evo_metrics['grid_champions']}/{evo_metrics['total_niches']} niches filled "
+                f"({evo_metrics['grid_coverage']:.0%} coverage), "
+                f"H2+={evo_metrics['hard_champions']}\n"
+                f"  R_Q:  mean={evo_metrics['grid_mean_rq']:.4f}, "
+                f"max={evo_metrics['grid_max_rq']:.4f}\n"
+                f"  Champions: p_hat={evo_metrics['champion_p_hat_mean']:.2f}±"
+                f"{evo_metrics['champion_p_hat_std']:.2f}, "
+                f"H={evo_metrics['champion_h_mean']:.2f}±"
+                f"{evo_metrics['champion_h_std']:.2f}\n"
+                f"  Dataset: {evo_metrics['dataset_size']} problems\n"
+                f"{'='*60}"
+            )
 
-        # Attach evo metrics to the step where evolution ran
-        if self._last_evo_metrics:
-            existing = actor_output.meta_info.get("metrics", {})
-            existing.update({f"evo/{k}": v for k, v in self._last_evo_metrics.items()})
-            actor_output.meta_info["metrics"] = existing
-            self._last_evo_metrics = None
-
-        return actor_output
+            return evo_metrics
+        return None
 
     # ------------------------------------------------------------------
     # Evolution step (driver-side, CPU)
@@ -456,7 +522,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         _evolution_round()를 반복. 최종 1회 _refresh_dataset().
         """
         logger.info(
-            f"[Evolution] step at actor_update #{self._update_actor_call_count} "
+            f"[Evolution] step at global_step={getattr(self, 'global_step', '?')} "
             f"(target_hard={self.target_hard_champions}, max_attempts={self.max_evo_attempts})"
         )
 
@@ -493,16 +559,97 @@ class RQEvolveTrainer(RayPPOTrainer):
         self._refresh_dataset()
 
         stats = self.map_elites.stats()
-        return {
+
+        # Champion 분포 통계 (p_hat, H, R_Q)
+        champions = self.map_elites.get_all_champions()
+        p_hats = [getattr(c, "p_hat", 0.0) for c in champions if c.rq_score]
+        h_scores = [getattr(c, "h_score", 0.0) for c in champions if c.rq_score]
+
+        result = {
+            # Evolution round stats
             "attempted": total_attempted,
             "inserted": total_inserted,
+            "accept_rate": total_inserted / max(total_attempted, 1),
             "rounds": round_num,
+            # Grid state
             "grid_coverage": stats["coverage"],
             "grid_mean_rq": stats["mean_rq"],
             "grid_max_rq": stats["max_rq"],
+            "grid_min_rq": stats["min_rq"],
             "grid_champions": stats["num_champions"],
             "hard_champions": stats["hard_champions"],
+            "total_niches": stats["total_niches"],
+            "total_insertions": stats["total_insertions"],
+            "total_replacements": stats["total_replacements"],
+            # Champion distribution (frontier tracking)
+            "champion_p_hat_mean": float(np.mean(p_hats)) if p_hats else 0.0,
+            "champion_p_hat_std": float(np.std(p_hats)) if p_hats else 0.0,
+            "champion_h_mean": float(np.mean(h_scores)) if h_scores else 0.0,
+            "champion_h_std": float(np.std(h_scores)) if h_scores else 0.0,
+            # Dataset state
+            "dataset_size": len(self.dynamic_dataset),
         }
+
+        # Grid 스냅샷 JSON 저장 (시각화는 별도 스크립트로)
+        self._save_evolution_snapshot(result)
+
+        return result
+
+    def _save_evolution_snapshot(self, evo_metrics: dict):
+        """매 evolution step마다 grid 상태 + 챔피언 정보를 JSON으로 저장."""
+        import json
+        import os
+        from datetime import datetime
+
+        save_dir = os.path.join(
+            getattr(self.config.trainer, 'default_local_dir', './rq_output'),
+            "evolution_logs",
+        )
+        os.makedirs(save_dir, exist_ok=True)
+
+        step = getattr(self, 'global_step', 0)
+
+        # Grid 스냅샷: 각 셀의 RQ, p_hat, H, 문제 텍스트
+        grid_snapshot = []
+        for (h, d), niche in self.map_elites.grid.items():
+            cell = {"h_bin": h, "div_bin": d, "has_champion": niche.champion is not None}
+            if niche.champion:
+                champ = niche.champion
+                inst = champ.execute(seed=0)
+                cell.update({
+                    "rq_score": champ.rq_score,
+                    "p_hat": champ.p_hat,
+                    "h_score": champ.h_score,
+                    "generation": champ.generation,
+                    "program_id": champ.program_id,
+                    "root_seed_id": champ.root_seed_id,
+                    "problem": inst.problem if inst else "",
+                    "answer": inst.answer if inst else "",
+                    "source_code": champ.source_code,
+                })
+            grid_snapshot.append(cell)
+
+        snapshot = {
+            "global_step": step,
+            "timestamp": datetime.now().isoformat(),
+            "metrics": evo_metrics,
+            "grid": grid_snapshot,
+            "seed_labels": {
+                str(d): sid for sid, d in self.map_elites._seed_to_div.items()
+            },
+        }
+
+        # step별 파일 저장
+        path = os.path.join(save_dir, f"evo_step_{step}.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, indent=2, ensure_ascii=False, default=str)
+
+        # 최신 스냅샷 덮어쓰기 (빠른 접근용)
+        latest_path = os.path.join(save_dir, "latest.json")
+        with open(latest_path, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, indent=2, ensure_ascii=False, default=str)
+
+        logger.info(f"[Evolution] Snapshot saved: {path}")
 
     def _evolution_round(self, batch_size: int) -> tuple[int, int]:
         """
@@ -513,7 +660,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         """
         eos_id = self.tokenizer.eos_token_id or self.tokenizer.pad_token_id
         pad_id = self.tokenizer.pad_token_id or eos_id
-        temperature = self.config.actor_rollout_ref.rollout.temperature
+        temperature = self.config.worker.rollout.temperature
 
         # ================================================================
         # Phase 1: Mutation — 연산자 선택 + batch generate
@@ -570,17 +717,16 @@ class RQEvolveTrainer(RayPPOTrainer):
             return 0, 0
 
         mut_batch = _make_gen_batch(
-            raw_prompts=[
-                [{"role": "user", "content": pt}] for pt, _, _, _ in mutation_prompts
-            ],
+            tokenizer=self.tokenizer,
+            prompts_text=[pt for pt, _, _, _ in mutation_prompts],
             answers=[""] * len(mutation_prompts),
             temperature=temperature,
             eos_token_id=eos_id, pad_token_id=pad_id,
-            global_steps=self.global_steps,
+            max_prompt_length=self.config.data.max_prompt_length,
         )
 
         try:
-            mut_output = self.async_rollout_manager.generate_sequences(mut_batch)
+            mut_output = self.actor_rollout_wg.generate_sequences(mut_batch)
         except Exception as e:
             logger.warning(f"[Evolution] batch mutation failed: {e}")
             return 0, 0
@@ -628,22 +774,29 @@ class RQEvolveTrainer(RayPPOTrainer):
         # ================================================================
         # Phase 2: Batch rollout → p_hat
         # ================================================================
-        solver_prompts = [
-            [{"role": "system", "content": SYSTEM_PROMPT},
-             {"role": "user", "content": inst.problem}]
-            for _, inst, _ in children
-        ]
+        # Solver prompts (tokenized)
+        solver_texts = []
+        for _, inst, _ in children:
+            msgs = [{"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": inst.problem}]
+            if self.tokenizer.chat_template:
+                solver_texts.append(self.tokenizer.apply_chat_template(
+                    msgs, add_generation_prompt=True, tokenize=False))
+            else:
+                solver_texts.append(f"system: {SYSTEM_PROMPT}\nuser: {inst.problem}")
+
         rollout_batch = _make_gen_batch(
-            raw_prompts=solver_prompts,
+            tokenizer=self.tokenizer,
+            prompts_text=solver_texts,
             answers=[inst.answer for _, inst, _ in children],
             temperature=temperature,
             eos_token_id=eos_id, pad_token_id=pad_id,
-            global_steps=self.global_steps,
+            max_prompt_length=self.config.data.max_prompt_length,
             n_repeat=self.num_rollouts,
         )
 
         try:
-            rollout_output = self.async_rollout_manager.generate_sequences(rollout_batch)
+            rollout_output = self.actor_rollout_wg.generate_sequences(rollout_batch)
         except Exception as e:
             logger.warning(f"[Evolution] batch rollout failed: {e}")
             return 0, 0
@@ -668,15 +821,34 @@ class RQEvolveTrainer(RayPPOTrainer):
             all_flags.append(flags)
 
         # ================================================================
-        # Phase 3: Batch entropy (첫 rollout 응답 사용)
+        # Phase 3: Batch entropy (logprobs=20, temperature=1.0으로 별도 생성)
+        # Feasibility test의 VLLMRunner.entropy()와 동일한 방식
         # ================================================================
-        entropy_indices = [ci * self.num_rollouts for ci in range(n_children)]
-        entropy_slice = rollout_output[entropy_indices]
-        all_h = []
-        for ci in range(n_children):
-            single = entropy_slice[ci:ci+1]
-            h = self._compute_exact_entropy(single)
-            all_h.append(h)
+        # entropy 측정: logprobs=20, temperature=1.0, max_tokens=256
+        # meta_info로 sampling params 전달 → generate_sequences 내부에서 자동 적용
+        entropy_batch = _make_gen_batch(
+            tokenizer=self.tokenizer,
+            prompts_text=solver_texts,
+            answers=[inst.answer for _, inst, _ in children],
+            temperature=1.0,
+            eos_token_id=eos_id, pad_token_id=pad_id,
+            max_prompt_length=self.config.data.max_prompt_length,
+            n_repeat=1,
+        )
+        entropy_batch.meta_info["logprobs"] = 20
+        entropy_batch.meta_info["max_tokens"] = 256
+        entropy_batch.meta_info["n"] = 1
+
+        try:
+            entropy_output = self.actor_rollout_wg.generate_sequences(entropy_batch)
+        except Exception as e:
+            logger.warning(f"[Evolution] entropy generation failed: {e}")
+            entropy_output = None
+
+        if entropy_output is not None:
+            all_h = self._compute_entropy_from_logprobs(entropy_output, n_children)
+        else:
+            all_h = [None] * n_children
 
         # ================================================================
         # Phase 4: Scoring + Grid insertion
@@ -718,74 +890,80 @@ class RQEvolveTrainer(RayPPOTrainer):
     # Exact entropy: actor_rollout_wg.compute_log_prob(calculate_entropy=True)
     # ------------------------------------------------------------------
 
-    def _compute_exact_entropy(self, rollout_output: DataProto) -> float | None:
+    def _compute_entropy_from_logprobs(
+        self, entropy_output: DataProto, n_children: int, top_k: int = 20,
+    ) -> list[float | None]:
         """
-        rollout_output: generate_sequences가 반환한 DataProto
-          (input_ids, responses, attention_mask, position_ids 포함)
+        generate_sequences의 logprobs 출력에서 Shannon entropy 근사 계산.
+        Feasibility test의 VLLMRunner.batch_entropy()와 동일한 방식.
 
-        actor_rollout_wg.compute_log_prob(calculate_entropy=True)를 호출.
-        이 메서드는 FSDP actor의 전체 vocab logits에서
-        H_t = -Σ_v p_v log p_v 를 계산해 response 토큰별로 반환한다.
-
-        반환: 응답 토큰 평균 entropy (scalar float)
+        H_t = -Σ_{v∈top-K} p(v) log p(v) + rest mass 보정
         """
-        try:
-            # 첫 번째 샘플만 사용해 compute 비용 절감
-            single = rollout_output[0:1]
+        import math
 
-            # compute_log_prob에 필요한 meta_info
-            rollout_cfg = self.config.actor_rollout_ref.rollout
-            single.meta_info = {
-                "micro_batch_size": 1,
-                "use_dynamic_bsz": False,
-                "temperature": rollout_cfg.temperature,
-                "pad_token_id": self.tokenizer.pad_token_id or 0,
-            }
+        vocab_size = self.tokenizer.vocab_size or 150000
+        results = []
 
-            entropy_out = self.actor_rollout_wg.compute_log_prob(
-                single, calculate_entropy=True
-            )
+        resp_ids = entropy_output.batch.get("responses")
+        if resp_ids is None:
+            return [None] * n_children
 
-            # compute_log_prob은 dict 또는 DataProto를 반환할 수 있다
-            if isinstance(entropy_out, dict):
-                entropys = entropy_out.get("entropys")
+        # logprobs가 output에 포함되어 있는지 확인
+        logprobs_data = entropy_output.batch.get("logprobs")
+
+        if logprobs_data is None:
+            # logprobs가 없으면 old_log_probs에서 근사
+            old_lp = entropy_output.batch.get("old_log_probs")
+            if old_lp is not None:
+                for ci in range(n_children):
+                    lps = old_lp[ci]
+                    mask = entropy_output.batch.get("response_mask")
+                    if mask is not None:
+                        valid_lps = lps[mask[ci].bool()]
+                    else:
+                        valid_lps = lps[lps != 0]
+                    if valid_lps.numel() > 0:
+                        h = -valid_lps.float().mean().item()
+                        results.append(max(0.0, h))
+                    else:
+                        results.append(None)
             else:
-                entropys = (
-                    entropy_out.batch.get("entropys")
-                    if hasattr(entropy_out, "batch")
-                    else None
-                )
+                # 둘 다 없으면 binary entropy proxy 사용
+                logger.debug("[Evolution] No logprobs available, using binary entropy proxy")
+                results = [None] * n_children
+        else:
+            # top-K logprobs에서 Shannon entropy 계산
+            for ci in range(n_children):
+                try:
+                    step_logprobs = logprobs_data[ci]  # 토큰별 top-K logprobs
+                    token_hs = []
+                    for step_dict in step_logprobs:
+                        if step_dict is None:
+                            continue
+                        log_probs = [lp.logprob for lp in step_dict.values()]
+                        probs = [math.exp(lp) for lp in log_probs]
+                        h_top = -sum(p * math.log(p) for p in probs if p > 0)
+                        p_rest = max(0.0, 1.0 - sum(probs))
+                        if p_rest > 1e-8 and vocab_size > top_k:
+                            h_top += -p_rest * math.log(p_rest / (vocab_size - top_k))
+                        token_hs.append(h_top)
+                    if token_hs:
+                        results.append(sum(token_hs) / len(token_hs))
+                    else:
+                        results.append(None)
+                except Exception:
+                    results.append(None)
 
-            if entropys is None:
-                logger.debug("[Evolution] entropys not in compute_log_prob output")
-                return None
-
-            # entropys shape: (1, response_len) 또는 (response_len,)
-            if entropys.dim() == 2:
-                entropys = entropys[0]  # (response_len,)
-
-            # response_mask로 padding 제외
-            batch_data = single.batch if hasattr(single, "batch") else {}
-            if "response_mask" in batch_data:
-                mask = batch_data["response_mask"][0].bool()
-                valid = entropys[: mask.shape[0]][mask]
-                h = valid.mean().item() if valid.numel() > 0 else entropys.mean().item()
-            else:
-                h = entropys.mean().item()
-
-            return max(0.0, h)
-
-        except Exception as e:
-            logger.warning(f"[Evolution] _compute_exact_entropy failed: {e}")
-            return None
+        return results
 
     # ------------------------------------------------------------------
     # Dataset refresh from MAP-Elites champions
     # ------------------------------------------------------------------
 
     def _refresh_dataset(self):
-        """MAP-Elites 챔피언 → dynamic_dataset 교체."""
+        """MAP-Elites 챔피언 → dynamic_dataset 교체 → dataloader 재구성."""
         champions = self.map_elites.get_all_champions()
+        old_size = len(self.dynamic_dataset)
         new_problems: list[dict] = []
 
         for champ in champions:
@@ -801,7 +979,24 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         if new_problems:
             self.dynamic_dataset.update(new_problems)
+            self._rebuild_dataloader()
             logger.info(
-                f"[Evolution] Dataset refreshed: {len(new_problems)} problems "
-                f"from {len(champions)} champions"
+                f"[Evolution] Dataset refreshed: {old_size} → {len(new_problems)} problems "
+                f"from {len(champions)} champions, dataloader rebuilt"
             )
+
+    def _rebuild_dataloader(self):
+        """dynamic_dataset 변경 후 train_dataloader를 재구성.
+
+        현재 epoch의 iterator는 이미 생성되어 있으므로 즉시 반영되지 않지만,
+        num_workers=0 + __getitem__의 thread-safe update 덕분에
+        데이터 내용 자체는 즉시 반영된다.
+        다음 epoch부터는 새 dataloader의 sampler 범위가 적용된다.
+        """
+        self.train_dataloader = StatefulDataLoader(
+            dataset=self.dynamic_dataset,
+            batch_size=self.config.data.rollout_batch_size,
+            num_workers=0,
+            drop_last=True,
+            collate_fn=verl_collate_fn,
+        )

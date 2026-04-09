@@ -413,15 +413,6 @@ class EvolutionaryPipeline:
         return programs
 
     def initialize_grid(self, seeds: list[ProblemProgram]):
-        samples = []
-        for prog in seeds:
-            for s in range(5):
-                inst = prog.execute(s)
-                if inst:
-                    samples.append(inst.problem)
-        if samples:
-            self.grid.fit_diversity_axis(samples)
-
         for prog in seeds:
             inst = prog.execute(seed=0)
             if inst:

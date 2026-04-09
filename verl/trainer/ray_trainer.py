@@ -16,13 +16,7 @@ FSDP PPO Trainer with Ray-based single controller.
 This trainer supports model-agonistic model initialization with huggingface
 """
 
-import json
 import os
-import re
-import subprocess
-import sys
-import tempfile
-import textwrap
 import uuid
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -31,7 +25,6 @@ from dataclasses import dataclass, field
 from enum import Enum, IntEnum, auto
 from typing import Any, Dict, List, Optional, Type
 
-import datasets
 import numpy as np
 import ray
 import torch
@@ -605,6 +598,12 @@ class RayPPOTrainer:
                         critic_metrics = reduce_metrics(critic_output.non_tensor_batch)
                         metrics.update(critic_metrics)
 
+                    # evolution hook (RQEvolveTrainer에서 override)
+                    if hasattr(self, '_pre_actor_update_hook'):
+                        evo_metrics = self._pre_actor_update_hook(self.global_step)
+                        if evo_metrics:
+                            metrics.update({f"evo/{k}": v for k, v in evo_metrics.items()})
+
                     # update actor
                     if self.config.trainer.critic_warmup <= self.global_step:
                         with timer("update_actor", timing_raw):
@@ -623,6 +622,9 @@ class RayPPOTrainer:
                             val_metrics = self._validate()
 
                         metrics.update(val_metrics)
+                        val_score = val_metrics.get("val/reward_score", None)
+                        if val_score is not None:
+                            print(f"[Validation] step={self.global_step}  reward_score={val_score:.4f}")
 
                     if self.config.trainer.save_freq > 0 and self.global_step % self.config.trainer.save_freq == 0:
                         with timer("save_checkpoint", timing_raw):
