@@ -50,6 +50,12 @@ sys.path.insert(0, str(ROOT))
 from rq_questioner.program import ProblemProgram, ProblemInstance
 from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.rq_score import compute_rq_full, h_prefilter, p_hat_filter
+from prompts import (
+    MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
+    SINGLE_ANSWER_RULE, SCORE_FEEDBACK,
+    score_diagnosis, build_score_feedback,
+    build_few_shot_examples, build_execution_feedback,
+)
 from dotenv import load_dotenv
 load_dotenv()
 # ---------------------------------------------------------------------------
@@ -79,45 +85,8 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> Optional[Probl
     return instances[0] if instances else None
 
 
-def _build_few_shot_examples(grid: MAPElitesGrid, top_k: int = 3) -> str:
-    """Grid의 RQ 상위 top_k 챔피언을 few-shot 예시로 구성."""
-    champions = grid.get_all_champions()
-    if not champions:
-        return ""
-    ranked = sorted(champions, key=lambda c: -(c.rq_score or 0))[:top_k]
-    parts = ["# === HIGH-QUALITY EXAMPLES (for reference) ==="]
-    for i, champ in enumerate(ranked, 1):
-        rq = getattr(champ, "rq_score", 0)
-        p = getattr(champ, "p_hat", 0)
-        h = getattr(champ, "h_score", 0)
-        parts.append(
-            f"#\n# Example {i} (RQ={rq:.3f}, p_hat={p:.2f}, H={h:.2f}):\n"
-            f"# ```python\n# {champ.source_code[:200]}...\n# ```"
-        )
-    parts.append("# === END EXAMPLES ===\n")
-    return "\n".join(parts)
 
 
-def _build_execution_feedback(parent: ProblemProgram) -> str:
-    """부모 프로그램의 실행 결과를 프롬프트에 포함."""
-    inst = parent.execute(seed=0, timeout=5.0)
-    if inst is None:
-        return ""
-    p_hat = getattr(parent, "p_hat", 0.5)
-    h_score = getattr(parent, "h_score", 1.0)
-    difficulty = (
-        "TOO EASY" if p_hat > 0.7 else
-        "TOO HARD" if p_hat < 0.2 else
-        "GOOD"
-    )
-    return (
-        f"# === EXECUTION RESULT ===\n"
-        f"# Problem: {inst.problem[:100]}...\n"
-        f"# Answer: {inst.answer}\n"
-        f"# Solver pass rate: {p_hat:.0%} ({difficulty})\n"
-        f"# Solver entropy: {h_score:.2f}\n"
-        f"# === END ===\n"
-    )
 
 
 _BOXED_RE = re.compile(r"\\boxed\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", re.DOTALL)
@@ -209,112 +178,8 @@ _SOLVE_PROMPT = (
     "Solution:"
 )
 
-# base 모델용 completion-style mutation 프롬프트
-# "```python\nimport random\n" 까지 포함 → 모델이 이어서 완성
-# CRITICAL: answer는 반드시 단일 숫자/값이어야 rollout 정답 비교가 가능
-_SINGLE_ANSWER_RULE = (
-    "# IMPORTANT RULES:\n"
-    "# 1. Function name MUST be `generate(seed)`\n"
-    "# 2. MUST return (problem_text: str, answer: str)\n"
-    "# 3. answer MUST be a SINGLE number or simple value (e.g. '42', '3.14', '7/3')\n"
-    "#    NOT ranges, NOT multiple values, NOT inequalities\n"
-    "# 4. Compute answer FIRST, then build problem from it\n"
-    "# 5. Use only standard library + math module\n"
-)
-
-# Score-aware mutation 프롬프트 (FunSearch, Romera-Paredes et al. 2023 스타일)
-# 부모의 p_hat, H, RQ를 넘겨 LLM이 목표 난이도를 인식하도록 함
-
-_SCORE_FEEDBACK = (
-    "# === PERFORMANCE OF CURRENT PROGRAM ===\n"
-    "# pass_rate (p_hat) = {p_hat:.2f}  (ideal: 0.50, solver gets it right half the time)\n"
-    "# entropy (H)       = {h_score:.2f}  (ideal: > 2.0, higher = solver is more uncertain)\n"
-    "# R_Q score          = {rq_score:.4f}  (higher is better, max when p_hat≈0.5 and H is high)\n"
-    "#\n"
-    "# DIAGNOSIS: {diagnosis}\n"
-    "# ACTION: {action}\n"
-)
-
-def _score_diagnosis(p_hat: float, h_score: float) -> tuple[str, str]:
-    """부모의 p_hat, H로 진단과 개선 방향을 생성."""
-    if p_hat > 0.7:
-        diag = f"TOO EASY (solver gets {p_hat:.0%} correct)"
-        action = "Make problems significantly harder: more steps, combined concepts, larger numbers"
-    elif p_hat < 0.2:
-        diag = f"TOO HARD (solver gets only {p_hat:.0%} correct)"
-        action = "Make problems slightly easier: clearer wording, fewer steps, smaller numbers"
-    else:
-        diag = f"Good difficulty (p_hat={p_hat:.2f})"
-        action = "Keep similar difficulty but increase problem diversity and reasoning depth"
-
-    if h_score < 0.5:
-        diag += f"; LOW ENTROPY (H={h_score:.2f}, solver is too confident)"
-        action += "; add ambiguity or multi-step reasoning to increase solver uncertainty"
-
-    return diag, action
 
 
-_MUTATE_DEPTH = (
-    "# Python function that generates math word problems.\n"
-    "# Rewrite to generate HARDER, competition-level problems (AMC/AIME).\n"
-    "#\n"
-    "{few_shot}"
-    "{score_feedback}"
-    "{exec_feedback}"
-    "#\n"
-    "# Requirements:\n"
-    "#   - At least 3-5 reasoning steps to solve\n"
-    "#   - Combine multiple math concepts (e.g. geometry + algebra)\n"
-    "#   - Use larger numbers, fractions, or nested computations\n"
-    "#   - Require intermediate results before final answer\n\n"
-    "# Original program:\n"
-    "```python\n{code}\n```\n\n"
-    + _SINGLE_ANSWER_RULE +
-    "# Improved version (target: p_hat ≈ 0.5, H > 2.0):\n"
-    "```python\n"
-    "import random\n"
-)
-
-_MUTATE_BREADTH = (
-    "# Python function that generates math word problems.\n"
-    "# Rewrite to generate a COMPLETELY DIFFERENT type of hard math problem.\n"
-    "#\n"
-    "{few_shot}"
-    "{score_feedback}"
-    "{exec_feedback}"
-    "#\n"
-    "# Choose a different branch of mathematics:\n"
-    "#   - If original is geometry → try number theory or combinatorics\n"
-    "#   - If original is algebra → try probability or modular arithmetic\n"
-    "#   - Must require multi-step reasoning (3+ steps)\n"
-    "#   - Must produce a single numerical answer\n\n"
-    "# Original program:\n"
-    "```python\n{code}\n```\n\n"
-    + _SINGLE_ANSWER_RULE +
-    "# Completely different topic (target: p_hat ≈ 0.5, H > 2.0):\n"
-    "```python\n"
-    "import random\n"
-)
-
-
-_MUTATE_CROSSOVER = (
-    "# Two Python functions that generate different types of math problems.\n"
-    "# Combine ideas from BOTH programs to create a NEW hybrid problem generator\n"
-    "# that merges the mathematical concepts from both parents.\n"
-    "#\n"
-    "{few_shot}"
-    "# Parent A (p_hat={p_hat_a:.2f}, H={h_a:.2f}):\n"
-    "```python\n{code_a}\n```\n\n"
-    "# Parent B (p_hat={p_hat_b:.2f}, H={h_b:.2f}):\n"
-    "```python\n{code_b}\n```\n\n"
-    "# Create a NEW function that combines concepts from both parents.\n"
-    "# Example: if A is geometry and B is probability,\n"
-    "#   create geometric probability problems.\n"
-    + _SINGLE_ANSWER_RULE +
-    "# Hybrid version combining both concepts (target: p_hat ≈ 0.5, H > 2.0):\n"
-    "```python\n"
-    "import random\n"
-)
 
 
 class VLLMRunner:
@@ -441,19 +306,19 @@ class VLLMRunner:
         Score-aware mutation + few-shot + execution feedback.
         """
         from vllm import SamplingParams
-        tmpl = _MUTATE_DEPTH if in_depth else _MUTATE_BREADTH
+        tmpl = MUTATE_DEPTH if in_depth else MUTATE_BREADTH
 
         p_hat = getattr(parent, "p_hat", 0.5)
         h_score = getattr(parent, "h_score", 1.0)
         rq_score = getattr(parent, "rq_score", 0.0)
-        diag, action = _score_diagnosis(p_hat, h_score)
+        diag, action = score_diagnosis(p_hat, h_score)
 
-        score_feedback = _SCORE_FEEDBACK.format(
+        score_feedback = SCORE_FEEDBACK.format(
             p_hat=p_hat, h_score=h_score, rq_score=rq_score,
             diagnosis=diag, action=action,
         )
-        few_shot = _build_few_shot_examples(grid) if grid else ""
-        exec_fb = _build_execution_feedback(parent)
+        few_shot = build_few_shot_examples(grid) if grid else ""
+        exec_fb = build_execution_feedback(parent)
         prompt = tmpl.format(
             code=parent.source_code, score_feedback=score_feedback,
             few_shot=few_shot, exec_feedback=exec_fb,
@@ -487,8 +352,8 @@ class VLLMRunner:
         """
         from vllm import SamplingParams
 
-        few_shot = _build_few_shot_examples(grid) if grid else ""
-        prompt = _MUTATE_CROSSOVER.format(
+        few_shot = build_few_shot_examples(grid) if grid else ""
+        prompt = MUTATE_CROSSOVER.format(
             code_a=parent_a.source_code,
             code_b=parent_b.source_code,
             p_hat_a=getattr(parent_a, "p_hat", 0.5),
@@ -531,13 +396,13 @@ class VLLMRunner:
         """
         from vllm import SamplingParams
 
-        few_shot = _build_few_shot_examples(grid) if grid else ""
+        few_shot = build_few_shot_examples(grid) if grid else ""
 
         prompts = []
         for t in tasks:
             if t["op"] == "crossover":
                 pa, pb = t["parent"], t["parent_b"]
-                prompts.append(_MUTATE_CROSSOVER.format(
+                prompts.append(MUTATE_CROSSOVER.format(
                     code_a=pa.source_code, code_b=pb.source_code,
                     p_hat_a=getattr(pa, "p_hat", 0.5), h_a=getattr(pa, "h_score", 1.0),
                     p_hat_b=getattr(pb, "p_hat", 0.5), h_b=getattr(pb, "h_score", 1.0),
@@ -545,16 +410,16 @@ class VLLMRunner:
                 ))
             else:
                 parent = t["parent"]
-                tmpl = _MUTATE_DEPTH if t["op"] == "in_depth" else _MUTATE_BREADTH
+                tmpl = MUTATE_DEPTH if t["op"] == "in_depth" else MUTATE_BREADTH
                 p_hat = getattr(parent, "p_hat", 0.5)
                 h_score = getattr(parent, "h_score", 1.0)
                 rq_score = getattr(parent, "rq_score", 0.0)
-                diag, action = _score_diagnosis(p_hat, h_score)
-                feedback = _SCORE_FEEDBACK.format(
+                diag, action = score_diagnosis(p_hat, h_score)
+                feedback = SCORE_FEEDBACK.format(
                     p_hat=p_hat, h_score=h_score, rq_score=rq_score,
                     diagnosis=diag, action=action,
                 )
-                exec_fb = _build_execution_feedback(parent)
+                exec_fb = build_execution_feedback(parent)
                 prompts.append(tmpl.format(
                     code=parent.source_code, score_feedback=feedback,
                     few_shot=few_shot, exec_feedback=exec_fb,

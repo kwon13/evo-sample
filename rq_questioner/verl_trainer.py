@@ -41,6 +41,11 @@ from .program import ProblemProgram, ProblemInstance
 from .rq_score import compute_rq_full, h_prefilter, p_hat_filter
 from .verl_dataset import MapElitesDynamicDataset
 
+from prompts import (
+    MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
+    build_score_feedback, build_few_shot_examples, build_execution_feedback,
+)
+
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
@@ -48,96 +53,8 @@ SYSTEM_PROMPT = (
     "Put your final answer in \\boxed{}."
 )
 
-# ---------------------------------------------------------------------------
-# Score-aware mutation prompts (FunSearch, Romera-Paredes et al. 2023)
-# ---------------------------------------------------------------------------
 
-_SINGLE_ANSWER_RULE = (
-    "RULES:\n"
-    "1. Function MUST be named `generate` and take a single `seed` argument\n"
-    "2. MUST return (problem_text: str, answer: str)\n"
-    "3. answer MUST be a SINGLE number or simple value (e.g. '42', '3.14', '7/3')\n"
-    "   NOT ranges, NOT multiple values, NOT inequalities\n"
-    "4. Compute answer FIRST, then build problem from it\n"
-    "5. Use only standard library + math module\n"
-    "6. Self-contained, no external dependencies\n\n"
-    "Return ONLY the Python code."
-)
 
-_SCORE_FEEDBACK = (
-    "\n=== PERFORMANCE OF CURRENT PROGRAM ===\n"
-    "pass_rate (p_hat) = {p_hat:.2f}  (ideal: 0.50)\n"
-    "entropy (H)       = {h_score:.2f}  (ideal: > 2.0)\n"
-    "R_Q score          = {rq_score:.4f}\n"
-    "DIAGNOSIS: {diagnosis}\n"
-    "ACTION: {action}\n\n"
-)
-
-def _score_diagnosis(p_hat: float, h_score: float) -> tuple[str, str]:
-    if p_hat > 0.7:
-        diag = f"TOO EASY (solver gets {p_hat:.0%} correct)"
-        action = "Make problems significantly harder: more steps, combined concepts, larger numbers"
-    elif p_hat < 0.2:
-        diag = f"TOO HARD (solver gets only {p_hat:.0%} correct)"
-        action = "Make problems slightly easier: clearer wording, fewer steps"
-    else:
-        diag = f"Good difficulty (p_hat={p_hat:.2f})"
-        action = "Keep similar difficulty but increase problem diversity and reasoning depth"
-    if h_score < 0.5:
-        diag += f"; LOW ENTROPY (H={h_score:.2f})"
-        action += "; add ambiguity or multi-step reasoning"
-    return diag, action
-
-def _build_score_feedback(parent: ProblemProgram) -> str:
-    p_hat = getattr(parent, "p_hat", 0.5)
-    h_score = getattr(parent, "h_score", 1.0)
-    rq_score = getattr(parent, "rq_score", 0.0)
-    diag, action = _score_diagnosis(p_hat, h_score)
-    return _SCORE_FEEDBACK.format(
-        p_hat=p_hat, h_score=h_score, rq_score=rq_score,
-        diagnosis=diag, action=action,
-    )
-
-IN_DEPTH_PROMPT = (
-    "You are an expert mathematician and Python programmer.\n\n"
-    "{few_shot_examples}"
-    "Below is a Python function that generates natural-language math word problems "
-    "using inverse construction (answer chosen first, problem built from it).\n\n"
-    "{score_feedback}"
-    "{execution_feedback}"
-    "```python\n{source_code}\n```\n\n"
-    "Modify this function to generate HARDER problems (AMC/AIME level). You may:\n"
-    "- Add more reasoning steps or constraints\n"
-    "- Combine multiple math concepts\n"
-    "- Require multi-step logic (3+ steps)\n\n"
-    + _SINGLE_ANSWER_RULE
-)
-
-IN_BREADTH_PROMPT = (
-    "You are an expert mathematician and Python programmer.\n\n"
-    "{few_shot_examples}"
-    "Below is a Python function that generates math word problems:\n\n"
-    "{score_feedback}"
-    "{execution_feedback}"
-    "```python\n{source_code}\n```\n\n"
-    "Create a COMPLETELY DIFFERENT type of math word problem generator covering "
-    "a different branch of mathematics.\n\n"
-    + _SINGLE_ANSWER_RULE
-)
-
-CROSSOVER_PROMPT = (
-    "You are an expert mathematician and Python programmer.\n\n"
-    "{few_shot_examples}"
-    "Below are TWO Python functions that generate different types of math problems. "
-    "Combine ideas from BOTH to create a NEW hybrid problem generator that merges "
-    "the mathematical concepts from both parents.\n\n"
-    "Parent A (p_hat={p_hat_a:.2f}, H={h_a:.2f}):\n"
-    "```python\n{source_a}\n```\n\n"
-    "Parent B (p_hat={p_hat_b:.2f}, H={h_b:.2f}):\n"
-    "```python\n{source_b}\n```\n\n"
-    "Create a function that combines concepts from both parents.\n\n"
-    + _SINGLE_ANSWER_RULE
-)
 
 _BOXED_RE = re.compile(
     r"\\boxed\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", re.DOTALL
@@ -185,60 +102,8 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> ProblemInstanc
     return instances[0] if instances else None
 
 
-def _build_few_shot_examples(grid: MAPElitesGrid, top_k: int = 3) -> str:
-    """
-    Grid에서 RQ 상위 top_k 챔피언의 코드를 few-shot 예시로 구성.
-    FunSearch (Romera-Paredes et al., 2023) 스타일.
-    """
-    champions = grid.get_all_champions()
-    if not champions:
-        return ""
-    ranked = sorted(champions, key=lambda c: -(c.rq_score or 0))[:top_k]
-
-    parts = ["=== HIGH-QUALITY EXAMPLES (for reference) ==="]
-    for i, champ in enumerate(ranked, 1):
-        rq = getattr(champ, "rq_score", 0)
-        p = getattr(champ, "p_hat", 0)
-        h = getattr(champ, "h_score", 0)
-        parts.append(
-            f"\nExample {i} (RQ={rq:.3f}, p_hat={p:.2f}, H={h:.2f}):\n"
-            f"```python\n{champ.source_code}\n```"
-        )
-    parts.append("\n=== END EXAMPLES ===\n")
-    return "\n".join(parts)
 
 
-def _build_execution_feedback(parent: ProblemProgram) -> str:
-    """
-    부모 프로그램의 실행 결과를 프롬프트에 포함.
-    생성된 문제 예시 + solver 성능 정보를 보여줌.
-    """
-    inst = parent.execute(seed=0, timeout=5.0)
-    if inst is None:
-        return ""
-
-    p_hat = getattr(parent, "p_hat", 0.5)
-    h_score = getattr(parent, "h_score", 1.0)
-
-    feedback = (
-        "\n=== EXECUTION RESULT OF CURRENT PROGRAM ===\n"
-        f"Generated problem: {inst.problem}\n"
-        f"Expected answer: {inst.answer}\n"
-        f"Solver pass rate: {p_hat:.0%}"
-    )
-    if p_hat > 0.7:
-        feedback += " (TOO EASY — solver answers correctly too often)\n"
-    elif p_hat < 0.2:
-        feedback += " (TOO HARD — solver almost never gets it right)\n"
-    else:
-        feedback += " (GOOD difficulty range)\n"
-    feedback += f"Solver entropy: {h_score:.2f}"
-    if h_score < 1.0:
-        feedback += " (LOW — solver is too confident, needs more ambiguity)\n"
-    else:
-        feedback += " (OK)\n"
-    feedback += "=== END EXECUTION RESULT ===\n\n"
-    return feedback
 
 
 def _extract_boxed(text: str) -> str | None:
@@ -646,8 +511,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         # Phase 1: Mutation — 연산자 선택 + batch generate
         # ================================================================
 
-        # Few-shot 예시 (top-3 챔피언, FunSearch 스타일)
-        few_shot = _build_few_shot_examples(self.map_elites, top_k=3)
+        few_shot = build_few_shot_examples(self.map_elites, top_k=3)
 
         mutation_prompts = []  # (prompt_text, op, parent, parent_b)
         for _ in range(batch_size):
@@ -667,13 +531,13 @@ class RQEvolveTrainer(RayPPOTrainer):
                         continue
                     op = "in_depth"
                 else:
-                    prompt_text = CROSSOVER_PROMPT.format(
-                        source_a=pa.source_code, source_b=pb.source_code,
+                    prompt_text = MUTATE_CROSSOVER.format(
+                        code_a=pa.source_code, code_b=pb.source_code,
                         p_hat_a=getattr(pa, "p_hat", 0.5),
                         h_a=getattr(pa, "h_score", 1.0),
                         p_hat_b=getattr(pb, "p_hat", 0.5),
                         h_b=getattr(pb, "h_score", 1.0),
-                        few_shot_examples=few_shot,
+                        few_shot=few_shot,
                     )
                     mutation_prompts.append((prompt_text, op, pa, pb))
                     continue
@@ -682,14 +546,14 @@ class RQEvolveTrainer(RayPPOTrainer):
             if parent is None:
                 continue
 
-            score_fb = _build_score_feedback(parent)
-            exec_fb = _build_execution_feedback(parent)
-            tmpl = IN_DEPTH_PROMPT if op == "in_depth" else IN_BREADTH_PROMPT
+            score_fb = build_score_feedback(parent)
+            exec_fb = build_execution_feedback(parent)
+            tmpl = MUTATE_DEPTH if op == "in_depth" else MUTATE_BREADTH
             prompt_text = tmpl.format(
-                source_code=parent.source_code,
+                code=parent.source_code,
                 score_feedback=score_fb,
-                execution_feedback=exec_fb,
-                few_shot_examples=few_shot,
+                exec_feedback=exec_fb,
+                few_shot=few_shot,
             )
             mutation_prompts.append((prompt_text, op, parent, None))
 
