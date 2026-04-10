@@ -9,11 +9,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from verl.utils import torch_functional as VF
+from prompts import SOLVER_SYSTEM_PROMPT
 
-SYSTEM_PROMPT = (
-    "Solve the following math problem step by step. "
-    "Put your final answer in \\boxed{}."
-)
+SYSTEM_PROMPT = SOLVER_SYSTEM_PROMPT
 
 
 class MapElitesDynamicDataset(Dataset):

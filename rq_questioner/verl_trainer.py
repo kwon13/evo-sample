@@ -44,14 +44,12 @@ from .verl_dataset import MapElitesDynamicDataset
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
     build_score_feedback, build_few_shot_examples, build_execution_feedback,
+    SOLVER_SYSTEM_PROMPT,
 )
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = (
-    "Solve the following math problem step by step. "
-    "Put your final answer in \\boxed{}."
-)
+SYSTEM_PROMPT = SOLVER_SYSTEM_PROMPT
 
 
 

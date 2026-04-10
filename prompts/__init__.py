@@ -9,3 +9,8 @@ from .mutation import (
     build_few_shot_examples,
     build_execution_feedback,
 )
+
+from .solver import (
+    SOLVER_SYSTEM_PROMPT,
+    SOLVER_COMPLETION_PROMPT,
+)

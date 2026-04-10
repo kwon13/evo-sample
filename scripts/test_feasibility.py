@@ -55,6 +55,7 @@ from prompts import (
     SINGLE_ANSWER_RULE, SCORE_FEEDBACK,
     score_diagnosis, build_score_feedback,
     build_few_shot_examples, build_execution_feedback,
+    SOLVER_COMPLETION_PROMPT,
 )
 from dotenv import load_dotenv
 load_dotenv()
@@ -171,12 +172,7 @@ def _answers_match(pred: str, gt: str, tol: float = 1e-2) -> bool:
 # vLLM 실제 백엔드 (mutation / rollout / entropy)
 # ---------------------------------------------------------------------------
 
-_SOLVE_PROMPT = (
-    "Solve the following math problem step by step.\n"
-    "Put your final answer in \\boxed{{}}.\n\n"
-    "Problem: {problem}\n\n"
-    "Solution:"
-)
+_SOLVE_PROMPT = SOLVER_COMPLETION_PROMPT
 
 
 
@@ -1658,6 +1654,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-# python scripts/test_feasibility.py --vllm_model Qwen/Qwen3-8B-Base --n_evo 10 --candidates 8 --n_rollouts 16
-# python scripts/test_feasibility.py --vllm_model Qwen/Qwen3-8B-Base --tp 2 --n_evo 10 --candidates 8
+# python scripts/test_feasibility.py --vllm_model Qwen/Qwen3-8B-Base  --tp 4 --n_evo 50 --n_h_bins 10 --n_div_bins 10
 # python scripts/test_feasibility.py --model gpt-4o-mini --n_evo 10 --candidates 4  (API mutation only)
