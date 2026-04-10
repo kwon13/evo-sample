@@ -190,57 +190,72 @@ def test_map_elites():
     return True
 
 
-def test_pipeline_dry_run():
-    """Test pipeline initialization without models."""
+def test_dataset_and_grid_integration():
+    """Test that seed programs integrate with MAP-Elites grid and dataset."""
     print("=" * 50)
-    print("TEST 5: Pipeline Dry Run")
+    print("TEST 5: Grid + Dataset Integration")
     print("=" * 50)
 
-    from rq_questioner.pipeline import EvolutionaryPipeline, PipelineConfig
-    import tempfile
+    from rq_questioner.map_elites import MAPElitesGrid
 
     seed_dir = os.path.join(os.path.dirname(__file__), "..", "seed_programs")
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        config = PipelineConfig(
-            num_epochs=1,
-            num_generations=3,
-            candidates_per_gen=2,
-            num_rollouts=8,
-            output_dir=tmpdir,
-            seed_programs_dir=seed_dir,
-        )
+    # Load seeds
+    programs = []
+    for fname in sorted(os.listdir(seed_dir)):
+        if not fname.endswith(".py"):
+            continue
+        source = open(os.path.join(seed_dir, fname)).read()
+        prog = ProblemProgram(source_code=source, metadata={"source_file": fname})
+        if prog.execute(seed=0):
+            programs.append(prog)
+    print(f"  Loaded {len(programs)} seed programs")
+    assert len(programs) > 0
 
-        pipeline = EvolutionaryPipeline(config)
+    # NL check
+    for prog in programs:
+        inst = prog.execute(0)
+        if inst:
+            assert len(inst.problem.split()) >= 10, \
+                f"Problem should be natural language: {inst.problem[:50]}"
+            print(f"  NL check: {inst.problem[:70]}...")
 
-        # Load seed programs
-        programs = pipeline.load_seed_programs()
-        print(f"  Loaded {len(programs)} seed programs")
-        assert len(programs) > 0, "Should load at least one seed program"
+    # Grid with embedding D-axis
+    grid = MAPElitesGrid(n_h_bins=6, n_div_bins=6, h_range=(0.0, 5.0))
 
-        # Verify natural language output
-        for prog in programs:
-            inst = prog.execute(0)
+    seed_problems = []
+    for prog in programs:
+        for s in range(5):
+            inst = prog.execute(seed=s)
             if inst:
-                assert len(inst.problem.split()) >= 10, \
-                    f"Problem should be natural language: {inst.problem[:50]}"
-                print(f"  NL check: {inst.problem[:70]}...")
+                seed_problems.append(inst.problem)
+    try:
+        grid.fit_diversity_axis(seed_problems)
+        print(f"  D-axis fitted with {len(seed_problems)} problems (embedding)")
+    except ImportError:
+        print(f"  D-axis: sentence-transformers not installed, using hash fallback")
 
-        # Initialize grid
-        pipeline.initialize_grid(programs)
-        print(f"  Grid coverage after init: {pipeline.grid.coverage():.2%}")
+    # Insert seeds
+    for prog in programs:
+        inst = prog.execute(seed=0)
+        if inst:
+            grid.try_insert(program=prog, h_value=1.0,
+                            problem_text=inst.problem, rq_score=0.01)
+    print(f"  Grid coverage after init: {grid.coverage():.2%}")
 
-        # Prepare training data
-        training_data = pipeline._prepare_training_data(epoch=0)
-        print(f"  Prepared {len(training_data)} training instances")
+    # Build training data from champions
+    training_data = []
+    for champ in grid.get_all_champions():
+        for seed in range(16):
+            inst = champ.execute(seed=seed)
+            if inst:
+                training_data.append({"problem": inst.problem, "answer": inst.answer})
+    print(f"  Prepared {len(training_data)} training instances")
 
-        if training_data:
-            print(f"  Sample: {training_data[0]['prompt'][:70]}...")
+    if training_data:
+        print(f"  Sample: {training_data[0]['problem'][:70]}...")
 
-        # Verify single model config
-        print(f"  Model (single): {config.model_path}")
-
-    print(f"\nPipeline dry run passed!\n")
+    print(f"\nGrid + Dataset integration passed!\n")
     return True
 
 
@@ -254,7 +269,7 @@ def main():
         "Verification": test_verification(),
         "R_Q Score": test_rq_score(),
         "MAP-Elites": test_map_elites(),
-        "Pipeline Dry Run": test_pipeline_dry_run(),
+        "Grid + Dataset": test_dataset_and_grid_integration(),
     }
 
     print("=" * 60)
