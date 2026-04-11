@@ -2,6 +2,16 @@ from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.program import ProblemProgram
 
 
+MUTATION_METHOD_RULE = (
+    "# Mutation method:\n"
+    "- Internally identify the parent's core concept, givens, constraints, reasoning chain, and answer type.\n"
+    "- Consider 2-3 candidate mutations and choose the best one.\n"
+    "- Mutate at least 3 structural components, not just names or numbers.\n"
+    "- Add constraints, variable dependencies, intermediate quantities, or less predictable parameters.\n"
+    "- Avoid textbook clichés, famous contest problems, and surface-level rewrites.\n"
+    "- Self-check that the problem is self-contained, uniquely answerable, and executable for every seed.\n\n"
+)
+
 SINGLE_ANSWER_RULE = (
     "# IMPORTANT RULES:\n"
     "# 1. Function name MUST be `generate(seed)`\n"
@@ -30,6 +40,7 @@ MUTATE_DEPTH = (
     "{score_feedback}"
     "{exec_feedback}"
     "#\n"
+    + MUTATION_METHOD_RULE +
     "# Requirements:\n"
     "#   - At least 3-5 reasoning steps to solve\n"
     "#   - Combine multiple math concepts (e.g. geometry + algebra)\n"
@@ -51,6 +62,7 @@ MUTATE_BREADTH = (
     "{score_feedback}"
     "{exec_feedback}"
     "#\n"
+    + MUTATION_METHOD_RULE +
     "# Choose a different branch of mathematics:\n"
     "#   - If original is geometry -> try number theory or combinatorics\n"
     "#   - If original is algebra -> try probability or modular arithmetic\n"
@@ -77,6 +89,7 @@ MUTATE_CROSSOVER = (
     "# Create a NEW function that combines concepts from both parents.\n"
     "# Example: if A is geometry and B is probability,\n"
     "#   create geometric probability problems.\n"
+    + MUTATION_METHOD_RULE +
     + SINGLE_ANSWER_RULE +
     "# Hybrid version combining both concepts (target: p_hat ~ 0.5, H > 2.0):\n"
     "```python\n"
