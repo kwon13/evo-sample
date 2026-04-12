@@ -183,6 +183,30 @@ class MAPElitesGrid:
             return True
         return False
 
+    def evict_champion(self, program: ProblemProgram) -> bool:
+        """
+        Champion re-evaluation 결과 p_hat 이 극단(0 또는 1 근처) 이 된 경우
+        해당 niche 를 비워 다음 mutation 라운드에 재탐색되도록 한다.
+
+        Returns:
+            True  — 실제로 eviction 발생
+            False — 주어진 program 이 현재 champion 이 아니거나 niche 가 비어있음
+        """
+        niche = self.grid.get((program.niche_h, program.niche_div))
+        if niche is None or niche.champion is None:
+            return False
+        if niche.champion.program_id != program.program_id:
+            return False
+
+        niche.champion = None
+        niche.champion_rq = -1.0
+        niche.history.append({
+            "program_id": program.program_id,
+            "event": "evicted",
+            "generation": program.generation,
+        })
+        return True
+
     def rebin_champion(
         self,
         program: ProblemProgram,

@@ -89,3 +89,16 @@ rq:
   h_threshold: 0.1
   ucb_c: 1.0
   epsilon: 0.3
+
+  # --- Champion re-evaluation (option A, opt-in) ---
+  # 매 evolution step 앞에서 기존 champion 일부의 R_Q 를 현재 solver 로 재측정.
+  # Solver 가 마스터한 champion 은 R_Q 가 떨어져 다음 mutation 에 쉽게 대체됨.
+  #
+  # 기본은 꺼 둠 (0). 아래 조건 중 하나가 관찰되면 양수로 올려 켠다:
+  #   - 특정 champion 이 장기간 같은 niche 를 점유 (dataset 이 정체)
+  #   - Solver validation acc 가 오르는데 mean_rq 가 변하지 않음 (stale 신호)
+  #   - H2+ champion 이 학습 후반부에 계속 재활용됨
+  # 권장 시작값: 8 (매 evolution step 당 champion 8개 재평가)
+  reeval_per_step: 0                    # 재평가할 champion 수 (0 = 비활성화)
+  reeval_age_ratio: 0.7                 # (0~1) age-weighted 비율, 나머지는 랜덤
+  reeval_evict_p_hat_range: [0.02, 0.98]  # 이 범위 벗어나는 champion 은 evict

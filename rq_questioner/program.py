@@ -44,6 +44,7 @@ class ProblemProgram:
     niche_h: int = -1       # MAP-Elites H-axis index
     niche_div: int = -1     # MAP-Elites diversity-axis index
     root_seed_id: str = ""  # 원본 시드 프로그램 ID (D축 결정에 사용)
+    last_reeval_step: int = -1  # 마지막으로 champion re-evaluation 된 global_step
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self):

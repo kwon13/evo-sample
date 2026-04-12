@@ -265,6 +265,12 @@ class RQTaskRunner:
             in_depth_ratio=rq_cfg_get("in_depth_ratio", 0.5),
             crossover_ratio=rq_cfg_get("crossover_ratio", 0.2),
             h_threshold=rq_cfg_get("h_threshold", 0.1),
+            # Champion re-evaluation (option A, opt-in, 기본 비활성)
+            reeval_per_step=rq_cfg_get("reeval_per_step", 0),
+            reeval_age_ratio=rq_cfg_get("reeval_age_ratio", 0.7),
+            reeval_evict_p_hat_range=tuple(
+                rq_cfg_get("reeval_evict_p_hat_range", [0.02, 0.98])
+            ),
         )
         print("[Runner] trainer constructed")
 

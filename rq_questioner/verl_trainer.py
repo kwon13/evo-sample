@@ -297,6 +297,12 @@ class RQEvolveTrainer(RayPPOTrainer):
         in_depth_ratio: float = 0.5,
         crossover_ratio: float = 0.2,
         h_threshold: float = 0.1,
+        # --- Champion re-evaluation (option A, opt-in) ---
+        # 기본값 0 — solver 학습에 따른 stale R_Q 가 문제가 될 때만 켠다.
+        # 활성화하려면 config 의 `reeval_per_step` 을 양수로 (예: 8) 설정.
+        reeval_per_step: int = 0,
+        reeval_age_ratio: float = 0.7,
+        reeval_evict_p_hat_range: tuple[float, float] = (0.02, 0.98),
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -311,6 +317,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         self.in_depth_ratio = in_depth_ratio
         self.crossover_ratio = crossover_ratio
         self.h_threshold = h_threshold
+        # re-evaluation
+        self.reeval_per_step = reeval_per_step
+        self.reeval_age_ratio = max(0.0, min(1.0, reeval_age_ratio))
+        self.reeval_evict_p_hat_range = tuple(reeval_evict_p_hat_range)
         self._computed_evolution_freq = None
 
     # ------------------------------------------------------------------
@@ -352,6 +362,10 @@ class RQEvolveTrainer(RayPPOTrainer):
             print(
                 f"\n{'='*60}\n"
                 f"[Evolution Summary] step={global_step}\n"
+                f"  Reeval:   {evo_metrics['reeval_count']} updated, "
+                f"{evo_metrics['reeval_evicted']} evicted, "
+                f"{evo_metrics['reeval_bin_shifted']} bin-shifted "
+                f"(ΔR_Q={evo_metrics['reeval_rq_delta_mean']:+.4f})\n"
                 f"  Mutation: {evo_metrics['attempted']} attempted, "
                 f"{evo_metrics['inserted']} inserted "
                 f"({evo_metrics['accept_rate']:.0%} accept)\n"
@@ -379,11 +393,31 @@ class RQEvolveTrainer(RayPPOTrainer):
         """
         Fixed-budget evolution (FunSearch 스타일).
         매 step 고정 라운드 수(max_rounds)만큼 탐색. 조기 종료 없음.
+
+        순서:
+          1. (옵션 A) 기존 champion 재평가 — stale R_Q 갱신
+          2. Mutation 라운드 max_rounds 회
+          3. Dataset refresh
         """
         logger.info(
             f"[Evolution] step at global_step={getattr(self, 'global_step', '?')} "
             f"(max_rounds={self.max_rounds}, candidates_per_round={self.candidates_per_evo})"
         )
+
+        # ================================================================
+        # Phase 0: Champion re-evaluation (option A)
+        # ================================================================
+        # Solver 가 학습되면 champion 의 p_hat 이 변하므로,
+        # mutation 을 돌리기 전에 먼저 R_Q 를 현재 solver 기준으로 갱신한다.
+        # 그러면 같은 라운드의 try_insert 비교가 fair 해진다.
+        reeval_metrics = self._reevaluate_champions(self.reeval_per_step)
+        if reeval_metrics["reevaluated"] > 0 or reeval_metrics["evicted"] > 0:
+            logger.info(
+                f"[Reeval] updated={reeval_metrics['reevaluated']}, "
+                f"evicted={reeval_metrics['evicted']}, "
+                f"bin_shifted={reeval_metrics['bin_shifted']}, "
+                f"ΔR_Q mean={reeval_metrics['rq_delta_mean']:+.4f}"
+            )
 
         total_attempted = 0
         total_inserted = 0
@@ -429,6 +463,13 @@ class RQEvolveTrainer(RayPPOTrainer):
             "champion_p_hat_std": float(np.std(p_hats)) if p_hats else 0.0,
             "champion_h_mean": float(np.mean(h_scores)) if h_scores else 0.0,
             "champion_h_std": float(np.std(h_scores)) if h_scores else 0.0,
+            # Champion re-evaluation (option A)
+            "reeval_count": reeval_metrics["reevaluated"],
+            "reeval_evicted": reeval_metrics["evicted"],
+            "reeval_bin_shifted": reeval_metrics["bin_shifted"],
+            "reeval_rq_delta_mean": reeval_metrics["rq_delta_mean"],
+            "reeval_rq_delta_min": reeval_metrics["rq_delta_min"],
+            "reeval_rq_delta_max": reeval_metrics["rq_delta_max"],
             # Dataset state
             "dataset_size": len(self.dynamic_dataset),
         }
@@ -493,6 +534,191 @@ class RQEvolveTrainer(RayPPOTrainer):
             json.dump(snapshot, f, indent=2, ensure_ascii=False, default=str)
 
         logger.info(f"[Evolution] Snapshot saved: {path}")
+
+    # ------------------------------------------------------------------
+    # Option A — Champion re-evaluation
+    # ------------------------------------------------------------------
+
+    def _reevaluate_champions(self, n_reeval: int) -> dict:
+        """
+        기존 champion 중 n_reeval 개를 현재 solver 로 다시 점수 매김.
+
+        동기:
+          try_insert() 는 저장된 R_Q 와 새 후보 R_Q 를 단순 비교하므로,
+          champion 의 R_Q 가 진화 당시 solver 기준 (stale) 이면 공정한 비교가
+          어렵다. Solver 가 학습되면서 이미 마스터한 champion 이 계속
+          dataset 에 재주입되어 learnability plateau 를 유발한다.
+
+          이 메서드는 매 evolution step 앞에서:
+            - age-weighted 로 champion 샘플링 (오래 재평가 안 된 것 우선)
+            - fresh seed 로 instance 재생성
+            - 현재 solver 로 p_hat / H 측정 → R_Q 갱신
+            - p_hat 극단인 champion 은 niche 에서 evict → 재탐색 유도
+            - H 재측정으로 bin 경계를 넘으면 rebin_champion() 으로 이동
+
+        Returns:
+            metrics dict — reevaluated / evicted / bin_shifted /
+                           rq_delta_{mean,min,max}
+        """
+        empty = {
+            "reevaluated": 0, "evicted": 0, "bin_shifted": 0,
+            "rq_delta_mean": 0.0, "rq_delta_min": 0.0, "rq_delta_max": 0.0,
+        }
+        if n_reeval <= 0:
+            return empty
+
+        champions = self.map_elites.get_all_champions()
+        if not champions:
+            return empty
+
+        current_step = getattr(self, "global_step", 0)
+
+        # ---- 1. Age-weighted sampling ----
+        n = min(n_reeval, len(champions))
+        champions_by_age = sorted(
+            champions,
+            key=lambda c: getattr(c, "last_reeval_step", -1),
+        )
+        n_old = int(n * self.reeval_age_ratio)
+        n_rand = n - n_old
+
+        targets = list(champions_by_age[:n_old])
+        remaining = [c for c in champions if c not in targets]
+        if remaining and n_rand > 0:
+            targets += random.sample(remaining, min(n_rand, len(remaining)))
+        targets = targets[:n]
+
+        # ---- 2. Fresh seed 로 instance 재생성 ----
+        # (champ, inst, rq_before) — 순서 보존
+        pairs: list[tuple[ProblemProgram, ProblemInstance, float]] = []
+        for champ in targets:
+            fresh_seed = random.randint(0, 10_000)
+            inst = champ.execute(seed=fresh_seed)
+            if inst is not None:
+                pairs.append((champ, inst, float(champ.rq_score or 0.0)))
+
+        if not pairs:
+            return empty
+
+        eos_id = self.tokenizer.eos_token_id or self.tokenizer.pad_token_id
+        pad_id = self.tokenizer.pad_token_id or eos_id
+        temperature = self.config.worker.rollout.temperature
+
+        # Solver prompt 구성 (기존 _evolution_round 와 동일)
+        solver_texts = []
+        for _, inst, _ in pairs:
+            msgs = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": inst.problem},
+            ]
+            if self.tokenizer.chat_template:
+                solver_texts.append(self.tokenizer.apply_chat_template(
+                    msgs, add_generation_prompt=True, tokenize=False,
+                ))
+            else:
+                solver_texts.append(
+                    f"system: {SYSTEM_PROMPT}\nuser: {inst.problem}"
+                )
+
+        # ---- 3. Batch rollout → p_hat ----
+        rollout_batch = _make_gen_batch(
+            tokenizer=self.tokenizer,
+            prompts_text=solver_texts,
+            answers=[inst.answer for _, inst, _ in pairs],
+            temperature=temperature,
+            eos_token_id=eos_id, pad_token_id=pad_id,
+            max_prompt_length=self.config.data.max_prompt_length,
+            n_repeat=self.num_rollouts,
+        )
+        try:
+            rollout_output = self.actor_rollout_wg.generate_sequences(rollout_batch)
+        except Exception as e:
+            logger.warning(f"[Reeval] rollout failed: {e}")
+            return empty
+
+        resp_ids = rollout_output.batch.get("responses")
+        if resp_ids is None:
+            return empty
+
+        n_pairs = len(pairs)
+        all_flags: list[list[bool]] = []
+        for ci in range(n_pairs):
+            flags = []
+            for ri in range(self.num_rollouts):
+                idx = ci * self.num_rollouts + ri
+                decoded = self.tokenizer.decode(
+                    resp_ids[idx].tolist(), skip_special_tokens=True,
+                )
+                pred = _extract_boxed(decoded)
+                _, inst, _ = pairs[ci]
+                flags.append(_answers_match(pred, inst.answer) if pred else False)
+            all_flags.append(flags)
+
+        # ---- 4. Batch entropy (temperature=1.0) ----
+        entropy_batch = _make_gen_batch(
+            tokenizer=self.tokenizer,
+            prompts_text=solver_texts,
+            answers=[inst.answer for _, inst, _ in pairs],
+            temperature=1.0,
+            eos_token_id=eos_id, pad_token_id=pad_id,
+            max_prompt_length=self.config.data.max_prompt_length,
+            n_repeat=1,
+        )
+        entropy_batch.meta_info["logprobs"] = 20
+        entropy_batch.meta_info["max_tokens"] = 256
+        entropy_batch.meta_info["n"] = 1
+
+        try:
+            entropy_output = self.actor_rollout_wg.generate_sequences(entropy_batch)
+            all_h = self._compute_entropy_from_logprobs(entropy_output, n_pairs)
+        except Exception as e:
+            logger.warning(f"[Reeval] entropy failed: {e}")
+            all_h = [None] * n_pairs
+
+        # ---- 5. 갱신 / Eviction / Rebin ----
+        low, high = self.reeval_evict_p_hat_range
+        evicted = 0
+        bin_shifted = 0
+        reevaluated = 0
+        rq_deltas: list[float] = []
+
+        for (champ, inst, rq_before), flags, h_bar in zip(pairs, all_flags, all_h):
+            # entropy 측정 실패 시 skip (기존 값 유지)
+            if h_bar is None or h_bar <= 0:
+                continue
+
+            new_p_hat = sum(flags) / len(flags) if flags else 0.0
+
+            # 극단 p_hat → evict (완전히 쉬움 / 완전히 어려움)
+            if new_p_hat <= low or new_p_hat >= high:
+                if self.map_elites.evict_champion(champ):
+                    evicted += 1
+                    logger.info(
+                        f"[Reeval] EVICT ({champ.niche_h},{champ.niche_div}) "
+                        f"p_hat={new_p_hat:.2f} (extreme), id={champ.program_id}"
+                    )
+                continue
+
+            # p_hat 먼저 갱신 → rebin_champion 안에서 R_Q 자동 재계산됨
+            champ.p_hat = new_p_hat
+            champ.last_reeval_step = current_step
+            moved = self.map_elites.rebin_champion(
+                program=champ, new_h_value=h_bar, problem_text=inst.problem,
+            )
+            if moved:
+                bin_shifted += 1
+
+            rq_deltas.append(float(champ.rq_score) - rq_before)
+            reevaluated += 1
+
+        return {
+            "reevaluated": reevaluated,
+            "evicted": evicted,
+            "bin_shifted": bin_shifted,
+            "rq_delta_mean": float(np.mean(rq_deltas)) if rq_deltas else 0.0,
+            "rq_delta_min": float(np.min(rq_deltas)) if rq_deltas else 0.0,
+            "rq_delta_max": float(np.max(rq_deltas)) if rq_deltas else 0.0,
+        }
 
     def _evolution_round(self, batch_size: int) -> tuple[int, int]:
         """
