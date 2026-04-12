@@ -111,7 +111,7 @@ class OllamaRunner:
         host: str = "http://localhost:11434",
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        n_entropy_samples: int = 8,
+        n_entropy_samples: int = 2,
         max_parallel: int = 4,
     ):
         try:
@@ -198,8 +198,8 @@ class OllamaRunner:
         prompt = _SOLVE_PROMPT.format(problem=inst.problem)
         texts = self._complete_many(
             [prompt] * self.n_entropy_samples,
-            temperature=1.0,
-            max_tokens=min(self.max_tokens, 512),
+            temperature=0.0,
+            max_tokens=self.max_tokens,
         )
         return _semantic_entropy_from_texts(texts)
 
