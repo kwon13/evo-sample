@@ -89,7 +89,7 @@ MUTATE_CROSSOVER = (
     "# Create a NEW function that combines concepts from both parents.\n"
     "# Example: if A is geometry and B is probability,\n"
     "#   create geometric probability problems.\n"
-    + MUTATION_METHOD_RULE +
+    + MUTATION_METHOD_RULE
     + SINGLE_ANSWER_RULE +
     "# Hybrid version combining both concepts (target: p_hat ~ 0.5, H > 2.0):\n"
     "```python\n"
