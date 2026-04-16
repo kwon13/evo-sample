@@ -271,6 +271,12 @@ class RQTaskRunner:
             reeval_evict_p_hat_range=tuple(
                 rq_cfg_get("reeval_evict_p_hat_range", [0.02, 0.98])
             ),
+            # Training-data selection
+            training_selection_mode=rq_cfg_get(
+                "training_selection_mode", "h_priority_d_uniform"
+            ),
+            training_budget=rq_cfg_get("training_budget", None),
+            strict_anti_reuse=rq_cfg_get("strict_anti_reuse", True),
         )
         print("[Runner] trainer constructed")
 

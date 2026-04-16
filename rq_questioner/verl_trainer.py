@@ -303,6 +303,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         reeval_per_step: int = 0,
         reeval_age_ratio: float = 0.7,
         reeval_evict_p_hat_range: tuple[float, float] = (0.02, 0.98),
+        # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
+        training_selection_mode: str = "h_priority_d_uniform",
+        training_budget: int | None = None,
+        strict_anti_reuse: bool = True,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -322,6 +326,15 @@ class RQEvolveTrainer(RayPPOTrainer):
         self.reeval_age_ratio = max(0.0, min(1.0, reeval_age_ratio))
         self.reeval_evict_p_hat_range = tuple(reeval_evict_p_hat_range)
         self._computed_evolution_freq = None
+        # training-data selection state
+        self.training_selection_mode = training_selection_mode
+        if training_budget is None:
+            training_budget = (
+                map_elites.n_h_bins * map_elites.n_div_bins * instances_per_program
+            )
+        self.training_budget = int(training_budget)
+        self.strict_anti_reuse = strict_anti_reuse
+        self.used_seeds: dict[str, set[int]] = {}
 
     # ------------------------------------------------------------------
     # Hook: called per mini-batch update
@@ -1026,29 +1039,105 @@ class RQEvolveTrainer(RayPPOTrainer):
     # Dataset refresh from MAP-Elites champions
     # ------------------------------------------------------------------
 
+    def _next_unused_seed(self, program_id: str) -> int | None:
+        """Smallest non-negative integer not yet consumed by this program.
+
+        When ``strict_anti_reuse`` is off, any seed up to ``instances_per_program``
+        may repeat across epochs; this method then simply cycles through the
+        fixed range. When strict, the counter monotonically increases, so each
+        (program_id, seed) pair is used at most once across the whole run.
+        """
+        used = self.used_seeds.setdefault(program_id, set())
+        if not self.strict_anti_reuse:
+            for s in range(self.instances_per_program):
+                if s not in used:
+                    return s
+            return None
+        s = 0
+        while s in used:
+            s += 1
+        return s
+
     def _refresh_dataset(self):
-        """MAP-Elites 챔피언 → dynamic_dataset 교체 → dataloader 재구성."""
-        champions = self.map_elites.get_all_champions()
+        """MAP-Elites 챔피언 → dynamic_dataset 교체 → dataloader 재구성.
+
+        Selection rule (``h_priority_d_uniform``):
+          1. Outer loop over entropy bins in descending order (high-H first).
+          2. Inner loop over diversity bins in shuffled order (D uniform).
+          3. For each filled niche, pick the next *unused* seed of its champion
+             via :meth:`_next_unused_seed`, generate one (problem, answer)
+             instance, and record the (program_id, seed) pair in ``used_seeds``.
+          4. Stop as soon as ``training_budget`` instances have been collected.
+
+        The legacy ``uniform`` mode iterates every champion with seeds
+        ``0..instances_per_program`` and is retained for regression tests.
+        """
         old_size = len(self.dynamic_dataset)
         new_problems: list[dict] = []
 
-        for champ in champions:
-            for seed in range(self.instances_per_program):
-                inst = champ.execute(seed=seed)
-                if inst:
+        if self.training_selection_mode == "uniform":
+            # Legacy path: champion × fixed seed range, full-budget unconditionally.
+            champions = self.map_elites.get_all_champions()
+            for champ in champions:
+                for seed in range(self.instances_per_program):
+                    inst = champ.execute(seed=seed)
+                    if inst:
+                        new_problems.append({
+                            "problem": inst.problem,
+                            "answer": inst.answer,
+                            "program_id": champ.program_id,
+                            "rq_score": champ.rq_score,
+                        })
+        else:
+            # H-priority + D-uniform + strict anti-reuse.
+            grid = self.map_elites.grid
+            n_h = self.map_elites.n_h_bins
+            n_d = self.map_elites.n_div_bins
+            exhausted = 0
+            for h_bin in range(n_h - 1, -1, -1):  # high H first
+                d_order = list(range(n_d))
+                random.shuffle(d_order)
+                for d_bin in d_order:
+                    if len(new_problems) >= self.training_budget:
+                        break
+                    niche = grid.get((h_bin, d_bin))
+                    if niche is None or niche.champion is None:
+                        continue
+                    champ = niche.champion
+                    seed = self._next_unused_seed(champ.program_id)
+                    if seed is None:
+                        exhausted += 1
+                        continue
+                    inst = champ.execute(seed=seed)
+                    if inst is None:
+                        # Still mark this seed as consumed to avoid retrying.
+                        self.used_seeds[champ.program_id].add(seed)
+                        continue
                     new_problems.append({
                         "problem": inst.problem,
                         "answer": inst.answer,
                         "program_id": champ.program_id,
                         "rq_score": champ.rq_score,
+                        "h_bin": h_bin,
+                        "d_bin": d_bin,
+                        "seed": seed,
                     })
+                    self.used_seeds[champ.program_id].add(seed)
+                if len(new_problems) >= self.training_budget:
+                    break
+            if len(new_problems) < self.training_budget:
+                logger.warning(
+                    f"[Evolution] Training budget under-filled: "
+                    f"{len(new_problems)}/{self.training_budget} "
+                    f"(exhausted champions: {exhausted})"
+                )
 
         if new_problems:
             self.dynamic_dataset.update(new_problems)
             self._rebuild_dataloader()
             logger.info(
-                f"[Evolution] Dataset refreshed: {old_size} → {len(new_problems)} problems "
-                f"from {len(champions)} champions, dataloader rebuilt"
+                f"[Evolution] Dataset refreshed ({self.training_selection_mode}): "
+                f"{old_size} → {len(new_problems)} problems, dataloader rebuilt"
             )
 
     def _rebuild_dataloader(self):

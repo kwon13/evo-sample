@@ -102,3 +102,18 @@ rq:
   reeval_per_step: 0                    # 재평가할 champion 수 (0 = 비활성화)
   reeval_age_ratio: 0.7                 # (0~1) age-weighted 비율, 나머지는 랜덤
   reeval_evict_p_hat_range: [0.02, 0.98]  # 이 범위 벗어나는 champion 은 evict
+
+  # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
+  # mode:
+  #   "h_priority_d_uniform" (default) — H 내림차순 × D 균등 + (program, seed) 재사용 금지
+  #   "uniform"                         — 모든 champion × seeds[0, m)  (legacy)
+  # training_budget:
+  #   epoch 당 총 (problem, answer) 인스턴스 수.
+  #   null 이면 n_h_bins × n_div_bins × instances_per_program 로 자동 설정.
+  # strict_anti_reuse:
+  #   true  (권장) — 같은 (program_id, seed) 쌍은 전체 학습 동안 최대 1회만 노출.
+  #                   checkpoint 에 used_seeds dict 를 포함해야 restart 후에도 유지됨.
+  #   false        — 한 epoch 안에서만 중복 금지, epoch 간에는 seed 재사용 허용.
+  training_selection_mode: "h_priority_d_uniform"
+  training_budget: null
+  strict_anti_reuse: true
