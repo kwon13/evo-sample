@@ -211,29 +211,99 @@ runner.batch_entropy(instances)             -> list[float | None]
 
 ## Quick Start
 
-### 설치
+환경 관리는 [**uv**](https://docs.astral.sh/uv/)를 사용한다. `pyproject.toml` +
+`.python-version` 조합이 소스 오브 트루스이며, `requirements.txt`는 더
+이상 유지되지 않는다.
+
+### 0. uv 설치 (한 번만)
 
 ```bash
-pip install -r requirements.txt
-# Ollama 경로를 쓸 경우 추가:
-pip install ollama python-dotenv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"   # 쉘 rc에 영구 추가 권장
+uv --version                            # 0.4.x 이상이면 OK
 ```
+
+### 1. 프로젝트 venv 만들기 (한 번만)
+
+프로젝트 루트(=이 README가 있는 디렉터리)에서 실행한다. `.python-version`
+이 `3.10`을 지정하므로 uv가 없으면 알아서 받아 간다.
+
+```bash
+cd /path/to/evo-sample
+source .venv/bin/activate
+
+# (a) Python 3.10 인터프리터 확보 — 시스템에 없으면 자동 다운로드
+uv python install 3.10
+
+# (b) 프로젝트 전용 venv 생성 (기본 위치: ./.venv)
+uv venv
+
+# (c) 의존성 설치 — 용도별 extra 선택
+uv pip install -e ".[gpu]"         # ① GPU + vLLM (본 실험 경로)
+#uv pip install -e .               # ② CPU만 (test_local 검증용)
+#uv pip install -e ".[ollama]"     # ③ Ollama 백엔드
+#uv pip install -e ".[openai]"     # ④ OpenAI 호환 API 백엔드
+#uv pip install -e ".[all]"        # ⑤ 전부 다
+```
+
+`uv pip install -e ".[gpu]"` 가 GPU 실행의 기본 경로다. `torch`·`vllm`
+이 함께 설치된다(용량 ~6 GB, 소요 10–15분).
+
+> 왜 `pip` 아니고 `uv pip`? 같은 `pyproject.toml`을 읽지만 **의존성
+> 해석·다운로드가 10배 이상 빠름**. 가상환경 생성(`uv venv`)과도
+> 통합되어 있다.
+
+### 2. 환경 활성화 없이 한 번에 실행하기
+
+`uv run`은 (1)이 이미 되어 있으면 그 venv로 바로 스크립트를 돌린다.
+
+```bash
+uv run python scripts/test_local.py
+uv run python scripts/test_feasibility.py --vllm_model Qwen/Qwen3-4B-Base --tp 1
+```
+
+활성화가 편하면 전통적인 venv 방식도 그대로 된다:
+
+```bash
+source .venv/bin/activate
+python scripts/test_feasibility.py --vllm_model Qwen/Qwen3-4B-Base --tp 1
+deactivate
+```
+
+### 3. 패키지 추가·제거
+
+```bash
+uv pip install <패키지명>      # 즉시 설치
+uv pip uninstall <패키지명>    # 제거
+```
+
+장기적으로 프로젝트의 공식 의존성에 넣고 싶으면 `pyproject.toml`의
+`dependencies` 또는 `[project.optional-dependencies]` 항목을 직접
+편집한 뒤 `uv pip install -e ".[gpu]"` 를 다시 돌리면 된다.
+
+---
 
 ### 시나리오 A — CPU만 있을 때 (로직 검증)
 
 ```bash
-python scripts/test_local.py
+uv run python scripts/test_local.py
 ```
 seed 실행, R_Q 계산, grid 동작, pipeline dry-run 등 5 테스트 통과하면 OK.
 
 ### 시나리오 B — GPU + vLLM (실측 feasibility)
 
 ```bash
-python scripts/test_feasibility.py \
-    --vllm_model Qwen/Qwen3-8B-Base \
-    --tp 4 --n_evo 50 \
+CUDA_VISIBLE_DEVICES=4 uv run python scripts/test_feasibility.py \
+    --vllm_model Qwen/Qwen3-4B-Base \
+    --tp 1 --n_evo 10 \
     --n_h_bins 10 --n_div_bins 10
 ```
+
+> **Note (vLLM × Ampere SM 8.6, A6000/A100)**: vLLM 0.19+는 RTX A6000에서
+> 번들 FlashAttention-2 커널이 silent crash하는 사례가 보고되었다.
+> 동일 증상(init 후 GPU util 0 %, EngineCore가 `flash_attn.py` 로그 직후
+> 사망)이 보이면 `LLM(..., attention_backend="TRITON_ATTN")`을 강제하거나
+> vLLM을 0.8.5로 다운그레이드한다(`uv pip install 'vllm==0.8.5' 'torch==2.6.0'`).
 
 ### 시나리오 C — 로컬 Ollama (Mac/저사양 GPU)
 
@@ -251,7 +321,7 @@ curl http://localhost:11434/api/tags
 
 **실행**
 ```bash
-python scripts/test_feasibility_ollama.py \
+uv run python scripts/test_feasibility_ollama.py \
     --ollama_model qwen3:4b-instruct \
     --n_evo 5 --candidates 4 \
     --max_parallel 4
@@ -262,7 +332,7 @@ python scripts/test_feasibility_ollama.py \
 ### 시나리오 D — 전체 학습 (veRL)
 
 ```bash
-python run_verl.py --config configs/rq_config.yaml
+uv run python run_verl.py --config configs/rq_config.yaml
 ```
 
 ---
