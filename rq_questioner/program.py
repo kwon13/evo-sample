@@ -4,6 +4,7 @@ ProblemProgram: The genotype of our evolutionary framework.
 Each program is a Python function that takes a seed and returns (problem_text, answer).
 Programs use inverse construction: answer is chosen first, then the problem is built from it.
 """
+from __future__ import annotations
 
 import hashlib
 import json

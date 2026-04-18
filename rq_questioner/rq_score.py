@@ -7,6 +7,7 @@ Where:
   - p_θ(x') is estimated from G rollouts as pass rate
   - H_t(x') is per-token entropy from Solver's forward pass
 """
+from __future__ import annotations
 
 import numpy as np
 from dataclasses import dataclass

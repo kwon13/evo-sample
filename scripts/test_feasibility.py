@@ -28,6 +28,8 @@ veRL 없이 evolution 로직 전체의 동작 가능성을 검증한다.
   python scripts/test_feasibility.py --n_evo 3 --candidates 4
 """
 
+from __future__ import annotations
+
 import multiprocessing
 if multiprocessing.get_start_method(allow_none=True) != "spawn":
     multiprocessing.set_start_method("spawn", force=True)
@@ -55,6 +57,7 @@ from prompts import (
     SINGLE_ANSWER_RULE, SCORE_FEEDBACK,
     score_diagnosis, build_score_feedback,
     build_few_shot_examples, build_execution_feedback,
+    has_anti_pattern,
     SOLVER_COMPLETION_PROMPT,
 )
 from dotenv import load_dotenv
@@ -199,11 +202,17 @@ class VLLMRunner:
     ):
         from vllm import LLM
         print(f"[vLLM] Loading {model_name} ...")
+        # enforce_eager=True bypasses the V1 torch.compile + cuda-graph
+        # capture pipeline that hangs during init on some driver/GPU combos
+        # (observed on A6000 + vLLM 0.19). Steady-state throughput is a
+        # bit lower but the run completes reliably.
         self.llm = LLM(
             model=model_name,
             tensor_parallel_size=tensor_parallel_size,
             gpu_memory_utilization=gpu_memory_utilization,
             trust_remote_code=True,
+            enforce_eager=True,
+            max_model_len=8192,
         )
         self.tokenizer = self.llm.get_tokenizer()
         self.temperature = temperature
@@ -320,7 +329,8 @@ class VLLMRunner:
             few_shot=few_shot, exec_feedback=exec_fb,
         )
         params = SamplingParams(
-            temperature=0.1,   # 코드 생성: 낮은 temperature → syntax 오류 감소
+            temperature=0.75 if in_depth else 0.95,
+            top_p=0.95,
             max_tokens=4096,
             n=1,
         )
@@ -359,7 +369,8 @@ class VLLMRunner:
             few_shot=few_shot,
         )
         params = SamplingParams(
-            temperature=0.3,
+            temperature=0.80,
+            top_p=0.95,
             max_tokens=4096,
             n=1,
         )
@@ -384,49 +395,67 @@ class VLLMRunner:
         self, tasks: list[dict], grid: Optional["MAPElitesGrid"] = None,
     ) -> list[Optional[str]]:
         """
-        Batch mutation: 여러 mutation/crossover 프롬프트를 한 번의 generate()로 처리.
-        Few-shot top-K 예시 + execution feedback 포함.
+        Batch mutation: group tasks by operator-specific sampling
+        temperature, then issue one vLLM call per group.
 
-        tasks: list of {"op": "in_depth"|"in_breadth"|"crossover", "parent": ..., "parent_b": ...}
-        Returns: list of Optional[str] (source code or None)
+        Per-operator temperatures favour creative exploration for
+        in-breadth (where diversity is the goal), a middle heat for
+        in-depth and crossover, and keep top_p just below 1 so we
+        avoid the rare-token tail that tends to emit malformed code.
         """
         from vllm import SamplingParams
 
         few_shot = build_few_shot_examples(grid) if grid else ""
 
-        prompts = []
-        for t in tasks:
+        # Per-operator sampling schedule.
+        op_params = {
+            "in_depth":  dict(temperature=0.75, top_p=0.95),
+            "in_breadth": dict(temperature=0.95, top_p=0.95),
+            "crossover": dict(temperature=0.80, top_p=0.95),
+        }
+
+        # Build prompts tagged with their original task index so we
+        # can reassemble the output list in order after grouping.
+        tagged = []  # (orig_idx, op, prompt)
+        for i, t in enumerate(tasks):
             if t["op"] == "crossover":
                 pa, pb = t["parent"], t["parent_b"]
-                prompts.append(MUTATE_CROSSOVER.format(
+                p = MUTATE_CROSSOVER.format(
                     code_a=pa.source_code, code_b=pb.source_code,
-                    p_hat_a=getattr(pa, "p_hat", 0.5), h_a=getattr(pa, "h_score", 1.0),
-                    p_hat_b=getattr(pb, "p_hat", 0.5), h_b=getattr(pb, "h_score", 1.0),
+                    p_hat_a=getattr(pa, "p_hat", 0.5),
+                    h_a=getattr(pa, "h_score", 1.0),
+                    p_hat_b=getattr(pb, "p_hat", 0.5),
+                    h_b=getattr(pb, "h_score", 1.0),
                     few_shot=few_shot,
-                ))
+                )
             else:
                 parent = t["parent"]
                 tmpl = MUTATE_DEPTH if t["op"] == "in_depth" else MUTATE_BREADTH
-                p_hat = getattr(parent, "p_hat", 0.5)
-                h_score = getattr(parent, "h_score", 1.0)
-                rq_score = getattr(parent, "rq_score", 0.0)
-                diag, action = score_diagnosis(p_hat, h_score)
-                feedback = SCORE_FEEDBACK.format(
-                    p_hat=p_hat, h_score=h_score, rq_score=rq_score,
-                    diagnosis=diag, action=action,
-                )
+                feedback = build_score_feedback(parent)
                 exec_fb = build_execution_feedback(parent)
-                prompts.append(tmpl.format(
+                p = tmpl.format(
                     code=parent.source_code, score_feedback=feedback,
                     few_shot=few_shot, exec_feedback=exec_fb,
-                ))
+                )
+            tagged.append((i, t["op"], p))
 
-        if not prompts:
+        if not tagged:
             return []
 
-        params = SamplingParams(temperature=0.3, max_tokens=4096, n=1)
-        outputs = self.llm.generate(prompts, params)
-        return [self._extract_code(out.outputs[0].text) for out in outputs]
+        results: list[Optional[str]] = [None] * len(tasks)
+        # Issue one generate() per op so each group gets its own
+        # temperature. vLLM batches internally.
+        for op in ("in_depth", "in_breadth", "crossover"):
+            group = [(idx, pr) for (idx, g_op, pr) in tagged if g_op == op]
+            if not group:
+                continue
+            params = SamplingParams(
+                max_tokens=4096, n=1, **op_params[op],
+            )
+            outs = self.llm.generate([pr for _, pr in group], params)
+            for (idx, _), out in zip(group, outs):
+                results[idx] = self._extract_code(out.outputs[0].text)
+        return results
 
     def batch_entropy(
         self, instances: list["ProblemInstance"], top_k: int = 20,
@@ -738,6 +767,17 @@ def evolution_step(
             if verbose:
                 print(f"  execute failed ({task['op']})")
             continue
+
+        # Anti-reward-hacking reject: block banned patterns that
+        # inflate H without adding reasoning content (mod-1 tricks,
+        # float-rounding obfuscation, etc.). This is a hard filter
+        # ahead of entropy/rollout so we don't waste GPU on them.
+        if has_anti_pattern(child.source_code, inst.problem):
+            skipped_execute += 1
+            if verbose:
+                print(f"  anti-hack reject ({task['op']}): {inst.problem[:80]}")
+            continue
+
         children.append((child, inst, task))
 
     if not children:

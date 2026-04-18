@@ -4,6 +4,7 @@ Verifier: Validates that (problem, answer) pairs are correct.
 Uses substitution-based verification for math problems.
 This is the "easy to evaluate, hard to solve" principle from FunSearch.
 """
+from __future__ import annotations
 
 import re
 import math
