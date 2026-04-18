@@ -126,9 +126,13 @@ rq:
   #   epoch 당 총 (problem, answer) 인스턴스 수.
   #   null 이면 n_h_bins × n_div_bins × instances_per_program 로 자동 설정.
   # strict_anti_reuse:
-  #   true  (권장) — 같은 (program_id, seed) 쌍은 전체 학습 동안 최대 1회만 노출.
-  #                   checkpoint 에 used_seeds dict 를 포함해야 restart 후에도 유지됨.
-  #   false        — 한 epoch 안에서만 중복 금지, epoch 간에는 seed 재사용 허용.
+  #   true  (권장) — 같은 (program_id, seed) 쌍은 전체 학습 동안 최대 1회만
+  #                   노출. used_seeds 는 RQEvolveTrainer._save_checkpoint /
+  #                   _load_checkpoint 가 JSON sidecar (rq_used_seeds.json)
+  #                   로 저장/복원하므로 restart 후에도 유지됨.
+  #   false        — _refresh_dataset 시작 시 used_seeds 가 초기화되어 한
+  #                   epoch 안에서만 중복 금지. epoch 간에는 같은
+  #                   (program_id, seed) 쌍이 재사용될 수 있음.
   training_selection_mode: "h_priority_d_uniform"
   training_budget: null
   strict_anti_reuse: true

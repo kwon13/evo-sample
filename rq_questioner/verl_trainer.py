@@ -650,6 +650,140 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         logger.info(f"[Evolution] Snapshot saved: {path}")
 
+    def _save_dataset_snapshot(
+        self, problems: list[dict], frontier_champs: int, archive_champs: int,
+    ) -> None:
+        """Persist the actual training problem list produced by a refresh.
+
+        Written under {default_local_dir}/evolution_logs/datasets/ :
+          - dataset_step_{global_step}.json — step-indexed
+          - latest_dataset.json            — always the most recent
+
+        The problem dicts already include problem / answer / program_id /
+        rq_score / h_bin / d_bin / seed, so a downstream consumer can
+        reconstruct which archive cell each training example came from.
+        """
+        import json
+        import os
+        from datetime import datetime
+
+        save_dir = os.path.join(
+            getattr(self.config.trainer, 'default_local_dir', './rq_output'),
+            "evolution_logs",
+            "datasets",
+        )
+        os.makedirs(save_dir, exist_ok=True)
+
+        step = getattr(self, 'global_step', 0)
+        snapshot = {
+            "global_step": step,
+            "timestamp": datetime.now().isoformat(),
+            "training_selection_mode": self.training_selection_mode,
+            "training_budget": self.training_budget,
+            "instances_per_program": self.instances_per_program,
+            "strict_anti_reuse": self.strict_anti_reuse,
+            "frontier_p_hat_range": list(self.frontier_p_hat_range),
+            "dataset_size": len(problems),
+            "archive_champions": archive_champs,
+            "frontier_champions": frontier_champs,
+            "problems": problems,
+        }
+
+        path = os.path.join(save_dir, f"dataset_step_{step}.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, indent=2, ensure_ascii=False, default=str)
+
+        latest_path = os.path.join(save_dir, "latest_dataset.json")
+        with open(latest_path, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, indent=2, ensure_ascii=False, default=str)
+
+        logger.info(
+            f"[Evolution] Dataset snapshot saved: {path} "
+            f"({len(problems)} problems, "
+            f"frontier={frontier_champs}/{archive_champs} champs)"
+        )
+
+    # ------------------------------------------------------------------
+    # Checkpoint override — persist used_seeds across restart
+    # ------------------------------------------------------------------
+
+    _USED_SEEDS_FILE = "rq_used_seeds.json"
+
+    def _save_checkpoint(self) -> None:
+        """Persist used_seeds alongside actor/critic/dataloader state.
+
+        strict_anti_reuse=True guarantees "(program_id, seed) used at most once
+        across the entire run" — but only if used_seeds survives restart. This
+        hook writes a JSON sidecar to the checkpoint folder; the base class
+        saves actor/critic/dataloader as usual.
+        """
+        import json
+        import os
+
+        super()._save_checkpoint()
+
+        folder_path = os.path.join(
+            self.config.trainer.save_checkpoint_path,
+            f"global_step_{self.global_step}",
+        )
+        used_seeds_path = os.path.join(folder_path, self._USED_SEEDS_FILE)
+        # Sets are not JSON-serialisable — dump as sorted lists so diffs stay
+        # readable and round-trip is stable.
+        payload = {
+            "strict_anti_reuse": self.strict_anti_reuse,
+            "instances_per_program": self.instances_per_program,
+            "used_seeds": {
+                pid: sorted(seeds) for pid, seeds in self.used_seeds.items()
+            },
+        }
+        try:
+            with open(used_seeds_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2, ensure_ascii=False)
+            logger.info(
+                f"[Checkpoint] Saved used_seeds ({len(self.used_seeds)} programs, "
+                f"{sum(len(v) for v in self.used_seeds.values())} pairs) → "
+                f"{used_seeds_path}"
+            )
+        except Exception as exc:
+            logger.warning(f"[Checkpoint] Failed to save used_seeds: {exc}")
+
+    def _load_checkpoint(self) -> None:
+        """Restore used_seeds after the base-class checkpoint load."""
+        import json
+        import os
+
+        super()._load_checkpoint()
+
+        if self.config.trainer.load_checkpoint_path is None:
+            return
+
+        used_seeds_path = os.path.join(
+            self.config.trainer.load_checkpoint_path, self._USED_SEEDS_FILE,
+        )
+        if not os.path.exists(used_seeds_path):
+            logger.info(
+                f"[Checkpoint] No used_seeds sidecar at {used_seeds_path}; "
+                f"starting with empty used_seeds. strict_anti_reuse cannot "
+                f"protect against pre-checkpoint collisions."
+            )
+            return
+
+        try:
+            with open(used_seeds_path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            raw = payload.get("used_seeds", {}) or {}
+            self.used_seeds = {pid: set(seeds) for pid, seeds in raw.items()}
+            logger.info(
+                f"[Checkpoint] Restored used_seeds: {len(self.used_seeds)} "
+                f"programs, {sum(len(v) for v in self.used_seeds.values())} "
+                f"pairs from {used_seeds_path}"
+            )
+        except Exception as exc:
+            logger.warning(
+                f"[Checkpoint] Failed to load used_seeds from "
+                f"{used_seeds_path}: {exc}"
+            )
+
     # ------------------------------------------------------------------
     # Option A — Champion re-evaluation
     # ------------------------------------------------------------------
@@ -1235,23 +1369,31 @@ class RQEvolveTrainer(RayPPOTrainer):
     # ------------------------------------------------------------------
 
     def _next_unused_seed(self, program_id: str) -> int | None:
-        """Smallest non-negative integer not yet consumed by this program.
+        """Smallest unused seed in ``0..instances_per_program-1``.
 
-        When ``strict_anti_reuse`` is off, any seed up to ``instances_per_program``
-        may repeat across epochs; this method then simply cycles through the
-        fixed range. When strict, the counter monotonically increases, so each
-        (program_id, seed) pair is used at most once across the whole run.
+        The cap is unconditional: a single champion can contribute at most
+        ``instances_per_program`` instances to the epoch dataset, regardless of
+        how large ``training_budget`` is. Without this cap the earlier strict
+        path returned unbounded seeds, so a single frontier champion could
+        fill the whole ``training_budget`` on its own.
+
+        ``strict_anti_reuse`` semantics:
+          True  — seeds never repeat across the whole run (used set persists
+                  across refreshes), so after ``instances_per_program``
+                  refreshes a champion is globally exhausted and returns
+                  ``None``. Survives through checkpoint save/load.
+          False — ``self.used_seeds`` is cleared at the START of each refresh
+                  (see :meth:`_refresh_dataset`), so the cap is enforced within
+                  one epoch but the same (program_id, seed) pair may recur
+                  across epochs.
+
+        Returns ``None`` when the champion has exhausted its seed budget.
         """
         used = self.used_seeds.setdefault(program_id, set())
-        if not self.strict_anti_reuse:
-            for s in range(self.instances_per_program):
-                if s not in used:
-                    return s
-            return None
-        s = 0
-        while s in used:
-            s += 1
-        return s
+        for s in range(self.instances_per_program):
+            if s not in used:
+                return s
+        return None
 
     def _is_frontier_champion(self, champ) -> bool:
         """Whether this champion is in the learnability frontier for training.
@@ -1274,22 +1416,41 @@ class RQEvolveTrainer(RayPPOTrainer):
         """MAP-Elites 챔피언 → dynamic_dataset 교체 → dataloader 재구성.
 
         Selection rule (``h_priority_d_uniform``):
-          Repeated H×D sweeps until ``training_budget`` is reached. Each sweep
-          processes every filled niche at most once (≤1 new problem per niche),
-          using :meth:`_next_unused_seed` for strict anti-reuse. Across sweeps,
-          the same champion may be revisited with its next unused seed until
-          the budget is hit or no sweep makes any progress.
+          Repeated H×D sweeps emit ≤1 new problem per filled niche per sweep.
+          Across sweeps, the same champion may be revisited with its next
+          unused seed **up to** ``instances_per_program`` distinct seeds.
+          Caps therefore stack as:
 
-          Only frontier champions (0 < p_hat < 1) contribute to training data —
+              dataset_size ≤ min(
+                  training_budget,
+                  frontier_champions × instances_per_program,
+              )
+
+          A few concrete examples (instances_per_program=16, budget=960):
+              frontier=1  → dataset ≤ 16
+              frontier=10 → dataset ≤ 160
+              frontier=60 → dataset ≤ 960 (budget saturates)
+
+          Only frontier champions (0 < p_hat < 1) contribute to training data;
           extreme-p champions stay in the archive as mutation material.
 
-        The legacy ``uniform`` mode iterates every frontier champion with seeds
-        ``0..instances_per_program`` then clamps to ``training_budget``.
+          ``training_budget`` under-fill is therefore NORMAL for small archives
+          and is emitted as an info-level log rather than an error.
+
+        Legacy ``uniform`` mode:
+          Iterates every frontier champion across seeds 0..instances_per_program,
+          then clamps to ``training_budget``.
         """
         old_size = len(self.dynamic_dataset.snapshot())
         new_problems: list[dict] = []
         sweep = 0
         non_frontier_skipped = 0  # reporting-only counter
+
+        # Non-strict anti-reuse: clear the used-seed registry so the same
+        # (program_id, seed) pair may recur across refreshes (epochs).
+        # Within this refresh the cap still holds via _next_unused_seed.
+        if not self.strict_anti_reuse:
+            self.used_seeds.clear()
 
         if self.training_selection_mode == "uniform":
             # Legacy: frontier champions × fixed seed range, clamped to budget.
@@ -1306,6 +1467,9 @@ class RQEvolveTrainer(RayPPOTrainer):
                             "answer": inst.answer,
                             "program_id": champ.program_id,
                             "rq_score": champ.rq_score,
+                            "h_bin": getattr(champ, "niche_h", None),
+                            "d_bin": getattr(champ, "niche_div", None),
+                            "seed": seed,
                         })
                         if len(new_problems) >= self.training_budget:
                             break
@@ -1372,19 +1536,25 @@ class RQEvolveTrainer(RayPPOTrainer):
 
                 failed_sweeps += 1
                 if not advanced:
-                    logger.warning(
-                        f"[Evolution] Training budget under-filled: "
-                        f"{len(new_problems)}/{self.training_budget} after "
-                        f"{sweep} sweeps; no usable champion/seed made progress"
+                    # Normal outcome when frontier_champions × instances_per_program
+                    # < training_budget (small archive) or when all frontier
+                    # champions have exhausted their seed caps. Info-level.
+                    logger.info(
+                        f"[Evolution] Training budget under-filled (expected "
+                        f"for small archive): {len(new_problems)}/"
+                        f"{self.training_budget} after {sweep} sweeps; "
+                        f"no frontier champion has unused seeds left"
                     )
                     break
                 if failed_sweeps >= MAX_FAILED_SWEEPS:
+                    # Seeds were attempted but execute() returned None — a real
+                    # problem (exec-failing programs survived). Warning-level.
                     logger.warning(
-                        f"[Evolution] Training budget under-filled: "
-                        f"{len(new_problems)}/{self.training_budget} after "
-                        f"{sweep} sweeps; no valid instance appended in last "
-                        f"{MAX_FAILED_SWEEPS} sweeps (seeds consumed but all "
-                        f"execute() returned None)"
+                        f"[Evolution] Training budget under-filled with exec "
+                        f"failures: {len(new_problems)}/{self.training_budget} "
+                        f"after {sweep} sweeps; no valid instance appended in "
+                        f"last {MAX_FAILED_SWEEPS} sweeps (seeds consumed but "
+                        f"all execute() returned None)"
                     )
                     break
 
@@ -1410,6 +1580,12 @@ class RQEvolveTrainer(RayPPOTrainer):
             "frontier_champions": frontier_champs,
             "non_frontier_skipped_visits": non_frontier_skipped,
         }
+
+        # Persist the actual training problem list alongside the grid snapshot.
+        # Without this the dataset that actually reached the Solver is not
+        # recoverable after the run, making "why did dataset_size become X?"
+        # impossible to answer from logs alone.
+        self._save_dataset_snapshot(new_problems, frontier_champs, len(all_champs))
 
         logger.info(
             f"[Evolution] Dataset refreshed ({self.training_selection_mode}): "
