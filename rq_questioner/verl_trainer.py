@@ -1,19 +1,23 @@
 """
 RQ-Evolve Trainer: veRL RayPPOTrainer + MAP-Elites evolution.
 
-Online 학습 파이프라인:
-  RayPPOTrainer.fit() 루프를 그대로 사용하며,
-  _pre_actor_update_hook()으로 evolution을 주입.
+Method-aligned epoch flow (method.tex §coevolution):
+  매 Solver epoch 시작에서 _pre_epoch_hook()이 evolution을 수행.
 
-  매 step:
-    1. Solver 학습: dynamic_dataset → rollout → reward → REINFORCE++ update
-    2. evolution_freq마다 진화:
-       a. MAP-Elites에서 parent 샘플링 → LLM mutation → 문제 생성 프로그램 변이
-       b. 자가 검증 (multi-seed 실행 + SymPy)
-       c. H pre-filter → rollout(G회) → p_hat 추정
-       d. R_Q = p(1-p) · H_bar 계산 → grid 갱신
-       e. _refresh_dataset() → dataloader 재구성
-    3. val_freq마다 validation (수학 능력 추적)
+  Epoch 0 .. N-1:
+    0. _pre_epoch_hook(epoch_idx) → _evolution_step():
+       a. Champion re-evaluation: filled niche의 champion을 현재 Solver
+          기준으로 R_Q 재측정 (self-invalidating archive)
+       b. Mutation rounds × max_rounds:
+          - MAP-Elites parent 샘플링 → LLM mutation → multi-seed 자가 검증
+          - entropy probe → H pre-filter → G-1 expand rollout → R_Q scoring
+          - grid try_insert / evict
+       c. _refresh_dataset(): H-priority + D-uniform + strict anti-reuse로
+          epoch dataset 재조립 → dataloader rebuild
+    1. Solver epoch: refresh된 dataset으로 rollout → reward → REINFORCE++
+    2. val_freq 주기로 validation (수학 능력 추적)
+
+  step-based _pre_actor_update_hook trigger는 제거됨.
 """
 
 import re
@@ -265,20 +269,19 @@ def _make_gen_batch(
 
 class RQEvolveTrainer(RayPPOTrainer):
     """
-    RayPPOTrainer + MAP-Elites evolution.
+    RayPPOTrainer + MAP-Elites evolution (Method-aligned epoch flow).
 
-    Online 학습 흐름:
-      fit() 루프 (RayPPOTrainer 그대로 사용):
-        매 step:
-          1. dynamic_dataset에서 배치 → Solver rollout → reward → REINFORCE++ update
-          2. evolution_freq마다 _pre_actor_update_hook() 트리거:
-             Inner Loop (_evolution_step):
-               mutation → verify → rollout(p_hat) → entropy(H) → R_Q 계산
-               → MAP-Elites grid 갱신 → _refresh_dataset() → dataloader 재구성
-          3. val_freq마다 validation (수학 능력 추적)
+    fit() 흐름:
+      epoch 0 .. N-1:
+        1. _pre_epoch_hook(epoch_idx) → _evolution_step():
+             a. Champion re-evaluation (self-invalidating archive)
+             b. Mutation rounds × max_rounds (probe → H prefilter → expand G-1)
+             c. _refresh_dataset() → dataloader rebuild
+        2. 이 epoch 의 batch 들을 순회 → Solver rollout → REINFORCE++ update
+        3. val_freq 마다 validation
 
     로깅:
-      - evo/* : grid 상태, champion 분포, accept rate (Tracker 경유)
+      - evo/* : grid 상태, champion 분포, accept rate, reeval stats (Tracker 경유)
       - val/*  : solver accuracy on val set (Tracker 경유)
       - evolution_logs/*.json : grid 스냅샷 (파일)
     """
@@ -288,8 +291,6 @@ class RQEvolveTrainer(RayPPOTrainer):
         *args,
         map_elites: MAPElitesGrid,
         dynamic_dataset: MapElitesDynamicDataset,
-        evolution_freq: int = 50,
-        evolution_pct: float | None = None,
         candidates_per_evo: int = 8,
         max_rounds: int = 8,
         num_rollouts: int = 16,
@@ -297,23 +298,25 @@ class RQEvolveTrainer(RayPPOTrainer):
         in_depth_ratio: float = 0.5,
         crossover_ratio: float = 0.2,
         h_threshold: float = 0.1,
-        # --- Champion re-evaluation (option A, opt-in) ---
-        # 기본값 0 — solver 학습에 따른 stale R_Q 가 문제가 될 때만 켠다.
-        # 활성화하려면 config 의 `reeval_per_step` 을 양수로 (예: 8) 설정.
-        reeval_per_step: int = 0,
+        # --- Champion re-evaluation (Method-aligned self-invalidating archive) ---
+        # None (default) — re-evaluate every occupied champion each evolution step.
+        # int > 0        — partial budget (debug/ablation, age-weighted sampling).
+        # 0              — disabled (ablation only; stale R_Q allowed in archive).
+        reeval_per_step: int | None = None,
         reeval_age_ratio: float = 0.7,
         reeval_evict_p_hat_range: tuple[float, float] = (0.02, 0.98),
         # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
         training_selection_mode: str = "h_priority_d_uniform",
         training_budget: int | None = None,
         strict_anti_reuse: bool = True,
+        # --- Epoch-start evolution hook ---
+        evolve_before_train: bool = True,
+        skip_initial_evolution_on_resume: bool = True,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.map_elites = map_elites
         self.dynamic_dataset = dynamic_dataset
-        self.evolution_freq = evolution_freq
-        self.evolution_pct = evolution_pct
         self.candidates_per_evo = candidates_per_evo
         self.max_rounds = max_rounds
         self.num_rollouts = num_rollouts
@@ -325,7 +328,6 @@ class RQEvolveTrainer(RayPPOTrainer):
         self.reeval_per_step = reeval_per_step
         self.reeval_age_ratio = max(0.0, min(1.0, reeval_age_ratio))
         self.reeval_evict_p_hat_range = tuple(reeval_evict_p_hat_range)
-        self._computed_evolution_freq = None
         # training-data selection state
         self.training_selection_mode = training_selection_mode
         if training_budget is None:
@@ -334,6 +336,12 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
         self.training_budget = int(training_budget)
         self.strict_anti_reuse = strict_anti_reuse
+        # epoch-hook flags (resume detection uses load_checkpoint_path presence)
+        self.evolve_before_train = bool(evolve_before_train)
+        self.skip_initial_evolution_on_resume = bool(skip_initial_evolution_on_resume)
+        self._is_resume = bool(
+            getattr(self.config.trainer, "load_checkpoint_path", None)
+        )
         self.used_seeds: dict[str, set[int]] = {}
 
     # ------------------------------------------------------------------
@@ -363,63 +371,62 @@ class RQEvolveTrainer(RayPPOTrainer):
         out = self.actor_rollout_wg.compute_log_probs(batch)
         return unpad_dataproto(out, pad)
 
-    def _get_evolution_freq(self) -> int:
-        """evolution_pct가 설정되면 total_steps에서 freq를 계산, 아니면 고정값 사용."""
-        if self._computed_evolution_freq is not None:
-            return self._computed_evolution_freq
-
-        if self.evolution_pct is not None:
-            total = getattr(self.config.trainer, 'max_steps', None) or \
-                    getattr(self.config.trainer, 'total_training_steps', None)
-            if total is None or total <= 0:
-                total = len(self.train_dataloader) * self.config.trainer.total_epochs
-            self._computed_evolution_freq = max(1, int(total * self.evolution_pct))
-            logger.info(
-                f"[Evolution] freq = {self._computed_evolution_freq} "
-                f"({self.evolution_pct:.0%} of {total} steps)"
-            )
-        else:
-            self._computed_evolution_freq = self.evolution_freq
-            logger.info(f"[Evolution] freq = {self._computed_evolution_freq} (fixed)")
-
-        return self._computed_evolution_freq
-
-    def _pre_actor_update_hook(self, global_step: int) -> dict | None:
+    def _pre_epoch_hook(self, epoch_idx: int) -> dict | None:
         """
-        verl 0.3.1 fit() 루프에서 update_actor 전에 호출되는 hook.
-        evolution_freq마다 _evolution_step() 실행.
+        Method-aligned epoch-start hook.
+
+        fit()의 매 epoch 시작에서 호출되어 Questioner evolution 을 돌린다.
+        _evolution_step() 내부에서 champion re-evaluation → mutation rounds →
+        dataset refresh 가 일어나므로, epoch 의 첫 batch 는 refresh 된
+        archive-selected dataset 을 사용한다.
+
+        Epoch 0 에서만 추가 분기:
+          - evolve_before_train=false → skip
+          - resume + skip_initial_evolution_on_resume=true → skip
+            (checkpoint 는 이미 fit() 시작부에서 load 되었으므로, 원한다면
+             resume 에서도 evolution 을 돌리는 것이 safe — skip 은 옵션)
         """
-        freq = self._get_evolution_freq()
-        if global_step % freq == 0:
-            logger.info(f"[Evolution] Triggered at step {global_step}")
-            evo_metrics = self._evolution_step()
+        if epoch_idx == 0:
+            if not self.evolve_before_train:
+                logger.info("[Evolution] epoch 0: skipped (evolve_before_train=false)")
+                return None
+            if self._is_resume and self.skip_initial_evolution_on_resume:
+                logger.info(
+                    "[Evolution] epoch 0: skipped "
+                    "(resume + skip_initial_evolution_on_resume=true)"
+                )
+                return None
 
-            # 핵심 지표 요약 출력 (console에서 한눈에 파악)
-            print(
-                f"\n{'='*60}\n"
-                f"[Evolution Summary] step={global_step}\n"
-                f"  Reeval:   {evo_metrics['reeval_count']} updated, "
-                f"{evo_metrics['reeval_evicted']} evicted, "
-                f"{evo_metrics['reeval_bin_shifted']} bin-shifted "
-                f"(ΔR_Q={evo_metrics['reeval_rq_delta_mean']:+.4f})\n"
-                f"  Mutation: {evo_metrics['attempted']} attempted, "
-                f"{evo_metrics['inserted']} inserted "
-                f"({evo_metrics['accept_rate']:.0%} accept)\n"
-                f"  Grid: {evo_metrics['grid_champions']}/{evo_metrics['total_niches']} niches filled "
-                f"({evo_metrics['grid_coverage']:.0%} coverage), "
-                f"H2+={evo_metrics['hard_champions']}\n"
-                f"  R_Q:  mean={evo_metrics['grid_mean_rq']:.4f}, "
-                f"max={evo_metrics['grid_max_rq']:.4f}\n"
-                f"  Champions: p_hat={evo_metrics['champion_p_hat_mean']:.2f}±"
-                f"{evo_metrics['champion_p_hat_std']:.2f}, "
-                f"H={evo_metrics['champion_h_mean']:.2f}±"
-                f"{evo_metrics['champion_h_std']:.2f}\n"
-                f"  Dataset: {evo_metrics['dataset_size']} problems\n"
-                f"{'='*60}"
-            )
+        logger.info(f"[Evolution] Epoch {epoch_idx} start")
+        evo_metrics = self._evolution_step()
 
-            return evo_metrics
-        return None
+        # 핵심 지표 요약 출력 (console에서 한눈에 파악)
+        print(
+            f"\n{'='*60}\n"
+            f"[Evolution Summary] epoch={epoch_idx}\n"
+            f"  Reeval:   {evo_metrics['reeval_count']} updated, "
+            f"{evo_metrics['reeval_evicted']} evicted "
+            f"(low_h={evo_metrics.get('reeval_low_h_evicted', 0)}, "
+            f"exec_fail={evo_metrics.get('reeval_exec_fail_evicted', 0)}), "
+            f"{evo_metrics['reeval_bin_shifted']} bin-shifted "
+            f"(ΔR_Q={evo_metrics['reeval_rq_delta_mean']:+.4f})\n"
+            f"  Mutation: {evo_metrics['attempted']} attempted, "
+            f"{evo_metrics['inserted']} inserted "
+            f"({evo_metrics['accept_rate']:.0%} accept)\n"
+            f"  Grid: {evo_metrics['grid_champions']}/{evo_metrics['total_niches']} niches filled "
+            f"({evo_metrics['grid_coverage']:.0%} coverage), "
+            f"H2+={evo_metrics['hard_champions']}\n"
+            f"  R_Q:  mean={evo_metrics['grid_mean_rq']:.4f}, "
+            f"max={evo_metrics['grid_max_rq']:.4f}\n"
+            f"  Champions: p_hat={evo_metrics['champion_p_hat_mean']:.2f}±"
+            f"{evo_metrics['champion_p_hat_std']:.2f}, "
+            f"H={evo_metrics['champion_h_mean']:.2f}±"
+            f"{evo_metrics['champion_h_std']:.2f}\n"
+            f"  Dataset: {evo_metrics['dataset_size']} problems\n"
+            f"{'='*60}"
+        )
+
+        return evo_metrics
 
     # ------------------------------------------------------------------
     # Evolution step (driver-side, CPU)
@@ -441,16 +448,33 @@ class RQEvolveTrainer(RayPPOTrainer):
         )
 
         # ================================================================
-        # Phase 0: Champion re-evaluation (option A)
+        # Phase 0: Champion re-evaluation — Method's self-invalidating archive
         # ================================================================
-        # Solver 가 학습되면 champion 의 p_hat 이 변하므로,
-        # mutation 을 돌리기 전에 먼저 R_Q 를 현재 solver 기준으로 갱신한다.
-        # 그러면 같은 라운드의 try_insert 비교가 fair 해진다.
-        reeval_metrics = self._reevaluate_champions(self.reeval_per_step)
+        # Before mutation, re-score existing champions under the CURRENT Solver
+        # so try_insert() compares fresh R_Q against fresh R_Q. Default mode
+        # (reeval_per_step=None) re-evaluates every occupied champion.
+        n_champions = len(self.map_elites.get_all_champions())
+        if self.reeval_per_step is None:
+            n_reeval = n_champions
+            reeval_mode = "all" if n_champions > 0 else "off"
+        elif int(self.reeval_per_step) <= 0:
+            n_reeval = 0
+            reeval_mode = "off"
+        else:
+            n_reeval = min(int(self.reeval_per_step), n_champions)
+            reeval_mode = "partial" if n_champions > 0 else "off"
+
+        logger.info(
+            f"[Reeval] mode={reeval_mode}, targets={n_reeval}/{n_champions} "
+            f"occupied champions"
+        )
+        reeval_metrics = self._reevaluate_champions(n_reeval)
         if reeval_metrics["reevaluated"] > 0 or reeval_metrics["evicted"] > 0:
             logger.info(
                 f"[Reeval] updated={reeval_metrics['reevaluated']}, "
-                f"evicted={reeval_metrics['evicted']}, "
+                f"evicted={reeval_metrics['evicted']} "
+                f"(low_h={reeval_metrics.get('low_h_evicted', 0)}, "
+                f"exec_fail={reeval_metrics.get('exec_fail_evicted', 0)}), "
                 f"bin_shifted={reeval_metrics['bin_shifted']}, "
                 f"ΔR_Q mean={reeval_metrics['rq_delta_mean']:+.4f}"
             )
@@ -499,15 +523,22 @@ class RQEvolveTrainer(RayPPOTrainer):
             "champion_p_hat_std": float(np.std(p_hats)) if p_hats else 0.0,
             "champion_h_mean": float(np.mean(h_scores)) if h_scores else 0.0,
             "champion_h_std": float(np.std(h_scores)) if h_scores else 0.0,
-            # Champion re-evaluation (option A)
+            # Champion re-evaluation (self-invalidating archive)
             "reeval_count": reeval_metrics["reevaluated"],
             "reeval_evicted": reeval_metrics["evicted"],
+            "reeval_low_h_evicted": reeval_metrics.get("low_h_evicted", 0),
+            "reeval_exec_fail_evicted": reeval_metrics.get("exec_fail_evicted", 0),
             "reeval_bin_shifted": reeval_metrics["bin_shifted"],
             "reeval_rq_delta_mean": reeval_metrics["rq_delta_mean"],
             "reeval_rq_delta_min": reeval_metrics["rq_delta_min"],
             "reeval_rq_delta_max": reeval_metrics["rq_delta_max"],
+            "reeval_targets": n_reeval,
+            "reeval_n_champions": n_champions,
+            # reeval_mode as scalar for wandb compatibility: off=0, partial=1, all=2
+            "reeval_mode": {"off": 0, "partial": 1, "all": 2}[reeval_mode],
             # Dataset state
-            "dataset_size": len(self.dynamic_dataset),
+            # True problem count (not __len__, which returns max(n, 1)).
+            "dataset_size": len(self.dynamic_dataset.snapshot()),
         }
 
         # Grid 스냅샷 JSON 저장 (시각화는 별도 스크립트로)
@@ -599,45 +630,83 @@ class RQEvolveTrainer(RayPPOTrainer):
             metrics dict — reevaluated / evicted / bin_shifted /
                            rq_delta_{mean,min,max}
         """
-        empty = {
-            "reevaluated": 0, "evicted": 0, "bin_shifted": 0,
-            "rq_delta_mean": 0.0, "rq_delta_min": 0.0, "rq_delta_max": 0.0,
-        }
+        # All counters initialized at function entry so early-return paths
+        # (no champions, all execute-failing) carry the evictions they did.
+        evicted = 0
+        exec_fail_evicted = 0
+        low_h_evicted = 0
+        bin_shifted = 0
+        reevaluated = 0
+        rq_deltas: list[float] = []
+
+        def _metrics() -> dict:
+            return {
+                "reevaluated": reevaluated,
+                "evicted": evicted,
+                "low_h_evicted": low_h_evicted,
+                "exec_fail_evicted": exec_fail_evicted,
+                "bin_shifted": bin_shifted,
+                "rq_delta_mean": float(np.mean(rq_deltas)) if rq_deltas else 0.0,
+                "rq_delta_min": float(np.min(rq_deltas)) if rq_deltas else 0.0,
+                "rq_delta_max": float(np.max(rq_deltas)) if rq_deltas else 0.0,
+            }
+
         if n_reeval <= 0:
-            return empty
+            return _metrics()
 
         champions = self.map_elites.get_all_champions()
         if not champions:
-            return empty
+            return _metrics()
 
         current_step = getattr(self, "global_step", 0)
 
-        # ---- 1. Age-weighted sampling ----
-        n = min(n_reeval, len(champions))
-        champions_by_age = sorted(
-            champions,
-            key=lambda c: getattr(c, "last_reeval_step", -1),
-        )
-        n_old = int(n * self.reeval_age_ratio)
-        n_rand = n - n_old
+        # ---- 1. Target selection ----
+        # n_reeval >= len(champions) is the Method-aligned "all" mode — bypass
+        # age-weighted sampling so no champion is silently skipped.
+        if n_reeval >= len(champions):
+            targets = list(champions)
+        else:
+            n = n_reeval
+            champions_by_age = sorted(
+                champions,
+                key=lambda c: getattr(c, "last_reeval_step", -1),
+            )
+            n_old = int(n * self.reeval_age_ratio)
+            n_rand = n - n_old
 
-        targets = list(champions_by_age[:n_old])
-        remaining = [c for c in champions if c not in targets]
-        if remaining and n_rand > 0:
-            targets += random.sample(remaining, min(n_rand, len(remaining)))
-        targets = targets[:n]
+            targets = list(champions_by_age[:n_old])
+            remaining = [c for c in champions if c not in targets]
+            if remaining and n_rand > 0:
+                targets += random.sample(remaining, min(n_rand, len(remaining)))
+            targets = targets[:n]
 
         # ---- 2. Fresh seed 로 instance 재생성 ----
-        # (champ, inst, rq_before) — 순서 보존
+        # Retry up to MAX_EXEC_RETRIES seeds per champion; evict if all fail.
+        # Without this, an exec-failing champion would silently keep its stale
+        # R_Q in the archive — contradicting the self-invalidating claim.
+        MAX_EXEC_RETRIES = 5
         pairs: list[tuple[ProblemProgram, ProblemInstance, float]] = []
         for champ in targets:
-            fresh_seed = random.randint(0, 10_000)
-            inst = champ.execute(seed=fresh_seed)
+            inst = None
+            for _ in range(MAX_EXEC_RETRIES):
+                seed = random.randint(0, 10_000)
+                inst = champ.execute(seed=seed)
+                if inst is not None:
+                    break
             if inst is not None:
                 pairs.append((champ, inst, float(champ.rq_score or 0.0)))
+            else:
+                if self.map_elites.evict_champion(champ):
+                    evicted += 1
+                    exec_fail_evicted += 1
+                    logger.info(
+                        f"[Reeval] EVICT exec-failing ({champ.niche_h},"
+                        f"{champ.niche_div}) id={champ.program_id} "
+                        f"(execute returned None for {MAX_EXEC_RETRIES} seeds)"
+                    )
 
         if not pairs:
-            return empty
+            return _metrics()
 
         eos_id = self.tokenizer.eos_token_id or self.tokenizer.pad_token_id
         pad_id = self.tokenizer.pad_token_id or eos_id
@@ -678,12 +747,12 @@ class RQEvolveTrainer(RayPPOTrainer):
             probe_output = self._generate_sequences_dp_safe(probe_batch)
         except Exception as e:
             logger.warning(f"[Reeval] probe rollout failed: {e}")
-            return empty
+            return _metrics()
 
         probe_resp_ids = probe_output.batch.get("responses")
         response_mask = probe_output.batch.get("response_mask")
         if probe_resp_ids is None or response_mask is None:
-            return empty
+            return _metrics()
 
         probe_flags: list[bool] = []
         for ci in range(n_pairs):
@@ -699,12 +768,12 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
         except Exception as e:
             logger.warning(f"[Reeval] entropy forward failed: {e}")
-            return empty
+            return _metrics()
 
         entropies = entropy_output.batch.get("entropies")
         if entropies is None:
             logger.warning("[Reeval] actor did not return entropies")
-            return empty
+            return _metrics()
         assert entropies.shape == response_mask.shape, (
             f"[Reeval] entropies {tuple(entropies.shape)} != response_mask "
             f"{tuple(response_mask.shape)}"
@@ -714,13 +783,8 @@ class RQEvolveTrainer(RayPPOTrainer):
         h_tensor = (entropies * mask_f).sum(dim=-1) / mask_f.sum(dim=-1).clamp(min=1)
         h_per_pair: list[float] = h_tensor.cpu().tolist()
 
-        # ---- 4. Counters -----------------------------------------------
+        # ---- 4. Counters (evicted / exec_fail_evicted already initialized) --
         low, high = self.reeval_evict_p_hat_range
-        evicted = 0
-        low_h_evicted = 0
-        bin_shifted = 0
-        reevaluated = 0
-        rq_deltas: list[float] = []
 
         # ---- 5. H prefilter — low-H champions are evicted --------------
         # Method's self-invalidating archive: a champion whose current H̄ fell
@@ -768,19 +832,11 @@ class RQEvolveTrainer(RayPPOTrainer):
                 extra_output = self._generate_sequences_dp_safe(extra_batch)
             except Exception as e:
                 logger.warning(f"[Reeval] expand rollout failed: {e}")
-                return {
-                    "reevaluated": 0, "evicted": evicted,
-                    "bin_shifted": 0,
-                    "rq_delta_mean": 0.0, "rq_delta_min": 0.0, "rq_delta_max": 0.0,
-                }
+                return _metrics()
 
             extra_resp_ids = extra_output.batch.get("responses")
             if extra_resp_ids is None:
-                return {
-                    "reevaluated": 0, "evicted": evicted,
-                    "bin_shifted": 0,
-                    "rq_delta_mean": 0.0, "rq_delta_min": 0.0, "rq_delta_max": 0.0,
-                }
+                return _metrics()
 
             for local_idx, ci in enumerate(retained_indices):
                 ans = pair_answers[ci]
@@ -821,14 +877,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             rq_deltas.append(float(champ.rq_score) - rq_before)
             reevaluated += 1
 
-        return {
-            "reevaluated": reevaluated,
-            "evicted": evicted,
-            "bin_shifted": bin_shifted,
-            "rq_delta_mean": float(np.mean(rq_deltas)) if rq_deltas else 0.0,
-            "rq_delta_min": float(np.min(rq_deltas)) if rq_deltas else 0.0,
-            "rq_delta_max": float(np.max(rq_deltas)) if rq_deltas else 0.0,
-        }
+        return _metrics()
 
     def _evolution_round(self, batch_size: int) -> tuple[int, int]:
         """
@@ -1144,7 +1193,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         The legacy ``uniform`` mode iterates every champion with seeds
         ``0..instances_per_program`` then clamps to ``training_budget``.
         """
-        old_size = len(self.dynamic_dataset)
+        old_size = len(self.dynamic_dataset.snapshot())
         new_problems: list[dict] = []
         sweep = 0
 
@@ -1236,30 +1285,44 @@ class RQEvolveTrainer(RayPPOTrainer):
                     )
                     break
 
-        if new_problems:
-            self.dynamic_dataset.update(new_problems)
-            self._rebuild_dataloader()
-            new_size = len(self.dynamic_dataset)
-            batch = self.config.data.rollout_batch_size
-            steps_per_epoch = new_size // batch
-            dropped = new_size - steps_per_epoch * batch
-            logger.info(
-                f"[Evolution] Dataset refreshed ({self.training_selection_mode}): "
-                f"{old_size} → {new_size} problems, budget={self.training_budget}, "
-                f"sweeps={sweep}, steps_per_epoch={steps_per_epoch}, "
-                f"dataloader rebuilt"
+        # ALWAYS update + rebuild, even if new_problems is empty. Keeping stale
+        # problems from now-evicted champions in dynamic_dataset would contradict
+        # the self-invalidating archive. Empty dataset is loud-logged below.
+        #
+        # Note: MapElitesDynamicDataset.__len__ returns max(n_problems, 1) for
+        # robustness against edge-case __getitem__ lookups, so len(dataset) can
+        # never be 0. Use .snapshot() for the TRUE problem count.
+        self.dynamic_dataset.update(new_problems)
+        self._rebuild_dataloader()
+        new_size = len(self.dynamic_dataset.snapshot())
+        batch = self.config.data.rollout_batch_size
+        steps_per_epoch = new_size // batch
+        dropped = new_size - steps_per_epoch * batch
+        logger.info(
+            f"[Evolution] Dataset refreshed ({self.training_selection_mode}): "
+            f"{old_size} → {new_size} problems, budget={self.training_budget}, "
+            f"sweeps={sweep}, steps_per_epoch={steps_per_epoch}, "
+            f"dataloader rebuilt"
+        )
+        if new_size == 0:
+            logger.error(
+                f"[Evolution] Dataset is EMPTY after refresh — archive has no "
+                f"champions that produced valid instances. Training will yield "
+                f"0 steps this epoch. Likely causes: all champions evicted "
+                f"(low-H / extreme-p / exec-fail) AND mutation inserted none. "
+                f"Investigate reeval / mutation logs above."
             )
-            if dropped > 0:
-                logger.warning(
-                    f"[Evolution] drop_last=True will drop {dropped} examples per "
-                    f"epoch (budget={self.training_budget} not divisible by "
-                    f"rollout_batch_size={batch})"
-                )
-            if new_size < batch:
-                logger.warning(
-                    f"[Evolution] dataset_size={new_size} < rollout_batch_size="
-                    f"{batch}; drop_last=True will yield 0 training steps this epoch"
-                )
+        elif dropped > 0:
+            logger.warning(
+                f"[Evolution] drop_last=True will drop {dropped} examples per "
+                f"epoch (budget={self.training_budget} not divisible by "
+                f"rollout_batch_size={batch})"
+            )
+        if 0 < new_size < batch:
+            logger.warning(
+                f"[Evolution] dataset_size={new_size} < rollout_batch_size="
+                f"{batch}; drop_last=True will yield 0 training steps this epoch"
+            )
 
     def _rebuild_dataloader(self):
         """dynamic_dataset 변경 후 train_dataloader를 재구성.

@@ -257,8 +257,13 @@ class RQTaskRunner:
             # RQ-specific
             map_elites=map_elites,
             dynamic_dataset=dynamic_dataset,
-            evolution_pct=rq_cfg_get("evolution_pct", 0.1),
-            evolution_freq=rq_cfg_get("evolution_freq", 50),
+            # Epoch-start evolution hook (Method-aligned). evolution_pct /
+            # evolution_freq are no longer consulted — kept in YAML for
+            # backward compatibility but not passed to the trainer.
+            evolve_before_train=rq_cfg_get("evolve_before_train", True),
+            skip_initial_evolution_on_resume=rq_cfg_get(
+                "skip_initial_evolution_on_resume", True
+            ),
             candidates_per_evo=rq_cfg_get("candidates_per_evo", 8),
             max_rounds=rq_cfg_get("max_rounds", 8),
             num_rollouts=rq_cfg_get("num_rollouts", 10),
@@ -266,8 +271,10 @@ class RQTaskRunner:
             in_depth_ratio=rq_cfg_get("in_depth_ratio", 0.5),
             crossover_ratio=rq_cfg_get("crossover_ratio", 0.2),
             h_threshold=rq_cfg_get("h_threshold", 0.1),
-            # Champion re-evaluation (option A, opt-in, 기본 비활성)
-            reeval_per_step=rq_cfg_get("reeval_per_step", 0),
+            # Champion re-evaluation — null (default) = all occupied champions
+            # under current Solver (self-invalidating archive). int > 0 = partial
+            # budget for ablation; 0 disables.
+            reeval_per_step=rq_cfg_get("reeval_per_step", None),
             reeval_age_ratio=rq_cfg_get("reeval_age_ratio", 0.7),
             reeval_evict_p_hat_range=tuple(
                 rq_cfg_get("reeval_evict_p_hat_range", [0.02, 0.98])
@@ -284,88 +291,24 @@ class RQTaskRunner:
         trainer.init_workers()
         print("[Runner] workers initialized")
 
-        # ----------------------------------------------------------------
-        # Initial Questioner evolution before first Solver update.
-        # Method's epoch order: seed archive → evolution → training-data
-        # selection → Solver update. Running this before fit() ensures the
-        # first Solver update trains on archive-selected problems instead
-        # of the bootstrap seed × instances_per_program dataset.
+        # Initial Questioner evolution is now run by trainer._pre_epoch_hook()
+        # at epoch 0 inside fit() — after checkpoint load, so resume uses the
+        # checkpointed policy rather than the base model. Controlled by
+        # rq.evolve_before_train and rq.skip_initial_evolution_on_resume
+        # (both read during trainer construction).
         #
-        # Resume safety: checkpoint load happens inside fit(). Running
-        # initial evolution on resume would score the archive with the base
-        # model instead of the checkpointed policy, so we force-skip it
-        # until checkpoint load is refactored to precede initial evolution.
-        # ----------------------------------------------------------------
-        should_initial_evolve = rq_cfg_get("evolve_before_train", True)
-        skip_on_resume = rq_cfg_get("skip_initial_evolution_on_resume", True)
-        is_resume = bool(getattr(config.trainer, "load_checkpoint_path", None))
-        if is_resume and should_initial_evolve:
-            if skip_on_resume:
-                print(
-                    "[Runner] load_checkpoint_path is set and "
-                    "skip_initial_evolution_on_resume=true — skipping initial "
-                    "evolution. Checkpoint loads inside fit(); running evolution "
-                    "first would score the archive with the base model."
-                )
-                should_initial_evolve = False
-            else:
-                print(
-                    "[Runner] WARNING: skip_initial_evolution_on_resume=false with "
-                    "load_checkpoint_path set. Initial evolution will run BEFORE "
-                    "checkpoint load inside fit(), so the archive will be scored "
-                    "with the BASE model, not the checkpointed policy. This is "
-                    "usually NOT what you want — set skip_initial_evolution_on_resume=true "
-                    "unless you have explicitly refactored checkpoint load to precede "
-                    "initial evolution."
-                )
-
-        if should_initial_evolve:
-            print(
-                "[Runner] running initial Questioner evolution before first "
-                "Solver update..."
+        # Note: Method requires max_steps to be set explicitly when evolving
+        # each epoch, because training_steps is computed once from the bootstrap
+        # dataloader and propagated to worker-side LR schedulers during
+        # init_workers(). Fail loudly on max_steps=None.
+        if getattr(config.trainer, "max_steps", None) is None:
+            raise RuntimeError(
+                "[Runner] max_steps is None. Epoch-based evolution needs an "
+                "explicit max_steps because actor/critic optim.training_steps "
+                "are fixed from the bootstrap dataloader during trainer "
+                "construction and cannot be updated after init_workers(). "
+                "Set trainer.max_steps explicitly in the config."
             )
-            trainer.global_step = 0
-            m = trainer._evolution_step()
-            steps_per_epoch = len(trainer.train_dataloader)
-            ds_size = m.get("dataset_size")
-            print(
-                f"[Runner] initial evolution complete: "
-                f"attempted={m.get('attempted')}, "
-                f"inserted={m.get('inserted')}, dataset_size={ds_size}"
-            )
-            print(
-                f"[Runner] train dataloader after initial evolution: "
-                f"dataset_size={ds_size}, "
-                f"rollout_batch_size={config.data.rollout_batch_size}, "
-                f"steps_per_epoch={steps_per_epoch}"
-            )
-            # max_steps=None path: RayPPOTrainer computed training_steps from
-            # the BOOTSTRAP dataloader length at construction time
-            # (ray_trainer.py:258-262), and it also wrote the result into
-            # config.worker.actor.optim.training_steps / critic.optim.training_steps
-            # which were already consumed by the worker groups during
-            # init_workers(). Updating trainer.training_steps here does NOT
-            # propagate to the actor/critic LR schedulers on the workers — they
-            # will run with the bootstrap-based value (here: ~8 steps × total_epochs).
-            #
-            # Fixing this cleanly requires either (a) refactoring so the full
-            # dataloader exists before init_workers, which contradicts the
-            # "evolution needs live workers" constraint, or (b) an RPC to
-            # rebuild LR schedulers on workers after initial evolution.
-            # Neither is in scope here. The current rq_config uses max_steps=256
-            # so this path is inert in practice. If someone sets max_steps=null,
-            # fail loudly rather than silently mis-schedule.
-            if getattr(config.trainer, "max_steps", None) is None:
-                raise RuntimeError(
-                    "[Runner] max_steps is None with evolve_before_train=true. "
-                    "Actor/critic optim.training_steps were set to the bootstrap "
-                    "dataloader length during trainer construction and cannot be "
-                    "updated after init_workers(). Either set trainer.max_steps "
-                    "explicitly, or run with evolve_before_train=false (initial "
-                    "epoch will train on the bootstrap seed dataset). Supporting "
-                    "max_steps=null + evolve_before_train requires worker-side "
-                    "LR-scheduler rebuild, which is not yet implemented."
-                )
 
         trainer.fit()
         print("[Runner] training complete!")

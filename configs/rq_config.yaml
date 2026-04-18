@@ -80,6 +80,9 @@ rq:
   seed_programs_dir: ./seed_programs
   n_h_bins: 6
   n_div_bins: 10
+  # Evolution now runs once per Solver epoch via _pre_epoch_hook() —
+  # evolution_pct / evolution_freq are NOT consulted. Kept here only for
+  # backward-compatible YAML parsing; safe to delete.
   evolution_pct: 0.1
   candidates_per_evo: 8
   max_rounds: 8
@@ -91,17 +94,21 @@ rq:
   ucb_c: 1.0
   epsilon: 0.3
 
-  # --- Champion re-evaluation (option A, opt-in) ---
-  # 매 evolution step 앞에서 기존 champion 일부의 R_Q 를 현재 solver 로 재측정.
-  # Solver 가 마스터한 champion 은 R_Q 가 떨어져 다음 mutation 에 쉽게 대체됨.
+  # --- Champion re-evaluation ---
+  # Re-evaluate occupied MAP-Elites champions before each Questioner evolution
+  # phase under the current Solver. This realizes the self-invalidating archive:
+  # mastered champions lose R_Q and are updated, re-binned, or evicted before
+  # new candidates compete with them.
   #
-  # 기본은 꺼 둠 (0). 아래 조건 중 하나가 관찰되면 양수로 올려 켠다:
-  #   - 특정 champion 이 장기간 같은 niche 를 점유 (dataset 이 정체)
-  #   - Solver validation acc 가 오르는데 mean_rq 가 변하지 않음 (stale 신호)
-  #   - H2+ champion 이 학습 후반부에 계속 재활용됨
-  # 권장 시작값: 8 (매 evolution step 당 champion 8개 재평가)
-  reeval_per_step: 0                    # 재평가할 champion 수 (0 = 비활성화)
-  reeval_age_ratio: 0.7                 # (0~1) age-weighted 비율, 나머지는 랜덤
+  #   null (default, Method-aligned) — re-evaluate ALL occupied champions
+  #       (bounded by n_h_bins × n_div_bins = 60 in current grid).
+  #   int > 0                         — partial budget for debugging/ablation;
+  #                                     age-weighted + random sampling.
+  #   0                               — disable re-evaluation (ablation only).
+  #       Stale champions from past Solver states will then compete against
+  #       fresh candidates with unfair R_Q — not recommended for training runs.
+  reeval_per_step: null
+  reeval_age_ratio: 0.7                 # (0~1) age-weighted 비율 (partial 모드에서만 사용)
   reeval_evict_p_hat_range: [0.02, 0.98]  # 이 범위 벗어나는 champion 은 evict
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
@@ -119,20 +126,23 @@ rq:
   training_budget: null
   strict_anti_reuse: true
 
-  # --- Initial evolution before first Solver update (Method epoch order) ---
+  # --- Epoch-start evolution hook (Method epoch order) ---
+  # Evolution runs at the beginning of each Solver epoch via _pre_epoch_hook().
+  # Method's order: archive reevaluation → mutation rounds → dataset refresh →
+  # Solver epoch training. Controlled here:
+  #
   # evolve_before_train:
-  #   true (default) — run one Questioner evolution step after workers init and
-  #                    before trainer.fit(), so the first Solver update trains on
-  #                    archive-selected problems (not raw seeds × instances_per_program).
+  #   true (default) — run evolution at epoch 0 too (first Solver update
+  #                    trains on archive-selected problems, not bootstrap seeds).
+  #   false          — skip only the epoch-0 evolution; remaining epochs still
+  #                    run evolution normally.
   # skip_initial_evolution_on_resume:
-  #   true (default, STRONGLY RECOMMENDED) — when trainer.load_checkpoint_path is
-  #                    set, skip initial evolution. Checkpoint loads inside fit(),
-  #                    so running initial evolution on resume would score the archive
-  #                    with the BASE model instead of the checkpointed policy.
-  #   false            — force initial evolution even on resume. This is almost
-  #                    always wrong: the archive gets scored with the base model
-  #                    before the checkpoint is loaded, producing inconsistent
-  #                    policy/archive state. Only flip this if you have refactored
-  #                    checkpoint load to precede initial evolution.
+  #   true (default) — when trainer.load_checkpoint_path is set, skip the
+  #                    epoch-0 evolution. Safe default because the archive state
+  #                    is not part of the checkpoint — we don't want to evolve
+  #                    on an unknown archive snapshot.
+  #   false          — evolve at epoch 0 even on resume. Checkpoint is already
+  #                    loaded by fit() at that point, so this scores the archive
+  #                    with the checkpointed policy (not the base model).
   evolve_before_train: true
   skip_initial_evolution_on_resume: true

@@ -486,11 +486,29 @@ class RayPPOTrainer:
             if self.config.trainer.val_only:
                 return
 
-        for _ in tqdm(range(self.config.trainer.total_epochs), desc="Epoch", position=0):
+        for epoch_idx in tqdm(range(self.config.trainer.total_epochs), desc="Epoch", position=0):
+            # Stop BEFORE the epoch hook fires. Without this guard, max_steps
+            # is honored inside the inner loop but the _pre_epoch_hook would
+            # still run once per leftover epoch (expensive evolution that
+            # immediately breaks at the first batch).
+            if self.global_step >= self.training_steps:
+                break
+
+            # Method-aligned epoch order: evolution → training-data selection →
+            # Solver update. RQEvolveTrainer overrides _pre_epoch_hook to run
+            # _evolution_step() before each epoch's dataloader iterator is built,
+            # so the new epoch sees the refreshed archive.
+            if hasattr(self, '_pre_epoch_hook'):
+                epoch_evo_metrics = self._pre_epoch_hook(epoch_idx)
+                if epoch_evo_metrics:
+                    self.logger.log(
+                        data={f"evo/{k}": v for k, v in epoch_evo_metrics.items()},
+                        step=self.global_step,
+                    )
             for batch_dict in tqdm(self.train_dataloader, desc="Running step", position=1):
-                self.global_step += 1
-                if self.global_step > self.training_steps:
+                if self.global_step >= self.training_steps:
                     break
+                self.global_step += 1
 
                 metrics, timing_raw = {}, {}
                 batch: DataProto = DataProto.from_single_dict(batch_dict)
@@ -598,11 +616,9 @@ class RayPPOTrainer:
                         critic_metrics = reduce_metrics(critic_output.non_tensor_batch)
                         metrics.update(critic_metrics)
 
-                    # evolution hook (RQEvolveTrainer에서 override)
-                    if hasattr(self, '_pre_actor_update_hook'):
-                        evo_metrics = self._pre_actor_update_hook(self.global_step)
-                        if evo_metrics:
-                            metrics.update({f"evo/{k}": v for k, v in evo_metrics.items()})
+                    # Evolution now runs once per epoch via _pre_epoch_hook()
+                    # above (Method-aligned order). The legacy step-based
+                    # _pre_actor_update_hook() is intentionally removed here.
 
                     # update actor
                     if self.config.trainer.critic_warmup <= self.global_step:

@@ -142,7 +142,9 @@ class RQConfig:
     h_threshold: float = 0.1
     ucb_c: float = 1.0
     epsilon: float = 0.3
-    reeval_per_step: int = 0
+    # null = re-evaluate all occupied champions (Method-aligned default)
+    # int  = partial budget (debug/ablation); 0 disables re-evaluation
+    reeval_per_step: Optional[int] = None
     reeval_age_ratio: float = 0.7
     reeval_evict_p_hat_range: list = field(default_factory=lambda: [0.02, 0.98])
     training_selection_mode: str = "h_priority_d_uniform"
