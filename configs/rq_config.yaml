@@ -84,8 +84,8 @@ rq:
   # evolution_pct / evolution_freq are NOT consulted. Kept here only for
   # backward-compatible YAML parsing; safe to delete.
   evolution_pct: 0.1
-  candidates_per_evo: 8
-  max_rounds: 8
+  candidates_per_evo: 16
+  max_rounds: 16
   num_rollouts: 10
   instances_per_program: 16
   crossover_ratio: 0.2

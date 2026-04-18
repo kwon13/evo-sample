@@ -51,7 +51,7 @@ sys.path.insert(0, str(ROOT))
 
 from rq_questioner.program import ProblemProgram, ProblemInstance
 from rq_questioner.map_elites import MAPElitesGrid
-from rq_questioner.rq_score import compute_rq_full, h_prefilter, p_hat_filter
+from rq_questioner.rq_score import compute_rq_full, h_prefilter
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
     SINGLE_ANSWER_RULE, SCORE_FEEDBACK,
@@ -845,17 +845,22 @@ def evolution_step(
         rollout_logs = ([probe_log] if probe_log else []) + list(extra_logs)
         p_hat = sum(flags) / len(flags) if flags else 0.0
 
-        if not p_hat_filter(p_hat):
-            skipped_h += 1
-            if verbose:
-                print(f"  p={p_hat:.2f} extreme (0 or 1), skip")
-            continue
-
+        # p=0 / p=1 candidates are KEPT as archive material (mirrors the
+        # training path: they produce R_Q=0 and cannot displace positive-R_Q
+        # champions, but empty niches will accept them as mutation parents).
         rq_result = compute_rq_full(flags, h_bar)
         child.p_hat = p_hat
         child.h_score = h_bar
         child.rq_score = rq_result.rq_score
         child.fitness = rq_result.rq_score
+        # Frontier band hard-coded to match the training default
+        # (0.02, 0.98). Kept local since feasibility has no rq_config.
+        FRONTIER_LOW, FRONTIER_HIGH = 0.02, 0.98
+        child.metadata["frontier_status"] = (
+            "too_hard" if p_hat <= FRONTIER_LOW
+            else "too_easy" if p_hat >= FRONTIER_HIGH
+            else "frontier"
+        )
 
         # 삽입 전 기존 챔피언 정보 저장 (before→after 비교용)
         target_h = grid.h_to_bin(h_bar)
@@ -883,6 +888,7 @@ def evolution_step(
             "p_hat": p_hat,
             "h_bar": h_bar,
             "rq_score": rq_result.rq_score,
+            "frontier_status": child.metadata.get("frontier_status"),
             "inserted": was_inserted,
             "niche": (int(child.niche_h), int(child.niche_div)) if was_inserted else None,
             "generation": child.generation,
