@@ -185,11 +185,10 @@ class VLLMRunner:
     """
     vLLM 기반 실제 mutation / rollout / entropy 측정.
 
-    entropy 측정 방식:
-      vLLM generate()의 logprobs=1 옵션으로 각 토큰의 top-1 log prob을 얻어,
-      H ≈ -1/T × Σ log p(token_t) 로 근사.
-      (full vocab Shannon entropy가 아닌 cross-entropy proxy이지만
-       실제 pipeline.py의 _measure_h_batch()와 동일한 방식.)
+    rollout + entropy는 단일 generate() 호출에서 동시에 측정된다.
+    이론 (method.tex, Prop 2)의 H̄(x') = (1/T) Σ_t H_t(x') 는
+    rollout trajectory y ~ π_θ(·|x') 위의 per-token 분포 엔트로피이므로,
+    rollout과 동일한 temperature / 동일한 궤적에서 측정해야 정합적이다.
     """
 
     def __init__(
@@ -219,64 +218,115 @@ class VLLMRunner:
         self.max_tokens = max_tokens
         print(f"[vLLM] Model loaded.")
 
-    # ---- entropy --------------------------------------------------------
+    # ---- entropy helper -------------------------------------------------
 
-    def entropy(self, inst: "ProblemInstance", top_k: int = 20) -> Optional[float]:
+    def _entropy_from_logprobs(self, lp_list) -> Optional[float]:
         """
-        Shannon entropy 근사: top-K logprobs 기반.
+        단일 trajectory per-token top-K logprob → 근사 H̄ (nats).
 
-        각 토큰 위치에서 top-K 토큰의 log probability를 받아
-        H_t = -Σ_{v∈top-K} p(v) log p(v) 로 계산.
-
-        top-K 밖 확률 mass를 균등 분배하여 보정:
-          p_rest = 1 - Σ p(top-K)
-          H_rest = p_rest * log(vocab_size - K)  (upper bound)
-
-        이 방식은 veRL의 entropy_from_logits (full vocab)보다
-        근사적이지만, -logprob(top-1) proxy보다 훨씬 정확함.
+        Note: this is a top-K approximation with uniform-tail upper bound,
+        not exact Shannon entropy. `len(step_dict)` varies with vLLM's
+        sampled-token-plus-top-K convention, so the rest-mass denominator
+        uses the observed count rather than a fixed top_k.
+        The exact theoretical H̄ (method.tex Prop 2) is computed by
+        `compute_log_prob(calculate_entropy=True)` in the veRL path.
         """
         import math
-        from vllm import SamplingParams
-
-        prompt = _SOLVE_PROMPT.format(problem=inst.problem)
-        params = SamplingParams(
-            temperature=1.0,   # entropy 측정은 temperature=1.0에서 수행
-            max_tokens=min(self.max_tokens, 256),  # entropy는 앞부분만으로 충분
-            logprobs=top_k,
-            n=1,
-        )
-        out = self.llm.generate([prompt], params)[0].outputs[0]
-        if not out.logprobs:
+        if not lp_list:
             return None
-
         vocab_size = self.tokenizer.vocab_size or 150000
-        token_entropies = []
-
-        for step_dict in out.logprobs:
-            # step_dict: {token_id: LogProb, ...} — top-K개
+        token_hs = []
+        for step_dict in lp_list:
+            if step_dict is None:
+                continue
+            observed = len(step_dict)
+            if observed == 0:
+                continue
             log_probs = [lp.logprob for lp in step_dict.values()]
             probs = [math.exp(lp) for lp in log_probs]
-
-            # top-K 토큰의 entropy
             h_top = -sum(p * math.log(p) for p in probs if p > 0)
-
-            # top-K 밖의 잔여 확률 mass 보정
             p_rest = max(0.0, 1.0 - sum(probs))
-            if p_rest > 1e-8 and vocab_size > top_k:
-                # 잔여 mass를 (vocab_size - K)개에 균등 분배 (upper bound)
-                h_rest = -p_rest * math.log(p_rest / (vocab_size - top_k))
-                h_top += h_rest
+            if p_rest > 1e-8 and vocab_size > observed:
+                h_top += -p_rest * math.log(p_rest / (vocab_size - observed))
+            token_hs.append(h_top)
+        return sum(token_hs) / len(token_hs) if token_hs else None
 
-            token_entropies.append(h_top)
+    # ---- probe (entropy-only) + expand rollout -------------------------
 
-        return sum(token_entropies) / len(token_entropies) if token_entropies else None
-
-    # ---- rollout --------------------------------------------------------
-
-    def rollout(self, inst: "ProblemInstance", n_rollouts: int) -> tuple[list[bool], list[dict]]:
+    def batch_entropy_probe(
+        self, instances: list["ProblemInstance"], top_k: int = 20,
+    ) -> list[tuple[Optional[float], Optional[bool], Optional[dict]]]:
         """
-        G번 생성 → boxed 정답 추출 → 정오 판별.
-        Returns: (flags, rollout_logs)
+        amortized prefilter용 probe: 각 문제에 대해 rollout temperature로
+        1회 생성 + top-K logprob → (H̄, probe_flag, probe_log).
+
+        probe response는 동일 temperature·동일 policy에서 나왔으므로,
+        이후 G rollout 집계 시 첫 rollout으로 그대로 재사용된다.
+        """
+        from vllm import SamplingParams
+        if not instances:
+            return []
+        prompts = [_SOLVE_PROMPT.format(problem=inst.problem) for inst in instances]
+        params = SamplingParams(
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            n=1,
+            logprobs=top_k,
+        )
+        outputs = self.llm.generate(prompts, params)
+        results = []
+        for out, inst in zip(outputs, instances):
+            comp = out.outputs[0]
+            pred = _extract_boxed(comp.text)
+            correct = _answers_match(pred, inst.answer) if pred else False
+            h_bar = self._entropy_from_logprobs(comp.logprobs)
+            log = {
+                "rollout_idx": 0, "response": comp.text,
+                "extracted": pred, "ground_truth": inst.answer, "correct": correct,
+                "probe": True,
+            }
+            results.append((h_bar, correct, log))
+        return results
+
+    def batch_rollout_extra(
+        self, instances: list["ProblemInstance"], n_extra: int,
+    ) -> list[tuple[list[bool], list[dict]]]:
+        """H-prefilter를 통과한 후보에 대해 G-1개 추가 rollout."""
+        from vllm import SamplingParams
+        if not instances or n_extra <= 0:
+            return [([], []) for _ in instances]
+        prompts = [_SOLVE_PROMPT.format(problem=inst.problem) for inst in instances]
+        params = SamplingParams(
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            n=n_extra,
+        )
+        all_outputs = self.llm.generate(prompts, params)
+        results = []
+        for out, inst in zip(all_outputs, instances):
+            flags, logs = [], []
+            for i, comp in enumerate(out.outputs):
+                pred = _extract_boxed(comp.text)
+                correct = _answers_match(pred, inst.answer) if pred else False
+                flags.append(correct)
+                logs.append({
+                    "rollout_idx": i + 1,  # probe was idx 0
+                    "response": comp.text, "extracted": pred,
+                    "ground_truth": inst.answer, "correct": correct,
+                })
+            results.append((flags, logs))
+        return results
+
+    # ---- full-G rollout (+ entropy) — kept for seed scoring ------------
+
+    def rollout(
+        self, inst: "ProblemInstance", n_rollouts: int, top_k: int = 20,
+    ) -> tuple[list[bool], list[dict], Optional[float]]:
+        """
+        G번 생성 → (flags, rollout_logs, H̄).
+
+        seed 스코어링 같이 amortization이 불필요한 경우에만 사용.
+        probe→prefilter→expand 흐름에서는 batch_entropy_probe + batch_rollout_extra 조합.
         """
         from vllm import SamplingParams
         prompt = _SOLVE_PROMPT.format(problem=inst.problem)
@@ -284,10 +334,10 @@ class VLLMRunner:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             n=n_rollouts,
+            logprobs=top_k,
         )
         outputs = self.llm.generate([prompt], params)[0].outputs
-        flags = []
-        logs = []
+        flags, logs, per_rollout_h = [], [], []
         for i, comp in enumerate(outputs):
             pred = _extract_boxed(comp.text)
             correct = _answers_match(pred, inst.answer) if pred else False
@@ -299,7 +349,11 @@ class VLLMRunner:
                 "ground_truth": inst.answer,
                 "correct": correct,
             })
-        return flags, logs
+            h_i = self._entropy_from_logprobs(comp.logprobs)
+            if h_i is not None:
+                per_rollout_h.append(h_i)
+        h_bar = sum(per_rollout_h) / len(per_rollout_h) if per_rollout_h else None
+        return flags, logs, h_bar
 
     # ---- mutation -------------------------------------------------------
 
@@ -457,75 +511,6 @@ class VLLMRunner:
                 results[idx] = self._extract_code(out.outputs[0].text)
         return results
 
-    def batch_entropy(
-        self, instances: list["ProblemInstance"], top_k: int = 20,
-    ) -> list[Optional[float]]:
-        """Batch entropy 측정: 여러 문제를 한 번의 generate()로 처리."""
-        import math as _math
-        from vllm import SamplingParams
-
-        prompts = [_SOLVE_PROMPT.format(problem=inst.problem) for inst in instances]
-        if not prompts:
-            return []
-
-        params = SamplingParams(
-            temperature=1.0,
-            max_tokens=min(self.max_tokens, 256),
-            logprobs=top_k, n=1,
-        )
-        outputs = self.llm.generate(prompts, params)
-        vocab_size = self.tokenizer.vocab_size or 150000
-
-        results = []
-        for out in outputs:
-            lp_list = out.outputs[0].logprobs
-            if not lp_list:
-                results.append(None)
-                continue
-            token_hs = []
-            for step_dict in lp_list:
-                log_probs = [lp.logprob for lp in step_dict.values()]
-                probs = [_math.exp(lp) for lp in log_probs]
-                h_top = -sum(p * _math.log(p) for p in probs if p > 0)
-                p_rest = max(0.0, 1.0 - sum(probs))
-                if p_rest > 1e-8 and vocab_size > top_k:
-                    h_top += -p_rest * _math.log(p_rest / (vocab_size - top_k))
-                token_hs.append(h_top)
-            results.append(sum(token_hs) / len(token_hs) if token_hs else None)
-        return results
-
-    def batch_rollout(
-        self, instances: list["ProblemInstance"], n_rollouts: int,
-    ) -> list[tuple[list[bool], list[dict]]]:
-        """Batch rollout: 여러 문제를 한 번의 generate()로 처리."""
-        from vllm import SamplingParams
-
-        prompts = [_SOLVE_PROMPT.format(problem=inst.problem) for inst in instances]
-        if not prompts:
-            return []
-
-        params = SamplingParams(
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            n=n_rollouts,
-        )
-        all_outputs = self.llm.generate(prompts, params)
-
-        results = []
-        for out, inst in zip(all_outputs, instances):
-            flags, logs = [], []
-            for i, comp in enumerate(out.outputs):
-                pred = _extract_boxed(comp.text)
-                correct = _answers_match(pred, inst.answer) if pred else False
-                flags.append(correct)
-                logs.append({
-                    "rollout_idx": i, "response": comp.text,
-                    "extracted": pred, "ground_truth": inst.answer, "correct": correct,
-                })
-            results.append((flags, logs))
-        return results
-
-
 # ---------------------------------------------------------------------------
 # Mock / Real LLM mutation
 # ---------------------------------------------------------------------------
@@ -674,11 +659,10 @@ def evolution_step(
     """
     Evolution 1회 실행 — vLLM 사용 시 batched inference.
 
-    3-phase pipeline:
+    2-phase pipeline:
       Phase 1: batch_mutate (1회 vLLM 호출) → execute (CPU)
-      Phase 2: batch_rollout (1회 vLLM 호출)
-      Phase 3: batch_entropy (1회 vLLM 호출)
-      → 총 3회 GPU 호출로 전체 candidate 처리
+      Phase 2: batch_rollout (1회 vLLM 호출, logprobs 포함 → entropy 동시 측정)
+      → 총 2회 GPU 호출로 전체 candidate 처리
 
     연산자 비율 (Mouret & Clune, 2015):
       crossover_ratio  → crossover (두 부모 결합)
@@ -785,48 +769,81 @@ def evolution_step(
                 "skipped_h": 0, "candidate_logs": []}
 
     # ================================================================
-    # Phase 2: Rollout (batched — 1회 vLLM 호출)
+    # Phase 2: Entropy probe (n=1) → H prefilter → expand rollout
     # ================================================================
+    # method.tex의 amortization 구조:
+    #   probe(1회) → H̄ 측정 → H̄ < τ_H 후보는 expand rollout 생략.
+    #   probe response는 동일 temperature에서 나왔으므로 첫 rollout으로 재사용.
     instances = [inst for _, inst, _ in children]
+
     if vllm_runner:
         if verbose:
-            print(f"  [batch] rollout for {len(instances)} candidates...")
-        all_rollout_results = vllm_runner.batch_rollout(instances, n_rollouts)
+            print(f"  [probe] entropy for {len(instances)} candidates...")
+        probe_results = vllm_runner.batch_entropy_probe(instances)
     else:
-        all_rollout_results = [
-            (_mock_rollout(inst, n_rollouts, rng), []) for inst in instances
-        ]
+        probe_results = []
+        for inst in instances:
+            h_mock = _mock_entropy(inst, rng)
+            one_flag = _mock_rollout(inst, 1, rng)[0]
+            probe_results.append((h_mock, one_flag, None))
 
-    # ================================================================
-    # Phase 3: Entropy (batched — 1회 vLLM 호출)
-    # ================================================================
-    if vllm_runner:
-        if verbose:
-            print(f"  [batch] entropy for {len(instances)} candidates...")
-        all_h = vllm_runner.batch_entropy(instances)
-    else:
-        all_h = [_mock_entropy(inst, rng) for inst in instances]
-
-    # ================================================================
-    # Phase 4: Scoring + Grid insertion (CPU, fast)
-    # ================================================================
-    for (child, inst, task), (flags, rollout_logs), h_bar in zip(
-        children, all_rollout_results, all_h
-    ):
-        attempted += 1
-        p_hat = sum(flags) / len(flags) if flags else 0.0
-
+    # H prefilter — retained set만 expand rollout 수행
+    retained_local_indices: list[int] = []
+    per_child_h: list[Optional[float]] = [None] * len(children)
+    per_child_probe_flag: list[Optional[bool]] = [None] * len(children)
+    per_child_probe_log: list[Optional[dict]] = [None] * len(children)
+    for ci, (h_bar, probe_flag, probe_log) in enumerate(probe_results):
+        per_child_h[ci] = h_bar
+        per_child_probe_flag[ci] = probe_flag
+        per_child_probe_log[ci] = probe_log
         if h_bar is None:
             skipped_h += 1
             if verbose:
-                print(f"  entropy failed, skip")
+                print(f"  entropy probe failed, skip")
             continue
-
         if not h_prefilter(h_bar, h_threshold):
             skipped_h += 1
             if verbose:
-                print(f"  H={h_bar:.3f} < threshold, skip")
+                print(f"  H={h_bar:.3f} < τ_H, skip rollout (amortized)")
             continue
+        retained_local_indices.append(ci)
+
+    saved = (len(children) - len(retained_local_indices)) * max(0, n_rollouts - 1)
+    if verbose and saved:
+        print(f"  [amortize] saved ~{saved} generations via H prefilter")
+
+    # Expand: retained 후보에 대해 G-1개 추가 rollout (probe가 1개)
+    retained_extra: list[tuple[list[bool], list[dict]]] = [([], [])] * len(retained_local_indices)
+    if retained_local_indices:
+        retained_insts = [instances[ci] for ci in retained_local_indices]
+        extra_n = max(0, n_rollouts - 1)
+        if vllm_runner:
+            if verbose and extra_n:
+                print(f"  [expand] {extra_n} extra rollouts × {len(retained_insts)} retained...")
+            retained_extra = vllm_runner.batch_rollout_extra(retained_insts, extra_n)
+        else:
+            retained_extra = [
+                (_mock_rollout(inst, extra_n, rng), []) for inst in retained_insts
+            ]
+
+    # ================================================================
+    # Phase 3: Scoring + Grid insertion (CPU, fast)
+    # ================================================================
+    extra_by_ci = {ci: retained_extra[j] for j, ci in enumerate(retained_local_indices)}
+    for ci, (child, inst, task) in enumerate(children):
+        attempted += 1
+        if ci not in extra_by_ci:
+            # H prefilter skipped this candidate — no rollout scoring.
+            continue
+
+        h_bar = per_child_h[ci]
+        probe_flag = per_child_probe_flag[ci]
+        probe_log = per_child_probe_log[ci]
+        extra_flags, extra_logs = extra_by_ci[ci]
+
+        flags = [probe_flag] + list(extra_flags)
+        rollout_logs = ([probe_log] if probe_log else []) + list(extra_logs)
+        p_hat = sum(flags) / len(flags) if flags else 0.0
 
         if not p_hat_filter(p_hat):
             skipped_h += 1
@@ -859,7 +876,7 @@ def evolution_step(
 
         # 상세 로그 기록
         candidate_logs.append({
-            "candidate_idx": c,
+            "candidate_idx": ci,
             "op": task["op"],
             "problem": inst.problem,
             "answer": inst.answer,
@@ -1424,8 +1441,9 @@ def main():
         if not inst:
             continue
         if vllm_runner:
-            h0 = vllm_runner.entropy(inst) or 1.0
-            flags0, _ = vllm_runner.rollout(inst, args.n_rollouts)
+            flags0, _, h0 = vllm_runner.rollout(inst, args.n_rollouts)
+            if h0 is None:
+                h0 = 1.0
         else:
             h0 = _mock_entropy(inst, rng, h_mean=1.5, h_std=0.5)
             flags0 = _mock_rollout(inst, args.n_rollouts, rng)

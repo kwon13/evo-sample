@@ -69,6 +69,24 @@ def log_probs_from_logits(logits: torch.Tensor, labels: torch.Tensor) -> torch.T
     return output.view(*batch_dim)
 
 
+def entropy_from_logits(logits: torch.Tensor) -> torch.Tensor:
+    """Full-vocab Shannon entropy H = logsumexp(z) - Σ softmax(z)·z.
+
+    Numerically stable and equivalent to -Σ p·log p. Evaluated in fp32 to
+    match the precision used by log_probs_from_logits.
+
+    Args:
+        logits: shape (..., vocab_size).
+
+    Returns:
+        entropy: shape (...), unit = nats.
+    """
+    logits = logits.float()
+    log_z = torch.logsumexp(logits, dim=-1)
+    probs = torch.softmax(logits, dim=-1)
+    return log_z - (probs * logits).sum(dim=-1)
+
+
 def masked_mean(values: torch.Tensor, mask: torch.Tensor, dim: int = None, eps: float = 1e-8) -> torch.Tensor:
     """Compute mean of tensor with a masked values."""
     return (values * mask).sum(dim=dim) / (mask.sum(dim=dim) + eps)

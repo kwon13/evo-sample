@@ -593,13 +593,22 @@ class FSDPWorker(Worker):
         # otherwise fall back to the default rollout temperature.
         if "temperature" not in data.meta_info or data.meta_info["temperature"] is None:
             data.meta_info["temperature"] = self.config.rollout.temperature
+        calculate_entropy = bool(data.meta_info.get("calculate_entropy", False))
         # perform recompute log_prob
         with self.ulysses_sharding_manager:
             data = self.ulysses_sharding_manager.preprocess_data(data)
-            output = self.actor.compute_log_prob(data=data)
-            output = DataProto.from_dict(
-                tensors={"old_log_probs": output}, meta_info={"temperature": self.config.rollout.temperature}
-            )
+            result = self.actor.compute_log_prob(data=data)
+            if calculate_entropy:
+                log_probs, entropies = result
+                output = DataProto.from_dict(
+                    tensors={"old_log_probs": log_probs, "entropies": entropies},
+                    meta_info={"temperature": self.config.rollout.temperature},
+                )
+            else:
+                output = DataProto.from_dict(
+                    tensors={"old_log_probs": result},
+                    meta_info={"temperature": self.config.rollout.temperature},
+                )
             output = self.ulysses_sharding_manager.postprocess_data(output)
 
         # https://pytorch.org/docs/stable/notes/fsdp.html#fsdp-notes
