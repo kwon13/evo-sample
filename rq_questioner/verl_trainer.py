@@ -369,8 +369,22 @@ class RQEvolveTrainer(RayPPOTrainer):
     def _compute_log_probs_dp_safe(
         self, batch: DataProto, calculate_entropy: bool, temperature: float,
     ) -> DataProto:
+        # compute_log_prob does two levels of splitting:
+        #   1. DP dispatch: chunk(world_size)
+        #   2. Actor micro-batch: split(micro_batch_size_per_device_for_experience)
+        # Per-rank length must therefore be a non-zero multiple of micro_batch_size,
+        # so the overall padded length needs to be a multiple of
+        # world_size × micro_batch_size. Otherwise split() divides by zero when
+        # the batch is tiny (reeval with 1–2 champions, evolution with few
+        # retained candidates).
         world_size = self.actor_rollout_wg.world_size
-        batch, pad = pad_dataproto_to_divisor(batch, world_size)
+        try:
+            mbs = int(self.config.worker.actor.micro_batch_size_per_device_for_experience)
+            mbs = max(1, mbs)
+        except AttributeError:
+            mbs = 1
+        divisor = world_size * mbs
+        batch, pad = pad_dataproto_to_divisor(batch, divisor)
         batch.meta_info["calculate_entropy"] = calculate_entropy
         batch.meta_info["temperature"] = temperature
         out = self.actor_rollout_wg.compute_log_probs(batch)
