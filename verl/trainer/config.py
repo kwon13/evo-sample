@@ -127,18 +127,27 @@ class AblationConfig:
 class RQConfig:
     seed_programs_dir: str = "./seed_programs"
     n_h_bins: int = 6
+    n_div_bins: int = 10
     h_range: list = field(default_factory=lambda: [0.0, 5.0])
     evolution_pct: float = 0.1
     evolution_freq: int = 50
     target_hard_champions: int = 6
     max_evo_attempts: int = 64
     candidates_per_evo: int = 8
+    max_rounds: int = 8
     num_rollouts: int = 10
     instances_per_program: int = 16
     crossover_ratio: float = 0.2
     in_depth_ratio: float = 0.5
     h_threshold: float = 0.1
     ucb_c: float = 1.0
+    epsilon: float = 0.3
+    reeval_per_step: int = 0
+    reeval_age_ratio: float = 0.7
+    reeval_evict_p_hat_range: list = field(default_factory=lambda: [0.02, 0.98])
+    training_selection_mode: str = "h_priority_d_uniform"
+    training_budget: Optional[int] = None
+    strict_anti_reuse: bool = True
 
 @dataclass
 class PPOConfig:
