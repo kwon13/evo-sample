@@ -111,19 +111,30 @@ class vLLMRollout(BaseRollout):
 
     @contextmanager
     def update_sampling_params(self, **kwargs):
-        # update sampling params
+        # update sampling params — skip keys that have a getter but no setter
+        # on the current vLLM SamplingParams (e.g. eos_token_id in newer vLLM),
+        # and silently skip meta_info entries that are not sampling params
+        # (pad_token_id, calculate_entropy, ...).
         old_sampling_params_args = {}
         if kwargs:
             for key, value in kwargs.items():
-                if hasattr(self.sampling_params, key):
+                if not hasattr(self.sampling_params, key):
+                    continue
+                try:
                     old_value = getattr(self.sampling_params, key)
-                    old_sampling_params_args[key] = old_value
                     setattr(self.sampling_params, key, value)
+                except AttributeError:
+                    # read-only property on SamplingParams — skip
+                    continue
+                old_sampling_params_args[key] = old_value
 
         yield
         # roll back to previous sampling params
         for key, value in old_sampling_params_args.items():
-            setattr(self.sampling_params, key, value)
+            try:
+                setattr(self.sampling_params, key, value)
+            except AttributeError:
+                pass
 
     @torch.no_grad()
     def generate_sequences(self, prompts: DataProto) -> DataProto:
