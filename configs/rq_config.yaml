@@ -109,7 +109,14 @@ rq:
   #       fresh candidates with unfair R_Q — not recommended for training runs.
   reeval_per_step: null
   reeval_age_ratio: 0.7                 # (0~1) age-weighted 비율 (partial 모드에서만 사용)
-  reeval_evict_p_hat_range: [0.02, 0.98]  # 이 범위 벗어나는 champion 은 evict
+
+  # Frontier band for Solver training dataset selection.
+  # p_hat IN  (f_low, f_high) → "frontier" champion, eligible for training.
+  # p_hat OUT of the band      → still kept in archive as mutation material,
+  #                              excluded from training data (R_Q = 0 anyway).
+  # reeval does NOT evict extreme-p champions; it only evicts low-H or
+  # consistently exec-failing ones.
+  frontier_p_hat_range: [0.02, 0.98]
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
   # mode:

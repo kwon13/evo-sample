@@ -276,8 +276,13 @@ class RQTaskRunner:
             # budget for ablation; 0 disables.
             reeval_per_step=rq_cfg_get("reeval_per_step", None),
             reeval_age_ratio=rq_cfg_get("reeval_age_ratio", 0.7),
-            reeval_evict_p_hat_range=tuple(
-                rq_cfg_get("reeval_evict_p_hat_range", [0.02, 0.98])
+            # Frontier band for Solver training; also tags new candidates
+            # and gates reeval rebinning. Accept legacy key name as fallback.
+            frontier_p_hat_range=tuple(
+                rq_cfg_get(
+                    "frontier_p_hat_range",
+                    rq_cfg_get("reeval_evict_p_hat_range", [0.02, 0.98]),
+                )
             ),
             # Training-data selection
             training_selection_mode=rq_cfg_get(

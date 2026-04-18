@@ -42,7 +42,7 @@ from verl.utils.dataset import collate_fn as verl_collate_fn
 
 from .map_elites import MAPElitesGrid
 from .program import ProblemProgram, ProblemInstance
-from .rq_score import compute_rq_full, h_prefilter, p_hat_filter
+from .rq_score import compute_rq_full, h_prefilter
 from .verl_dataset import MapElitesDynamicDataset
 
 from prompts import (
@@ -304,7 +304,12 @@ class RQEvolveTrainer(RayPPOTrainer):
         # 0              — disabled (ablation only; stale R_Q allowed in archive).
         reeval_per_step: int | None = None,
         reeval_age_ratio: float = 0.7,
-        reeval_evict_p_hat_range: tuple[float, float] = (0.02, 0.98),
+        # Frontier band — candidates with p_hat in this open interval are
+        # "learnability frontier" and eligible for Solver training. Outside
+        # the band they stay in the archive as mutation material but are
+        # excluded from training dataset selection. Also drives
+        # frontier_status tags and gated reeval rebinning.
+        frontier_p_hat_range: tuple[float, float] = (0.02, 0.98),
         # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
         training_selection_mode: str = "h_priority_d_uniform",
         training_budget: int | None = None,
@@ -327,7 +332,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         # re-evaluation
         self.reeval_per_step = reeval_per_step
         self.reeval_age_ratio = max(0.0, min(1.0, reeval_age_ratio))
-        self.reeval_evict_p_hat_range = tuple(reeval_evict_p_hat_range)
+        self.frontier_p_hat_range = tuple(frontier_p_hat_range)
         # training-data selection state
         self.training_selection_mode = training_selection_mode
         if training_budget is None:
@@ -502,6 +507,23 @@ class RQEvolveTrainer(RayPPOTrainer):
         p_hats = [getattr(c, "p_hat", 0.0) for c in champions if c.rq_score]
         h_scores = [getattr(c, "h_score", 0.0) for c in champions if c.rq_score]
 
+        # Frontier-status breakdown (archive material vs. training-eligible).
+        # frontier_status is set by _evolution_round (new candidates) and
+        # _reevaluate_champions (updated champions). Champions without the tag
+        # (e.g. bootstrap before first reeval) fall through to `frontier`.
+        too_hard = too_easy = frontier_cnt = zero_rq = 0
+        for c in champions:
+            status = (c.metadata or {}).get("frontier_status")
+            if status == "too_hard":
+                too_hard += 1
+            elif status == "too_easy":
+                too_easy += 1
+            else:
+                frontier_cnt += 1
+            if not getattr(c, "rq_score", 0.0):
+                zero_rq += 1
+        refresh_stats = getattr(self, "_last_refresh_stats", {}) or {}
+
         result = {
             # Evolution round stats
             "attempted": total_attempted,
@@ -523,11 +545,20 @@ class RQEvolveTrainer(RayPPOTrainer):
             "champion_p_hat_std": float(np.std(p_hats)) if p_hats else 0.0,
             "champion_h_mean": float(np.mean(h_scores)) if h_scores else 0.0,
             "champion_h_std": float(np.std(h_scores)) if h_scores else 0.0,
+            # Archive frontier breakdown (p_hat band, for observability)
+            "archive_frontier_champions": frontier_cnt,
+            "archive_too_hard_champions": too_hard,
+            "archive_too_easy_champions": too_easy,
+            "archive_zero_rq_champions": zero_rq,
+            "dataset_non_frontier_skipped_visits": refresh_stats.get(
+                "non_frontier_skipped_visits", 0
+            ),
             # Champion re-evaluation (self-invalidating archive)
             "reeval_count": reeval_metrics["reevaluated"],
             "reeval_evicted": reeval_metrics["evicted"],
             "reeval_low_h_evicted": reeval_metrics.get("low_h_evicted", 0),
             "reeval_exec_fail_evicted": reeval_metrics.get("exec_fail_evicted", 0),
+            "reeval_extreme_p_kept": reeval_metrics.get("extreme_p_kept", 0),
             "reeval_bin_shifted": reeval_metrics["bin_shifted"],
             "reeval_rq_delta_mean": reeval_metrics["rq_delta_mean"],
             "reeval_rq_delta_min": reeval_metrics["rq_delta_min"],
@@ -635,6 +666,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         evicted = 0
         exec_fail_evicted = 0
         low_h_evicted = 0
+        extreme_p_kept = 0
         bin_shifted = 0
         reevaluated = 0
         rq_deltas: list[float] = []
@@ -645,6 +677,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "evicted": evicted,
                 "low_h_evicted": low_h_evicted,
                 "exec_fail_evicted": exec_fail_evicted,
+                "extreme_p_kept": extreme_p_kept,
                 "bin_shifted": bin_shifted,
                 "rq_delta_mean": float(np.mean(rq_deltas)) if rq_deltas else 0.0,
                 "rq_delta_min": float(np.min(rq_deltas)) if rq_deltas else 0.0,
@@ -784,7 +817,12 @@ class RQEvolveTrainer(RayPPOTrainer):
         h_per_pair: list[float] = h_tensor.cpu().tolist()
 
         # ---- 4. Counters (evicted / exec_fail_evicted already initialized) --
-        low, high = self.reeval_evict_p_hat_range
+        # frontier_p_hat_range defines the training-data frontier band; it is
+        # NOT a reeval eviction gate anymore. Extreme-p champions stay in the
+        # archive as mutation material and are excluded from training via
+        # _refresh_dataset(); their R_Q naturally collapses to 0.
+        low, high = self.frontier_p_hat_range
+        extreme_p_kept = 0
 
         # ---- 5. H prefilter — low-H champions are evicted --------------
         # Method's self-invalidating archive: a champion whose current H̄ fell
@@ -850,24 +888,31 @@ class RQEvolveTrainer(RayPPOTrainer):
                         _answers_match(pred, ans) if pred else False
                     )
 
-        # ---- 7. 갱신 / extreme-p eviction / Rebin ---------------------
+        # ---- 7. Update / rebin — NEVER evict on extreme-p anymore ------
+        # p=0 / p=1 champions are kept as archive material and will be
+        # filtered out of Solver training data by _refresh_dataset().
+        # Their R_Q naturally drops to 0 (since p(1-p)=0), so they cannot
+        # displace positive-R_Q candidates at try_insert time.
         for ci in retained_indices:
             champ, inst, rq_before = pairs[ci]
             h_bar = h_per_pair[ci]
             flags = [probe_flags[ci]] + extra_flags_per_ci[ci]
             new_p_hat = sum(flags) / len(flags) if flags else 0.0
-
-            if new_p_hat <= low or new_p_hat >= high:
-                if self.map_elites.evict_champion(champ):
-                    evicted += 1
-                    logger.info(
-                        f"[Reeval] EVICT extreme-p ({champ.niche_h},{champ.niche_div}) "
-                        f"p_hat={new_p_hat:.2f}, id={champ.program_id}"
-                    )
-                continue
+            new_rq = new_p_hat * (1.0 - new_p_hat) * h_bar
 
             champ.p_hat = new_p_hat
+            champ.h_score = h_bar
+            champ.rq_score = new_rq
+            champ.fitness = new_rq
             champ.last_reeval_step = current_step
+            champ.metadata["frontier_status"] = (
+                "too_hard" if new_p_hat <= low
+                else "too_easy" if new_p_hat >= high
+                else "frontier"
+            )
+            if new_p_hat <= low or new_p_hat >= high:
+                extreme_p_kept += 1
+
             moved = self.map_elites.rebin_champion(
                 program=champ, new_h_value=h_bar, problem_text=inst.problem,
             )
@@ -877,6 +922,11 @@ class RQEvolveTrainer(RayPPOTrainer):
             rq_deltas.append(float(champ.rq_score) - rq_before)
             reevaluated += 1
 
+        if extreme_p_kept:
+            logger.info(
+                f"[Reeval] kept {extreme_p_kept} extreme-p champions in archive "
+                f"(mutation material; excluded from training dataset)"
+            )
         return _metrics()
 
     def _evolution_round(self, batch_size: int) -> tuple[int, int]:
@@ -1126,6 +1176,13 @@ class RQEvolveTrainer(RayPPOTrainer):
                     )
 
         # ---- (d) Score + grid insertion ------------------------------
+        # p=0 / p=1 candidates are KEPT as archive material (evolutionary
+        # parents, empty-niche fillers). They produce R_Q=0 so they cannot
+        # displace a positive-R_Q champion, and _refresh_dataset() skips
+        # them when assembling Solver training data. This follows Method's
+        # pseudocode (TryInsert has no p_hat gate) while keeping Solver
+        # training focused on the learnability frontier.
+        f_low, f_high = self.frontier_p_hat_range
         attempted = n_children
         inserted = 0
         for ci in retained_indices:
@@ -1134,15 +1191,16 @@ class RQEvolveTrainer(RayPPOTrainer):
             flags = [probe_flags[ci]] + extra_flags_per_ci[ci]
             p_hat = sum(flags) / len(flags) if flags else 0.0
 
-            if not p_hat_filter(p_hat):
-                logger.debug(f"[Evolution] p_hat={p_hat:.2f} extreme, skip")
-                continue
-
             rq_result = compute_rq_full(flags, h_bar)
             child.p_hat = p_hat
             child.h_score = h_bar
             child.rq_score = rq_result.rq_score
             child.fitness = rq_result.rq_score
+            child.metadata["frontier_status"] = (
+                "too_hard" if p_hat <= f_low
+                else "too_easy" if p_hat >= f_high
+                else "frontier"
+            )
 
             was_inserted = self.map_elites.try_insert(
                 program=child, h_value=h_bar,
@@ -1151,7 +1209,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             if was_inserted:
                 inserted += 1
                 logger.info(
-                    f"[Evolution] Inserted ({op}): p={p_hat:.3f} "
+                    f"[Evolution] Inserted ({op}, "
+                    f"{child.metadata['frontier_status']}): p={p_hat:.3f} "
                     f"H={h_bar:.3f} R_Q={rq_result.rq_score:.4f}"
                 )
 
@@ -1180,6 +1239,23 @@ class RQEvolveTrainer(RayPPOTrainer):
             s += 1
         return s
 
+    def _is_frontier_champion(self, champ) -> bool:
+        """Whether this champion is in the learnability frontier for training.
+
+        p=0 / p=1 champions are kept in the archive as evolutionary material
+        (parents, empty-niche fillers) but excluded here from Solver training
+        data. This follows MAP-Elites exploration semantics: empty niches may
+        store zero-R_Q programs, while training stays on the frontier.
+
+        p_hat missing (e.g. seed bootstrap before any reeval) → treated as
+        frontier so the very first epoch's dataset isn't silently emptied.
+        """
+        p = getattr(champ, "p_hat", None)
+        if p is None:
+            return True
+        low, high = self.frontier_p_hat_range
+        return float(low) < float(p) < float(high)
+
     def _refresh_dataset(self):
         """MAP-Elites 챔피언 → dynamic_dataset 교체 → dataloader 재구성.
 
@@ -1190,17 +1266,24 @@ class RQEvolveTrainer(RayPPOTrainer):
           the same champion may be revisited with its next unused seed until
           the budget is hit or no sweep makes any progress.
 
-        The legacy ``uniform`` mode iterates every champion with seeds
+          Only frontier champions (0 < p_hat < 1) contribute to training data —
+          extreme-p champions stay in the archive as mutation material.
+
+        The legacy ``uniform`` mode iterates every frontier champion with seeds
         ``0..instances_per_program`` then clamps to ``training_budget``.
         """
         old_size = len(self.dynamic_dataset.snapshot())
         new_problems: list[dict] = []
         sweep = 0
+        non_frontier_skipped = 0  # reporting-only counter
 
         if self.training_selection_mode == "uniform":
-            # Legacy: champion × fixed seed range, clamped to training_budget.
+            # Legacy: frontier champions × fixed seed range, clamped to budget.
             champions = self.map_elites.get_all_champions()
             for champ in champions:
+                if not self._is_frontier_champion(champ):
+                    non_frontier_skipped += 1
+                    continue
                 for seed in range(self.instances_per_program):
                     inst = champ.execute(seed=seed)
                     if inst:
@@ -1241,6 +1324,12 @@ class RQEvolveTrainer(RayPPOTrainer):
                         if niche is None or niche.champion is None:
                             continue
                         champ = niche.champion
+                        if not self._is_frontier_champion(champ):
+                            # Extreme-p champion — archive material only,
+                            # not training data. Counted per-sweep-visit, so
+                            # later sweeps may re-count if still non-frontier.
+                            non_frontier_skipped += 1
+                            continue
                         seed = self._next_unused_seed(champ.program_id)
                         if seed is None:
                             continue
@@ -1298,19 +1387,32 @@ class RQEvolveTrainer(RayPPOTrainer):
         batch = self.config.data.rollout_batch_size
         steps_per_epoch = new_size // batch
         dropped = new_size - steps_per_epoch * batch
+
+        # Archive-wide frontier accounting (reporting only).
+        all_champs = self.map_elites.get_all_champions()
+        frontier_champs = sum(1 for c in all_champs if self._is_frontier_champion(c))
+        self._last_refresh_stats = {
+            "archive_champions": len(all_champs),
+            "frontier_champions": frontier_champs,
+            "non_frontier_skipped_visits": non_frontier_skipped,
+        }
+
         logger.info(
             f"[Evolution] Dataset refreshed ({self.training_selection_mode}): "
             f"{old_size} → {new_size} problems, budget={self.training_budget}, "
             f"sweeps={sweep}, steps_per_epoch={steps_per_epoch}, "
+            f"archive={len(all_champs)} champs "
+            f"(frontier={frontier_champs}), "
+            f"non_frontier_skipped_visits={non_frontier_skipped}, "
             f"dataloader rebuilt"
         )
         if new_size == 0:
             logger.error(
-                f"[Evolution] Dataset is EMPTY after refresh — archive has no "
-                f"champions that produced valid instances. Training will yield "
-                f"0 steps this epoch. Likely causes: all champions evicted "
-                f"(low-H / extreme-p / exec-fail) AND mutation inserted none. "
-                f"Investigate reeval / mutation logs above."
+                f"[Evolution] Dataset is EMPTY after refresh — no frontier "
+                f"champion produced a valid instance. Training will yield 0 "
+                f"steps this epoch. Likely causes: all champions are extreme-p "
+                f"(p=0 or p=1), or frontier champions all exec-failed, or the "
+                f"archive itself is empty. Investigate reeval / mutation logs."
             )
         elif dropped > 0:
             logger.warning(
