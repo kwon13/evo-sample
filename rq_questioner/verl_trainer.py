@@ -32,7 +32,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from torchdata.stateful_dataloader import StatefulDataLoader
 
-from verl.protocol import DataProto
+from verl.protocol import DataProto, pad_dataproto_to_divisor, unpad_dataproto
 from verl.trainer.ray_trainer import RayPPOTrainer
 from verl.utils.dataset import collate_fn as verl_collate_fn
 
@@ -340,6 +340,29 @@ class RQEvolveTrainer(RayPPOTrainer):
     # Hook: called per mini-batch update
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+    # DP-safe worker invocation — pads odd batches to world_size then unpads.
+    # evolution/reeval produce arbitrary batch sizes (n_children, retained_indices,
+    # extra_n × retained) that may be odd under 2-GPU DP, tripping
+    # DataProto.chunk(world_size) assertions. Mirrors ray_trainer._validate().
+    # ------------------------------------------------------------------
+
+    def _generate_sequences_dp_safe(self, batch: DataProto) -> DataProto:
+        world_size = self.actor_rollout_wg.world_size
+        batch, pad = pad_dataproto_to_divisor(batch, world_size)
+        out = self.actor_rollout_wg.generate_sequences(batch)
+        return unpad_dataproto(out, pad)
+
+    def _compute_log_probs_dp_safe(
+        self, batch: DataProto, calculate_entropy: bool, temperature: float,
+    ) -> DataProto:
+        world_size = self.actor_rollout_wg.world_size
+        batch, pad = pad_dataproto_to_divisor(batch, world_size)
+        batch.meta_info["calculate_entropy"] = calculate_entropy
+        batch.meta_info["temperature"] = temperature
+        out = self.actor_rollout_wg.compute_log_probs(batch)
+        return unpad_dataproto(out, pad)
+
     def _get_evolution_freq(self) -> int:
         """evolution_pct가 설정되면 total_steps에서 freq를 계산, 아니면 고정값 사용."""
         if self._computed_evolution_freq is not None:
@@ -531,8 +554,11 @@ class RQEvolveTrainer(RayPPOTrainer):
             "timestamp": datetime.now().isoformat(),
             "metrics": evo_metrics,
             "grid": grid_snapshot,
+            # Generic D-axis labels. MAPElitesGrid now uses PCA projection on
+            # problem embeddings (fit_diversity_axis) so bins don't map to
+            # specific seeds anymore.
             "seed_labels": {
-                str(d): sid for sid, d in self.map_elites._seed_to_div.items()
+                str(d): f"D{d}" for d in range(self.map_elites.n_div_bins)
             },
         }
 
@@ -649,7 +675,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             n_repeat=1,
         )
         try:
-            probe_output = self.actor_rollout_wg.generate_sequences(probe_batch)
+            probe_output = self._generate_sequences_dp_safe(probe_batch)
         except Exception as e:
             logger.warning(f"[Reeval] probe rollout failed: {e}")
             return empty
@@ -667,10 +693,10 @@ class RQEvolveTrainer(RayPPOTrainer):
             pred = _extract_boxed(decoded)
             probe_flags.append(_answers_match(pred, pair_answers[ci]) if pred else False)
 
-        probe_output.meta_info["calculate_entropy"] = True
-        probe_output.meta_info["temperature"] = temperature
         try:
-            entropy_output = self.actor_rollout_wg.compute_log_probs(probe_output)
+            entropy_output = self._compute_log_probs_dp_safe(
+                probe_output, calculate_entropy=True, temperature=temperature,
+            )
         except Exception as e:
             logger.warning(f"[Reeval] entropy forward failed: {e}")
             return empty
@@ -739,7 +765,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 n_repeat=extra_n,
             )
             try:
-                extra_output = self.actor_rollout_wg.generate_sequences(extra_batch)
+                extra_output = self._generate_sequences_dp_safe(extra_batch)
             except Exception as e:
                 logger.warning(f"[Reeval] expand rollout failed: {e}")
                 return {
@@ -878,7 +904,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         )
 
         try:
-            mut_output = self.actor_rollout_wg.generate_sequences(mut_batch)
+            mut_output = self._generate_sequences_dp_safe(mut_batch)
         except Exception as e:
             logger.warning(f"[Evolution] batch mutation failed: {e}")
             return 0, 0
@@ -952,7 +978,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             n_repeat=1,
         )
         try:
-            probe_output = self.actor_rollout_wg.generate_sequences(probe_batch)
+            probe_output = self._generate_sequences_dp_safe(probe_batch)
         except Exception as e:
             logger.warning(f"[Evolution] probe rollout failed: {e}")
             return 0, 0
@@ -972,10 +998,10 @@ class RQEvolveTrainer(RayPPOTrainer):
             probe_flags.append(_answers_match(pred, inst_answers[ci]) if pred else False)
 
         # ---- (a-2) Full-vocab entropy via actor forward pass -----------
-        probe_output.meta_info["calculate_entropy"] = True
-        probe_output.meta_info["temperature"] = temperature
         try:
-            entropy_output = self.actor_rollout_wg.compute_log_probs(probe_output)
+            entropy_output = self._compute_log_probs_dp_safe(
+                probe_output, calculate_entropy=True, temperature=temperature,
+            )
         except Exception as e:
             logger.warning(f"[Evolution] entropy forward failed: {e}")
             return 0, 0
@@ -1029,7 +1055,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 n_repeat=extra_n,
             )
             try:
-                extra_output = self.actor_rollout_wg.generate_sequences(extra_batch)
+                extra_output = self._generate_sequences_dp_safe(extra_batch)
             except Exception as e:
                 logger.warning(f"[Evolution] expand rollout failed: {e}")
                 return n_children, 0
@@ -1109,21 +1135,21 @@ class RQEvolveTrainer(RayPPOTrainer):
         """MAP-Elites 챔피언 → dynamic_dataset 교체 → dataloader 재구성.
 
         Selection rule (``h_priority_d_uniform``):
-          1. Outer loop over entropy bins in descending order (high-H first).
-          2. Inner loop over diversity bins in shuffled order (D uniform).
-          3. For each filled niche, pick the next *unused* seed of its champion
-             via :meth:`_next_unused_seed`, generate one (problem, answer)
-             instance, and record the (program_id, seed) pair in ``used_seeds``.
-          4. Stop as soon as ``training_budget`` instances have been collected.
+          Repeated H×D sweeps until ``training_budget`` is reached. Each sweep
+          processes every filled niche at most once (≤1 new problem per niche),
+          using :meth:`_next_unused_seed` for strict anti-reuse. Across sweeps,
+          the same champion may be revisited with its next unused seed until
+          the budget is hit or no sweep makes any progress.
 
         The legacy ``uniform`` mode iterates every champion with seeds
-        ``0..instances_per_program`` and is retained for regression tests.
+        ``0..instances_per_program`` then clamps to ``training_budget``.
         """
         old_size = len(self.dynamic_dataset)
         new_problems: list[dict] = []
+        sweep = 0
 
         if self.training_selection_mode == "uniform":
-            # Legacy path: champion × fixed seed range, full-budget unconditionally.
+            # Legacy: champion × fixed seed range, clamped to training_budget.
             champions = self.map_elites.get_all_champions()
             for champ in champions:
                 for seed in range(self.instances_per_program):
@@ -1135,57 +1161,105 @@ class RQEvolveTrainer(RayPPOTrainer):
                             "program_id": champ.program_id,
                             "rq_score": champ.rq_score,
                         })
+                        if len(new_problems) >= self.training_budget:
+                            break
+                if len(new_problems) >= self.training_budget:
+                    break
+            new_problems = new_problems[: self.training_budget]
         else:
-            # H-priority + D-uniform + strict anti-reuse.
+            # H-priority + D-uniform + strict anti-reuse, repeated sweeps.
+            # progress: appended at least one valid problem this sweep.
+            # advanced: consumed at least one seed this sweep (execute may have
+            #   returned None). Lets us distinguish an empty archive from one
+            #   sweep of transient seed failures — see MAX_FAILED_SWEEPS.
             grid = self.map_elites.grid
             n_h = self.map_elites.n_h_bins
             n_d = self.map_elites.n_div_bins
-            exhausted = 0
-            for h_bin in range(n_h - 1, -1, -1):  # high H first
-                d_order = list(range(n_d))
-                random.shuffle(d_order)
-                for d_bin in d_order:
-                    if len(new_problems) >= self.training_budget:
-                        break
-                    niche = grid.get((h_bin, d_bin))
-                    if niche is None or niche.champion is None:
+            MAX_FAILED_SWEEPS = 2
+            failed_sweeps = 0
+
+            while len(new_problems) < self.training_budget:
+                sweep += 1
+                progress = False
+                advanced = False
+                for h_bin in range(n_h - 1, -1, -1):  # high H first
+                    d_order = list(range(n_d))
+                    random.shuffle(d_order)
+                    for d_bin in d_order:
+                        if len(new_problems) >= self.training_budget:
+                            break
+                        niche = grid.get((h_bin, d_bin))
+                        if niche is None or niche.champion is None:
+                            continue
+                        champ = niche.champion
+                        seed = self._next_unused_seed(champ.program_id)
+                        if seed is None:
+                            continue
+                        advanced = True
+                        self.used_seeds.setdefault(champ.program_id, set()).add(seed)
+                        inst = champ.execute(seed=seed)
+                        if inst is None:
+                            continue
+                        new_problems.append({
+                            "problem": inst.problem,
+                            "answer": inst.answer,
+                            "program_id": champ.program_id,
+                            "rq_score": champ.rq_score,
+                            "h_bin": h_bin,
+                            "d_bin": d_bin,
+                            "seed": seed,
+                        })
+                        progress = True
+                    else:
                         continue
-                    champ = niche.champion
-                    seed = self._next_unused_seed(champ.program_id)
-                    if seed is None:
-                        exhausted += 1
-                        continue
-                    inst = champ.execute(seed=seed)
-                    if inst is None:
-                        # Still mark this seed as consumed to avoid retrying.
-                        self.used_seeds[champ.program_id].add(seed)
-                        continue
-                    new_problems.append({
-                        "problem": inst.problem,
-                        "answer": inst.answer,
-                        "program_id": champ.program_id,
-                        "rq_score": champ.rq_score,
-                        "h_bin": h_bin,
-                        "d_bin": d_bin,
-                        "seed": seed,
-                    })
-                    self.used_seeds[champ.program_id].add(seed)
-                if len(new_problems) >= self.training_budget:
+                    break  # budget reached in inner loop, propagate
+
+                if progress:
+                    failed_sweeps = 0
+                    continue
+
+                failed_sweeps += 1
+                if not advanced:
+                    logger.warning(
+                        f"[Evolution] Training budget under-filled: "
+                        f"{len(new_problems)}/{self.training_budget} after "
+                        f"{sweep} sweeps; no usable champion/seed made progress"
+                    )
                     break
-            if len(new_problems) < self.training_budget:
-                logger.warning(
-                    f"[Evolution] Training budget under-filled: "
-                    f"{len(new_problems)}/{self.training_budget} "
-                    f"(exhausted champions: {exhausted})"
-                )
+                if failed_sweeps >= MAX_FAILED_SWEEPS:
+                    logger.warning(
+                        f"[Evolution] Training budget under-filled: "
+                        f"{len(new_problems)}/{self.training_budget} after "
+                        f"{sweep} sweeps; no valid instance appended in last "
+                        f"{MAX_FAILED_SWEEPS} sweeps (seeds consumed but all "
+                        f"execute() returned None)"
+                    )
+                    break
 
         if new_problems:
             self.dynamic_dataset.update(new_problems)
             self._rebuild_dataloader()
+            new_size = len(self.dynamic_dataset)
+            batch = self.config.data.rollout_batch_size
+            steps_per_epoch = new_size // batch
+            dropped = new_size - steps_per_epoch * batch
             logger.info(
                 f"[Evolution] Dataset refreshed ({self.training_selection_mode}): "
-                f"{old_size} → {len(new_problems)} problems, dataloader rebuilt"
+                f"{old_size} → {new_size} problems, budget={self.training_budget}, "
+                f"sweeps={sweep}, steps_per_epoch={steps_per_epoch}, "
+                f"dataloader rebuilt"
             )
+            if dropped > 0:
+                logger.warning(
+                    f"[Evolution] drop_last=True will drop {dropped} examples per "
+                    f"epoch (budget={self.training_budget} not divisible by "
+                    f"rollout_batch_size={batch})"
+                )
+            if new_size < batch:
+                logger.warning(
+                    f"[Evolution] dataset_size={new_size} < rollout_batch_size="
+                    f"{batch}; drop_last=True will yield 0 training steps this epoch"
+                )
 
     def _rebuild_dataloader(self):
         """dynamic_dataset 변경 후 train_dataloader를 재구성.
@@ -1195,10 +1269,14 @@ class RQEvolveTrainer(RayPPOTrainer):
         데이터 내용 자체는 즉시 반영된다.
         다음 epoch부터는 새 dataloader의 sampler 범위가 적용된다.
         """
+        # shuffle MUST be honored — _refresh_dataset builds new_problems in
+        # H-priority order, so without shuffle, every epoch's early batches
+        # would be high-H biased relative to the intended training distribution.
         self.train_dataloader = StatefulDataLoader(
             dataset=self.dynamic_dataset,
             batch_size=self.config.data.rollout_batch_size,
             num_workers=0,
+            shuffle=self.config.data.shuffle,
             drop_last=True,
             collate_fn=verl_collate_fn,
         )

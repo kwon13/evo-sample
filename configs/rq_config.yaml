@@ -118,3 +118,21 @@ rq:
   training_selection_mode: "h_priority_d_uniform"
   training_budget: null
   strict_anti_reuse: true
+
+  # --- Initial evolution before first Solver update (Method epoch order) ---
+  # evolve_before_train:
+  #   true (default) — run one Questioner evolution step after workers init and
+  #                    before trainer.fit(), so the first Solver update trains on
+  #                    archive-selected problems (not raw seeds × instances_per_program).
+  # skip_initial_evolution_on_resume:
+  #   true (default, STRONGLY RECOMMENDED) — when trainer.load_checkpoint_path is
+  #                    set, skip initial evolution. Checkpoint loads inside fit(),
+  #                    so running initial evolution on resume would score the archive
+  #                    with the BASE model instead of the checkpointed policy.
+  #   false            — force initial evolution even on resume. This is almost
+  #                    always wrong: the archive gets scored with the base model
+  #                    before the checkpoint is loaded, producing inconsistent
+  #                    policy/archive state. Only flip this if you have refactored
+  #                    checkpoint load to precede initial evolution.
+  evolve_before_train: true
+  skip_initial_evolution_on_resume: true

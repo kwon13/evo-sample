@@ -148,6 +148,8 @@ class RQConfig:
     training_selection_mode: str = "h_priority_d_uniform"
     training_budget: Optional[int] = None
     strict_anti_reuse: bool = True
+    evolve_before_train: bool = True
+    skip_initial_evolution_on_resume: bool = True
 
 @dataclass
 class PPOConfig:
