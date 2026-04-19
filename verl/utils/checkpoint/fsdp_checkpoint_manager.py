@@ -24,6 +24,16 @@ from transformers import PreTrainedModel, PreTrainedTokenizer, ProcessorMixin
 from .checkpoint_manager import BaseCheckpointManager
 
 
+def _safe_torch_save(obj, path: str):
+    """Save large checkpoint shards without PyTorch's zipfile writer.
+
+    Some network/FUSE filesystems are flaky with the default zip container used
+    by torch.save for multi-GB shards. The legacy stream format is still
+    loadable by torch.load and tends to be more robust on those mounts.
+    """
+    torch.save(obj, path, _use_new_zipfile_serialization=False)
+
+
 class FSDPCheckpointManager(BaseCheckpointManager):
     """
     A checkpoint manager that saves and loads
@@ -95,9 +105,9 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         print(f"[rank-{self.rank}]: Saving model to {os.path.abspath(model_path)}.")
         print(f"[rank-{self.rank}]: Saving optimizer to {os.path.abspath(optim_path)}.")
         print(f"[rank-{self.rank}]: Saving extra_state to {os.path.abspath(extra_path)}.")
-        torch.save(model_state_dict, model_path)
-        torch.save(optim_state_dict, optim_path)
-        torch.save(extra_state_dict, extra_path)
+        _safe_torch_save(model_state_dict, model_path)
+        _safe_torch_save(optim_state_dict, optim_path)
+        _safe_torch_save(extra_state_dict, extra_path)
 
         # wait for everyone to dump to local
         dist.barrier()

@@ -666,5 +666,8 @@ class RayPPOTrainer:
 
             print(f"Final validation metrics: {convert_dict_to_str(val_metrics)}")
 
-        if self.config.trainer.save_freq <= 0 or self.global_step % self.config.trainer.save_freq != 0:
-            self._save_checkpoint()
+        if self.config.trainer.save_final_checkpoint:
+            if self.config.trainer.save_freq <= 0 or self.global_step % self.config.trainer.save_freq != 0:
+                self._save_checkpoint()
+        else:
+            print("[Checkpoint] Final checkpoint skipped (save_final_checkpoint=false).")

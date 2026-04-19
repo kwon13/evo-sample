@@ -99,6 +99,7 @@ class TrainerConfig:
     save_freq: int = -1
     save_limit: int = -1
     save_every_epoch: bool = True  # Save checkpoint at end of each epoch
+    save_final_checkpoint: bool = True  # Save at fit() end if not already saved on save_freq
     save_checkpoint_path: Optional[str] = None
     load_checkpoint_path: Optional[str] = None
     default_local_dir: Optional[str] = None  # For epoch snapshots and rollout logs
