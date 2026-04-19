@@ -92,9 +92,13 @@ rq:
   instances_per_program: 16
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
-  h_threshold: 1.0
+  h_threshold: 0.3
   ucb_c: 1.0
   epsilon: 0.3
+  # Non-champion but valid/scored programs are kept as evolution material.
+  # Parent selection runs UCB over champion + reservoir material together.
+  # Reservoir programs are never used for Solver training unless they later become champions.
+  candidate_reservoir_size: 4        # per H/D cell, top-R_Q non-elites retained
 
   # --- Champion re-evaluation ---
   # Re-evaluate occupied MAP-Elites champions before each Questioner evolution

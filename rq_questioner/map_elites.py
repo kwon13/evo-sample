@@ -15,6 +15,7 @@ class NicheInfo:
     div_bin: int
     champion: Optional[ProblemProgram] = None
     champion_rq: float = -1.0
+    candidates: list[ProblemProgram] = field(default_factory=list)
     update_count: int = 0
     selection_count: int = 0
     history: list = field(default_factory=list)
@@ -42,12 +43,14 @@ class MAPElitesGrid:
         ucb_c: float = 1.0,
         epsilon: float = 0.3,
         seed_ids: list[str] | None = None,
+        candidate_reservoir_size: int = 4,
     ):
         self.n_h_bins = n_h_bins
         self.n_div_bins = n_div_bins
         self.h_range = h_range
         self.ucb_c = ucb_c
         self.epsilon = epsilon
+        self.candidate_reservoir_size = max(0, int(candidate_reservoir_size))
 
         # Embedding model (lazy loaded)
         self._embedder = None
@@ -68,6 +71,8 @@ class MAPElitesGrid:
         self.total_insertions = 0
         self.total_replacements = 0
         self.total_selections = 0
+        self.total_reservoir_insertions = 0
+        self.total_reservoir_selections = 0
 
     # ------------------------------------------------------------------
     # Embedding & Diversity Axis
@@ -170,20 +175,82 @@ class MAPElitesGrid:
         niche = self.grid[(h_bin, div_bin)]
 
         if niche.champion is None or rq_score > niche.champion_rq:
+            displaced = niche.champion
             old_rq = niche.champion_rq if niche.champion else -1
             niche.champion = program
             niche.champion_rq = rq_score
+            program.metadata["archive_status"] = "champion"
+            program.metadata.pop("reservoir_reason", None)
             niche.update_count += 1
             niche.history.append({
                 "program_id": program.program_id,
                 "rq": rq_score,
                 "generation": program.generation,
+                "event": "inserted" if old_rq < 0 else "replaced",
             })
             self.total_insertions += 1
             if old_rq >= 0:
                 self.total_replacements += 1
+                if displaced is not None and displaced.program_id != program.program_id:
+                    self._add_candidate_to_reservoir(
+                        displaced,
+                        h_bin,
+                        div_bin,
+                        reason="displaced_champion",
+                    )
             return True
+
+        self._add_candidate_to_reservoir(
+            program,
+            h_bin,
+            div_bin,
+            reason="rejected_non_elite",
+        )
         return False
+
+    def _add_candidate_to_reservoir(
+        self,
+        program: ProblemProgram,
+        h_bin: int,
+        div_bin: int,
+        reason: str,
+    ) -> bool:
+        """Keep non-champion but valid/scored programs as evolution material."""
+        if self.candidate_reservoir_size <= 0:
+            return False
+
+        niche = self.grid[(h_bin, div_bin)]
+        if (
+            niche.champion is not None
+            and niche.champion.program_id == program.program_id
+        ):
+            return False
+
+        for existing in niche.candidates:
+            if existing.program_id == program.program_id:
+                return False
+
+        program.niche_h = h_bin
+        program.niche_div = div_bin
+        program.metadata["archive_status"] = "reservoir"
+        program.metadata["reservoir_reason"] = reason
+        niche.candidates.append(program)
+        niche.candidates.sort(
+            key=lambda p: (
+                float(getattr(p, "rq_score", 0.0) or 0.0),
+                int(getattr(p, "generation", 0) or 0),
+            ),
+            reverse=True,
+        )
+        del niche.candidates[self.candidate_reservoir_size:]
+        niche.history.append({
+            "program_id": program.program_id,
+            "rq": float(getattr(program, "rq_score", 0.0) or 0.0),
+            "generation": program.generation,
+            "event": reason,
+        })
+        self.total_reservoir_insertions += 1
+        return True
 
     def evict_champion(self, program: ProblemProgram) -> bool:
         """
@@ -252,6 +319,54 @@ class MAPElitesGrid:
     # Parent Selection: ε-greedy + rank-based UCB
     # ------------------------------------------------------------------
 
+    def _champion_entries(self) -> list:
+        return [
+            (k, niche) for k, niche in self.grid.items()
+            if niche.champion is not None
+        ]
+
+    def _reservoir_entries(self) -> list:
+        entries = []
+        for key, niche in self.grid.items():
+            for candidate in niche.candidates:
+                if (
+                    niche.champion is not None
+                    and niche.champion.program_id == candidate.program_id
+                ):
+                    continue
+                entries.append((key, niche, candidate))
+        return entries
+
+    def _material_entries(self) -> list:
+        """All programs available as evolution parents: champions + reservoir."""
+        entries = []
+        for key, niche in self.grid.items():
+            if niche.champion is not None:
+                entries.append((key, niche, niche.champion, "champion"))
+            for candidate in niche.candidates:
+                if (
+                    niche.champion is not None
+                    and niche.champion.program_id == candidate.program_id
+                ):
+                    continue
+                entries.append((key, niche, candidate, "reservoir"))
+        return entries
+
+    @staticmethod
+    def _program_selection_count(program: ProblemProgram) -> int:
+        return int((program.metadata or {}).get("_selection_count", 0) or 0)
+
+    def _increment_parent_selection(
+        self, niche: NicheInfo, program: ProblemProgram, source: str
+    ) -> None:
+        self.total_selections += 1
+        niche.selection_count += 1
+        program.metadata["_selection_count"] = (
+            self._program_selection_count(program) + 1
+        )
+        if source == "reservoir":
+            self.total_reservoir_selections += 1
+
     def _ucb_scores(self, occupied: list) -> np.ndarray:
         """Rank-based UCB scores for occupied niches."""
         N = self.total_selections + 1
@@ -263,69 +378,84 @@ class MAPElitesGrid:
         n = len(ranks)
         norm_rqs = ranks / (n - 1) if n > 1 else np.ones(n)
 
-        exploration = np.where(
-            counts == 0,
-            np.inf,
-            self.ucb_c * np.sqrt(np.log(N) / counts),
-        )
+        exploration = np.full_like(counts, np.inf, dtype=float)
+        seen = counts > 0
+        exploration[seen] = self.ucb_c * np.sqrt(np.log(N) / counts[seen])
         return norm_rqs + exploration
+
+    def _material_ucb_scores(self, entries: list) -> np.ndarray:
+        """Rank-based UCB over champion and non-champion material together."""
+        N = self.total_selections + 1
+        rqs = np.array(
+            [
+                float(getattr(program, "rq_score", 0.0) or 0.0)
+                for _, _, program, _ in entries
+            ],
+            dtype=float,
+        )
+        counts = np.array(
+            [self._program_selection_count(program) for _, _, program, _ in entries],
+            dtype=float,
+        )
+
+        ranks = np.argsort(np.argsort(rqs)).astype(float)
+        n = len(ranks)
+        norm_rqs = ranks / (n - 1) if n > 1 else np.ones(n)
+
+        exploration = np.full_like(counts, np.inf, dtype=float)
+        seen = counts > 0
+        exploration[seen] = self.ucb_c * np.sqrt(np.log(N) / counts[seen])
+        return norm_rqs + exploration
+
+    def _sample_material_parent(
+        self, exclude_program_ids: set[str] | None = None,
+    ) -> Optional[ProblemProgram]:
+        entries = self._material_entries()
+        if exclude_program_ids:
+            entries = [
+                entry for entry in entries
+                if entry[2].program_id not in exclude_program_ids
+            ]
+        if not entries:
+            return None
+
+        if _random.random() < self.epsilon:
+            _, niche, program, source = _random.choice(entries)
+        else:
+            ucb_scores = self._material_ucb_scores(entries)
+            idx = int(np.argmax(ucb_scores))
+            _, niche, program, source = entries[idx]
+
+        self._increment_parent_selection(niche, program, source)
+        return program
 
     def sample_parent(self) -> Optional[ProblemProgram]:
         """
-        ε-greedy + rank-based UCB 부모 선택.
+        Parent selection over champion and non-champion material together.
 
-        ε 확률: uniform random (모든 occupied 셀에서 균등 선택)
-        (1-ε) 확률: rank-based UCB1 (exploitation + exploration)
+        ε 확률: all material에서 uniform random
+        (1-ε) 확률: R_Q rank + UCB exploration
         """
-        occupied = [
-            (k, niche) for k, niche in self.grid.items()
-            if niche.champion is not None
-        ]
-        if not occupied:
-            return None
-
-        self.total_selections += 1
-
-        if _random.random() < self.epsilon:
-            _, niche = _random.choice(occupied)
-            niche.selection_count += 1
-            return niche.champion
-
-        ucb_scores = self._ucb_scores(occupied)
-        idx = int(np.argmax(ucb_scores))
-        _, niche = occupied[idx]
-        niche.selection_count += 1
-        return niche.champion
+        return self._sample_material_parent()
 
     def sample_two_parents(self) -> tuple[Optional[ProblemProgram], Optional[ProblemProgram]]:
-        """Crossover용 부모 2개 선택 (서로 다른 셀)."""
-        occupied = [
-            (k, niche) for k, niche in self.grid.items()
-            if niche.champion is not None
-        ]
-        if len(occupied) < 2:
+        """Crossover용 부모 2개 선택 (champion + reservoir material)."""
+        material: dict[str, ProblemProgram] = {}
+        for _, niche in self._champion_entries():
+            material[niche.champion.program_id] = niche.champion
+        for _, _, candidate in self._reservoir_entries():
+            material[candidate.program_id] = candidate
+
+        if len(material) < 2:
             return None, None
 
-        self.total_selections += 2
-
-        if _random.random() < self.epsilon:
-            pair = _random.sample(occupied, 2)
-            pair[0][1].selection_count += 1
-            pair[1][1].selection_count += 1
-            return pair[0][1].champion, pair[1][1].champion
-
-        ucb_scores = self._ucb_scores(occupied)
-
-        idx1 = int(np.argmax(ucb_scores))
-        _, niche1 = occupied[idx1]
-        niche1.selection_count += 1
-
-        ucb_scores[idx1] = -np.inf
-        idx2 = int(np.argmax(ucb_scores))
-        _, niche2 = occupied[idx2]
-        niche2.selection_count += 1
-
-        return niche1.champion, niche2.champion
+        first = self._sample_material_parent()
+        if first is None:
+            return None, None
+        second = self._sample_material_parent({first.program_id})
+        if second is None:
+            first, second = _random.sample(list(material.values()), 2)
+        return first, second
 
     # ------------------------------------------------------------------
     # Stats & IO
@@ -333,6 +463,9 @@ class MAPElitesGrid:
 
     def get_all_champions(self) -> list[ProblemProgram]:
         return [n.champion for n in self.grid.values() if n.champion is not None]
+
+    def get_all_reservoir_candidates(self) -> list[ProblemProgram]:
+        return [p for n in self.grid.values() for p in n.candidates]
 
     def coverage(self) -> float:
         occupied = sum(1 for n in self.grid.values() if n.champion is not None)
@@ -351,9 +484,12 @@ class MAPElitesGrid:
     def stats(self) -> dict:
         champions = self.get_all_champions()
         rqs = [p.rq_score for p in champions]
+        reservoir_candidates = self.get_all_reservoir_candidates()
         return {
             "coverage": self.coverage(),
             "num_champions": len(champions),
+            "num_reservoir_candidates": len(reservoir_candidates),
+            "num_reservoir_cells": sum(1 for n in self.grid.values() if n.candidates),
             "hard_champions": self.count_hard_champions(min_h_bin=2),
             "total_niches": len(self.grid),
             "mean_rq": float(np.mean(rqs)) if rqs else 0.0,
@@ -362,6 +498,9 @@ class MAPElitesGrid:
             "total_insertions": self.total_insertions,
             "total_replacements": self.total_replacements,
             "total_selections": self.total_selections,
+            "total_reservoir_insertions": self.total_reservoir_insertions,
+            "total_reservoir_selections": self.total_reservoir_selections,
+            "candidate_reservoir_size": self.candidate_reservoir_size,
         }
 
     def save(self, path: str):
@@ -370,6 +509,7 @@ class MAPElitesGrid:
             "n_h_bins": self.n_h_bins,
             "n_div_bins": self.n_div_bins,
             "h_range": self.h_range,
+            "candidate_reservoir_size": self.candidate_reservoir_size,
             "stats": self.stats(),
         }
         with open(os.path.join(path, "grid_meta.json"), "w") as f:
@@ -377,6 +517,8 @@ class MAPElitesGrid:
         for (h, d), niche in self.grid.items():
             if niche.champion is not None:
                 niche.champion.save(os.path.join(path, f"champion_{h}_{d}.json"))
+            for idx, candidate in enumerate(niche.candidates):
+                candidate.save(os.path.join(path, f"candidate_{h}_{d}_{idx}.json"))
 
     def load(self, path: str):
         for fname in os.listdir(path):
@@ -388,3 +530,18 @@ class MAPElitesGrid:
                 if niche:
                     niche.champion = program
                     niche.champion_rq = program.rq_score
+            elif fname.startswith("candidate_") and fname.endswith(".json"):
+                parts = fname.replace("candidate_", "").replace(".json", "").split("_")
+                h_bin, div_bin = int(parts[0]), int(parts[1])
+                program = ProblemProgram.load(os.path.join(path, fname))
+                niche = self.grid.get((h_bin, div_bin))
+                if niche:
+                    niche.candidates.append(program)
+                    niche.candidates.sort(
+                        key=lambda p: (
+                            float(getattr(p, "rq_score", 0.0) or 0.0),
+                            int(getattr(p, "generation", 0) or 0),
+                        ),
+                        reverse=True,
+                    )
+                    del niche.candidates[self.candidate_reservoir_size:]

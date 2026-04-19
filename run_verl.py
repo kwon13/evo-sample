@@ -75,13 +75,22 @@ def load_seeds(seed_dir: str) -> list[ProblemProgram]:
     return programs
 
 
-def init_map_elites(seeds, n_h_bins, n_div_bins, h_range, ucb_c, epsilon) -> MAPElitesGrid:
+def init_map_elites(
+    seeds,
+    n_h_bins,
+    n_div_bins,
+    h_range,
+    ucb_c,
+    epsilon,
+    candidate_reservoir_size=4,
+) -> MAPElitesGrid:
     grid = MAPElitesGrid(
         n_h_bins=n_h_bins,
         n_div_bins=n_div_bins,
         h_range=tuple(h_range) if isinstance(h_range, list) else h_range,
         ucb_c=ucb_c,
         epsilon=epsilon,
+        candidate_reservoir_size=candidate_reservoir_size,
     )
 
     # Embedding 기반 D축: seed 문제 텍스트로 PCA fitting
@@ -183,6 +192,7 @@ class RQTaskRunner:
         h_range = rq_cfg_get("h_range", [0.0, 5.0])
         ucb_c = rq_cfg_get("ucb_c", 1.0)
         epsilon = rq_cfg_get("epsilon", 0.3)
+        candidate_reservoir_size = rq_cfg_get("candidate_reservoir_size", 4)
         instances_per_program = rq_cfg_get("instances_per_program", 16)
 
         # Seeds + MAP-Elites
@@ -192,7 +202,15 @@ class RQTaskRunner:
             raise ValueError(f"No valid seed programs in {seed_dir}")
         print(f"[Runner] {len(seeds)} seeds loaded")
 
-        map_elites = init_map_elites(seeds, n_h_bins, n_div_bins, h_range, ucb_c, epsilon)
+        map_elites = init_map_elites(
+            seeds,
+            n_h_bins,
+            n_div_bins,
+            h_range,
+            ucb_c,
+            epsilon,
+            candidate_reservoir_size=candidate_reservoir_size,
+        )
         dynamic_dataset = build_seed_dataset(seeds, instances_per_program)
         dynamic_dataset.set_tokenizer(tokenizer, max_prompt_length=config.data.max_prompt_length)
         print(f"[Runner] MAP-Elites grid: {n_h_bins} x {n_div_bins}, dataset: {len(dynamic_dataset)} problems")

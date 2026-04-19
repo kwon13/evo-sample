@@ -23,6 +23,7 @@ Method-aligned epoch flow (method.tex §coevolution):
 import re
 import sys
 import uuid
+import json
 import random
 import logging
 import numpy as np
@@ -348,6 +349,9 @@ class RQEvolveTrainer(RayPPOTrainer):
             getattr(self.config.trainer, "load_checkpoint_path", None)
         )
         self.used_seeds: dict[str, set[int]] = {}
+        self._evolution_event_seq = 0
+        self._current_event_path: str | None = None
+        self._latest_event_path: str | None = None
 
     # ------------------------------------------------------------------
     # Hook: called per mini-batch update
@@ -434,7 +438,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             f"({evo_metrics['accept_rate']:.0%} accept)\n"
             f"  Grid: {evo_metrics['grid_champions']}/{evo_metrics['total_niches']} niches filled "
             f"({evo_metrics['grid_coverage']:.0%} coverage), "
-            f"H2+={evo_metrics['hard_champions']}\n"
+            f"H2+={evo_metrics['hard_champions']}, "
+            f"reservoir={evo_metrics.get('reservoir_candidates', 0)}\n"
             f"  R_Q:  mean={evo_metrics['grid_mean_rq']:.4f}, "
             f"max={evo_metrics['grid_max_rq']:.4f}\n"
             f"  Champions: p_hat={evo_metrics['champion_p_hat_mean']:.2f}±"
@@ -451,6 +456,52 @@ class RQEvolveTrainer(RayPPOTrainer):
     # Evolution step (driver-side, CPU)
     # ------------------------------------------------------------------
 
+    def _start_evolution_event_log(self) -> None:
+        """Open a per-evolution JSONL event stream for live MAP visualization."""
+        import os
+
+        self._evolution_event_seq += 1
+        step = getattr(self, "global_step", 0)
+        event_dir = os.path.join(
+            getattr(self.config.trainer, 'default_local_dir', './rq_output'),
+            "evolution_logs",
+            "events",
+        )
+        os.makedirs(event_dir, exist_ok=True)
+        self._current_event_path = os.path.join(
+            event_dir, f"events_evo_{self._evolution_event_seq}_step_{step}.jsonl"
+        )
+        self._latest_event_path = os.path.join(event_dir, "latest_events.jsonl")
+        header = {
+            "event": "evolution_start",
+            "event_seq": 0,
+            "evolution_index": self._evolution_event_seq,
+            "global_step": step,
+            "max_rounds": self.max_rounds,
+            "candidates_per_evo": self.candidates_per_evo,
+        }
+        for path in (self._current_event_path, self._latest_event_path):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(json.dumps(header, ensure_ascii=False, default=str) + "\n")
+
+    def _record_evolution_event(self, event: dict) -> None:
+        """Append one candidate-level event to the current evolution JSONL log."""
+        if not self._current_event_path:
+            return
+        import time
+
+        event = dict(event)
+        event.setdefault("global_step", getattr(self, "global_step", 0))
+        event.setdefault("evolution_index", self._evolution_event_seq)
+        event["event_seq"] = getattr(self, "_last_event_seq", 0) + 1
+        self._last_event_seq = event["event_seq"]
+        event["time"] = time.time()
+        line = json.dumps(event, ensure_ascii=False, default=str) + "\n"
+        for path in (self._current_event_path, self._latest_event_path):
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(line)
+                f.flush()
+
     def _evolution_step(self) -> dict:
         """
         Fixed-budget evolution (FunSearch 스타일).
@@ -465,6 +516,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             f"[Evolution] step at global_step={getattr(self, 'global_step', '?')} "
             f"(max_rounds={self.max_rounds}, candidates_per_round={self.candidates_per_evo})"
         )
+        self._last_event_seq = 0
+        self._start_evolution_event_log()
 
         # ================================================================
         # Phase 0: Champion re-evaluation — Method's self-invalidating archive
@@ -508,7 +561,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 f"{self.candidates_per_evo} candidates (H2+={hard})"
             )
 
-            attempted, inserted = self._evolution_round(self.candidates_per_evo)
+            attempted, inserted = self._evolution_round(self.candidates_per_evo, round_num)
             total_attempted += attempted
             total_inserted += inserted
 
@@ -550,10 +603,14 @@ class RQEvolveTrainer(RayPPOTrainer):
             "grid_max_rq": stats["max_rq"],
             "grid_min_rq": stats["min_rq"],
             "grid_champions": stats["num_champions"],
+            "reservoir_candidates": stats.get("num_reservoir_candidates", 0),
+            "reservoir_cells": stats.get("num_reservoir_cells", 0),
+            "reservoir_selections": stats.get("total_reservoir_selections", 0),
             "hard_champions": stats["hard_champions"],
             "total_niches": stats["total_niches"],
             "total_insertions": stats["total_insertions"],
             "total_replacements": stats["total_replacements"],
+            "total_reservoir_insertions": stats.get("total_reservoir_insertions", 0),
             # Champion distribution (frontier tracking)
             "champion_p_hat_mean": float(np.mean(p_hats)) if p_hats else 0.0,
             "champion_p_hat_std": float(np.std(p_hats)) if p_hats else 0.0,
@@ -584,6 +641,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             # Dataset state
             # True problem count (not __len__, which returns max(n, 1)).
             "dataset_size": len(self.dynamic_dataset.snapshot()),
+            "event_log_file": self._current_event_path,
         }
 
         # Grid 스냅샷 JSON 저장 (시각화는 별도 스크립트로)
@@ -609,6 +667,23 @@ class RQEvolveTrainer(RayPPOTrainer):
         grid_snapshot = []
         for (h, d), niche in self.map_elites.grid.items():
             cell = {"h_bin": h, "div_bin": d, "has_champion": niche.champion is not None}
+            if getattr(niche, "candidates", None):
+                cell.update({
+                    "reservoir_count": len(niche.candidates),
+                    "reservoir_best_rq": max(
+                        float(getattr(c, "rq_score", 0.0) or 0.0)
+                        for c in niche.candidates
+                    ),
+                    "reservoir_program_ids": [
+                        c.program_id for c in niche.candidates[:5]
+                    ],
+                })
+            else:
+                cell.update({
+                    "reservoir_count": 0,
+                    "reservoir_best_rq": 0.0,
+                    "reservoir_program_ids": [],
+                })
             if niche.champion:
                 champ = niche.champion
                 inst = champ.execute(seed=0)
@@ -1077,7 +1152,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
         return _metrics()
 
-    def _evolution_round(self, batch_size: int) -> tuple[int, int]:
+    def _evolution_round(self, batch_size: int, round_num: int) -> tuple[int, int]:
         """
         단일 라운드: batch_size개 candidate mutation → rollout → entropy → grid insert.
         _refresh_dataset()는 호출하지 않음 (caller가 최종 1회 호출).
@@ -1139,6 +1214,11 @@ class RQEvolveTrainer(RayPPOTrainer):
             mutation_prompts.append((prompt_text, op, parent, None))
 
         if not mutation_prompts:
+            self._record_evolution_event({
+                "event": "round_empty",
+                "round": round_num,
+                "reason": "no_parent",
+            })
             return 0, 0
 
         mut_batch = _make_gen_batch(
@@ -1154,10 +1234,22 @@ class RQEvolveTrainer(RayPPOTrainer):
             mut_output = self._generate_sequences_dp_safe(mut_batch)
         except Exception as e:
             logger.warning(f"[Evolution] batch mutation failed: {e}")
+            self._record_evolution_event({
+                "event": "round_failed",
+                "round": round_num,
+                "phase": "mutation_generate",
+                "error": str(e),
+            })
             return 0, 0
 
         resp_ids = mut_output.batch.get("responses")
         if resp_ids is None:
+            self._record_evolution_event({
+                "event": "round_failed",
+                "round": round_num,
+                "phase": "mutation_generate",
+                "error": "responses missing",
+            })
             return 0, 0
 
         # Decode + execute (CPU)
@@ -1168,6 +1260,15 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
             source_code = _extract_code(code_text)
             if not source_code:
+                self._record_evolution_event({
+                    "event": "candidate_failed",
+                    "round": round_num,
+                    "candidate_index": i,
+                    "op": op,
+                    "parent_id": parent.program_id,
+                    "parent_b_id": parent_b.program_id if parent_b is not None else None,
+                    "status": "no_code",
+                })
                 continue
 
             if op == "crossover" and parent_b is not None:
@@ -1188,10 +1289,38 @@ class RQEvolveTrainer(RayPPOTrainer):
             # Multi-seed + SymPy 자가 검증
             inst = _verify_program(child, n_seeds=5)
             if inst is None:
+                self._record_evolution_event({
+                    "event": "candidate_failed",
+                    "round": round_num,
+                    "candidate_index": i,
+                    "op": op,
+                    "parent_id": parent.program_id,
+                    "parent_b_id": parent_b.program_id if parent_b is not None else None,
+                    "child_id": child.program_id,
+                    "status": "verify_failed",
+                })
                 continue
+            self._record_evolution_event({
+                "event": "candidate_verified",
+                "round": round_num,
+                "candidate_index": len(children),
+                "op": op,
+                "parent_id": parent.program_id,
+                "parent_b_id": parent_b.program_id if parent_b is not None else None,
+                "child_id": child.program_id,
+                "generation": child.generation,
+                "problem": inst.problem,
+                "answer": inst.answer,
+            })
             children.append((child, inst, op))
 
         if not children:
+            self._record_evolution_event({
+                "event": "round_empty",
+                "round": round_num,
+                "reason": "no_verified_children",
+                "mutation_prompts": len(mutation_prompts),
+            })
             return 0, 0
 
         # ================================================================
@@ -1228,11 +1357,23 @@ class RQEvolveTrainer(RayPPOTrainer):
             probe_output = self._generate_sequences_dp_safe(probe_batch)
         except Exception as e:
             logger.warning(f"[Evolution] probe rollout failed: {e}")
+            self._record_evolution_event({
+                "event": "round_failed",
+                "round": round_num,
+                "phase": "probe_rollout",
+                "error": str(e),
+            })
             return 0, 0
 
         probe_resp_ids = probe_output.batch.get("responses")
         response_mask = probe_output.batch.get("response_mask")
         if probe_resp_ids is None or response_mask is None:
+            self._record_evolution_event({
+                "event": "round_failed",
+                "round": round_num,
+                "phase": "probe_rollout",
+                "error": "responses or response_mask missing",
+            })
             return 0, 0
 
         # Decode probe flag per child (reused as the 1st of G rollouts).
@@ -1251,11 +1392,23 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
         except Exception as e:
             logger.warning(f"[Evolution] entropy forward failed: {e}")
+            self._record_evolution_event({
+                "event": "round_failed",
+                "round": round_num,
+                "phase": "entropy_forward",
+                "error": str(e),
+            })
             return 0, 0
 
         entropies = entropy_output.batch.get("entropies")
         if entropies is None:
             logger.warning("[Evolution] actor did not return entropies")
+            self._record_evolution_event({
+                "event": "round_failed",
+                "round": round_num,
+                "phase": "entropy_forward",
+                "error": "entropies missing",
+            })
             return 0, 0
         assert entropies.shape == response_mask.shape, (
             f"[Evolution] entropies {tuple(entropies.shape)} != response_mask "
@@ -1273,6 +1426,23 @@ class RQEvolveTrainer(RayPPOTrainer):
             h_bar = h_per_child[ci]
             if not h_prefilter(h_bar, self.h_threshold):
                 skipped_h += 1
+                child, inst, op = children[ci]
+                target_h = self.map_elites.h_to_bin(h_bar)
+                target_d = self.map_elites.problem_to_div_bin(inst.problem)
+                self._record_evolution_event({
+                    "event": "candidate_scored",
+                    "round": round_num,
+                    "candidate_index": ci,
+                    "op": op,
+                    "child_id": child.program_id,
+                    "parent_id": child.parent_id,
+                    "status": "h_prefilter_skip",
+                    "h_bar": h_bar,
+                    "h_bin": target_h,
+                    "d_bin": target_d,
+                    "problem": inst.problem,
+                    "answer": inst.answer,
+                })
                 logger.debug(
                     f"[Evolution] H={h_bar:.3f} < {self.h_threshold}, "
                     f"skip rollout (amortized)"
@@ -1305,10 +1475,22 @@ class RQEvolveTrainer(RayPPOTrainer):
                 extra_output = self._generate_sequences_dp_safe(extra_batch)
             except Exception as e:
                 logger.warning(f"[Evolution] expand rollout failed: {e}")
+                self._record_evolution_event({
+                    "event": "round_failed",
+                    "round": round_num,
+                    "phase": "expand_rollout",
+                    "error": str(e),
+                })
                 return n_children, 0
 
             extra_resp_ids = extra_output.batch.get("responses")
             if extra_resp_ids is None:
+                self._record_evolution_event({
+                    "event": "round_failed",
+                    "round": round_num,
+                    "phase": "expand_rollout",
+                    "error": "responses missing",
+                })
                 return n_children, 0
 
             for local_idx, ci in enumerate(retained_indices):
@@ -1340,6 +1522,19 @@ class RQEvolveTrainer(RayPPOTrainer):
             p_hat = sum(flags) / len(flags) if flags else 0.0
 
             rq_result = compute_rq_full(flags, h_bar)
+            target_h = self.map_elites.h_to_bin(h_bar)
+            target_d = self.map_elites.problem_to_div_bin(inst.problem)
+            target_niche = self.map_elites.grid.get((target_h, target_d))
+            previous_program_id = (
+                target_niche.champion.program_id
+                if target_niche and target_niche.champion is not None
+                else None
+            )
+            previous_rq = (
+                target_niche.champion_rq
+                if target_niche and target_niche.champion is not None
+                else None
+            )
             child.p_hat = p_hat
             child.h_score = h_bar
             child.rq_score = rq_result.rq_score
@@ -1354,6 +1549,33 @@ class RQEvolveTrainer(RayPPOTrainer):
                 program=child, h_value=h_bar,
                 problem_text=inst.problem, rq_score=rq_result.rq_score,
             )
+            self._record_evolution_event({
+                "event": "candidate_scored",
+                "round": round_num,
+                "candidate_index": ci,
+                "op": op,
+                "child_id": child.program_id,
+                "parent_id": child.parent_id,
+                "status": "inserted" if was_inserted else "rejected",
+                "reservoir_saved": (
+                    (not was_inserted)
+                    and child.metadata.get("archive_status") == "reservoir"
+                ),
+                "reservoir_reason": child.metadata.get("reservoir_reason"),
+                "frontier_status": child.metadata["frontier_status"],
+                "h_bar": h_bar,
+                "p_hat": p_hat,
+                "rq_score": rq_result.rq_score,
+                "h_bin": target_h,
+                "d_bin": target_d,
+                "probe_correct": probe_flags[ci],
+                "num_rollouts": len(flags),
+                "num_correct": sum(flags),
+                "previous_program_id": previous_program_id,
+                "previous_rq": previous_rq,
+                "problem": inst.problem,
+                "answer": inst.answer,
+            })
             if was_inserted:
                 inserted += 1
                 logger.info(

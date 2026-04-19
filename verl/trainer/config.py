@@ -143,6 +143,7 @@ class RQConfig:
     h_threshold: float = 0.1
     ucb_c: float = 1.0
     epsilon: float = 0.3
+    candidate_reservoir_size: int = 4
     # null = re-evaluate all occupied champions (Method-aligned default)
     # int  = partial budget (debug/ablation); 0 disables re-evaluation
     reeval_per_step: Optional[int] = None

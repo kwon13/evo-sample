@@ -4,15 +4,24 @@ Visualize RQ-Evolve evolution logs as MAP-Elites maps.
 This script reads:
   - evolution_logs/evo_step_*.json or evolution_logs/latest.json
   - evolution_logs/datasets/dataset_step_*.json or latest_dataset.json
+  - evolution_logs/events/events_evo_*_step_*.jsonl
 
-and writes a self-contained HTML dashboard with two maps per step:
+and writes a self-contained HTML dashboard with three maps per step:
   - Archive map: champion R_Q / p_hat / H over H x D niches
   - Dataset map: training examples emitted from each H x D niche
+  - Candidate event map: mutation/crossover candidates as they are scored
 
 Usage:
   python scripts/visualize_evolution_map.py \
       --log_dir ./rq_output/verl_ckpt/evolution_logs \
       --output ./rq_output/evolution_map.html
+
+  # Live-ish monitoring while training is running. Keep this process open,
+  # then open/refresh the generated HTML in a browser.
+  python scripts/visualize_evolution_map.py \
+      --log_dir ./rq_output/verl_ckpt/evolution_logs \
+      --output ./rq_output/evolution_map.html \
+      --watch_interval 2
 
   # With downloaded files where evo_step_*.json and datasets/ live separately:
   python scripts/visualize_evolution_map.py \
@@ -76,10 +85,82 @@ def load_dataset_snapshots(dataset_dir: Path | None) -> dict[int, dict[str, Any]
     return datasets
 
 
-def _grid_shape(snapshots: list[dict[str, Any]]) -> tuple[int, int]:
-    max_h = max(cell["h_bin"] for snap in snapshots for cell in snap["grid"])
-    max_d = max(cell["div_bin"] for snap in snapshots for cell in snap["grid"])
-    return max_h + 1, max_d + 1
+def _event_sort_key(path: Path) -> tuple[int, int, str]:
+    match = re.search(r"events_evo_(\d+)_step_(\d+)", path.stem)
+    if match:
+        evo_idx = int(match.group(1))
+        step = int(match.group(2))
+        return (step, evo_idx, path.name)
+    return (10**12, 10**12, path.name)
+
+
+def load_event_streams(events_dir: Path | None) -> list[dict[str, Any]]:
+    """Load append-only candidate event logs produced during evolution."""
+    if events_dir is None or not events_dir.exists():
+        return []
+
+    files = sorted(events_dir.glob("events_evo_*_step_*.jsonl"), key=_event_sort_key)
+    if not files:
+        latest = events_dir / "latest_events.jsonl"
+        files = [latest] if latest.exists() else []
+
+    streams = []
+    for path in files:
+        events = []
+        with path.open("r", encoding="utf-8") as f:
+            for line_no, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError as exc:
+                    print(
+                        f"Skipping malformed event line {path}:{line_no}: {exc}",
+                        file=sys.stderr,
+                    )
+        if not events:
+            continue
+
+        header = events[0] if events[0].get("event") == "evolution_start" else {}
+        match = re.search(r"events_evo_(\d+)_step_(\d+)", path.stem)
+        evo_idx = header.get("evolution_index")
+        step = header.get("global_step")
+        if match:
+            evo_idx = evo_idx if evo_idx is not None else int(match.group(1))
+            step = step if step is not None else int(match.group(2))
+        streams.append({
+            "source_file": str(path),
+            "global_step": int(step) if step is not None else _event_sort_key(path)[0],
+            "evolution_index": int(evo_idx) if evo_idx is not None else None,
+            "events": events,
+        })
+    return streams
+
+
+def _grid_shape(
+    snapshots: list[dict[str, Any]],
+    event_streams: list[dict[str, Any]] | None = None,
+    default_shape: tuple[int, int] = (6, 10),
+) -> tuple[int, int]:
+    if snapshots:
+        max_h = max(cell["h_bin"] for snap in snapshots for cell in snap["grid"])
+        max_d = max(cell["div_bin"] for snap in snapshots for cell in snap["grid"])
+        return max_h + 1, max_d + 1
+
+    h_vals = []
+    d_vals = []
+    for stream in event_streams or []:
+        for event in stream.get("events", []):
+            if event.get("h_bin") is not None:
+                h_vals.append(int(event["h_bin"]))
+            if event.get("d_bin") is not None:
+                d_vals.append(int(event["d_bin"]))
+    if h_vals and d_vals:
+        return max(max(h_vals) + 1, default_shape[0]), max(
+            max(d_vals) + 1, default_shape[1]
+        )
+    return default_shape
 
 
 def _summarize_dataset(dataset: dict[str, Any] | None) -> dict[str, Any]:
@@ -134,16 +215,118 @@ def _summarize_dataset(dataset: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _short_id(value: Any) -> str:
+    text = str(value or "")
+    return text[:10] if len(text) > 10 else text
+
+
+def _summarize_events(streams: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compress event JSONL streams into a browser-friendly timeline."""
+    raw_events: list[dict[str, Any]] = []
+    source_files = []
+    for stream in streams:
+        source_files.append(stream.get("source_file", ""))
+        raw_events.extend(stream.get("events", []))
+
+    raw_events.sort(key=lambda e: (
+        int(e.get("evolution_index") or 0),
+        int(e.get("event_seq") or 0),
+    ))
+
+    timeline = []
+    for event in raw_events:
+        event_type = event.get("event", "")
+        if event_type == "evolution_start":
+            continue
+        timeline.append({
+            "seq": int(event.get("event_seq") or len(timeline) + 1),
+            "round": event.get("round"),
+            "event": event_type,
+            "status": event.get("status"),
+            "op": event.get("op"),
+            "child_id": event.get("child_id"),
+            "child_short": _short_id(event.get("child_id")),
+            "parent_id": event.get("parent_id"),
+            "parent_short": _short_id(event.get("parent_id")),
+            "parent_b_id": event.get("parent_b_id"),
+            "h": event.get("h_bin"),
+            "d": event.get("d_bin"),
+            "rq": event.get("rq_score"),
+            "p": event.get("p_hat"),
+            "H": event.get("h_bar"),
+            "frontier_status": event.get("frontier_status"),
+            "reservoir_saved": event.get("reservoir_saved"),
+            "reservoir_reason": event.get("reservoir_reason"),
+            "previous_program_id": event.get("previous_program_id"),
+            "previous_short": _short_id(event.get("previous_program_id")),
+            "previous_rq": event.get("previous_rq"),
+            "num_rollouts": event.get("num_rollouts"),
+            "num_correct": event.get("num_correct"),
+            "error": event.get("error"),
+            "reason": event.get("reason"),
+            "problem": event.get("problem", ""),
+            "answer": event.get("answer", ""),
+        })
+
+    status_counts = Counter(
+        e["status"] for e in timeline if e.get("status") is not None
+    )
+    event_counts = Counter(e["event"] for e in timeline)
+    op_counts = Counter(e["op"] for e in timeline if e.get("op") is not None)
+
+    by_cell: dict[tuple[int, int], list[dict[str, Any]]] = defaultdict(list)
+    for event in timeline:
+        h, d = event.get("h"), event.get("d")
+        if h is None or d is None:
+            continue
+        by_cell[(int(h), int(d))].append(event)
+
+    cells = []
+    for (h, d), events in sorted(by_cell.items()):
+        cell_status = Counter(
+            e["status"] for e in events if e.get("status") is not None
+        )
+        cell_ops = Counter(e["op"] for e in events if e.get("op") is not None)
+        cells.append({
+            "h": h,
+            "d": d,
+            "count": len(events),
+            "inserted": int(cell_status.get("inserted", 0)),
+            "rejected": int(cell_status.get("rejected", 0)),
+            "h_skipped": int(cell_status.get("h_prefilter_skip", 0)),
+            "ops": dict(cell_ops),
+            "last_events": events[-6:],
+        })
+
+    return {
+        "event_count": len(timeline),
+        "status_counts": dict(status_counts),
+        "event_counts": dict(event_counts),
+        "op_counts": dict(op_counts),
+        "cells": cells,
+        "timeline": timeline,
+        "source_files": source_files,
+    }
+
+
 def build_payload(
     snapshots: list[dict[str, Any]],
     datasets_by_step: dict[int, dict[str, Any]],
+    event_streams: list[dict[str, Any]] | None = None,
+    default_shape: tuple[int, int] = (6, 10),
 ) -> dict[str, Any]:
-    n_h, n_d = _grid_shape(snapshots)
+    n_h, n_d = _grid_shape(snapshots, event_streams, default_shape)
     payload_steps = []
+    snapshot_steps = set()
+    event_streams_by_step: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for stream in event_streams or []:
+        event_streams_by_step[int(stream.get("global_step", 10**12))].append(stream)
 
     for index, snap in enumerate(snapshots):
         step = int(snap.get("global_step", index))
+        snapshot_steps.add(step)
         dataset = datasets_by_step.get(step)
+        event_summary = _summarize_events(event_streams_by_step.get(step, []))
         grid_cells = []
         for cell in snap["grid"]:
             has = bool(cell.get("has_champion"))
@@ -156,6 +339,9 @@ def build_payload(
                 "H": cell.get("h_score") if has else None,
                 "generation": cell.get("generation") if has else None,
                 "program_id": cell.get("program_id") if has else None,
+                "reservoir_count": int(cell.get("reservoir_count", 0) or 0),
+                "reservoir_best_rq": float(cell.get("reservoir_best_rq", 0.0) or 0.0),
+                "reservoir_program_ids": cell.get("reservoir_program_ids", []),
                 "problem": cell.get("problem", "") if has else "",
                 "answer": cell.get("answer", "") if has else "",
             })
@@ -170,6 +356,7 @@ def build_payload(
             "metrics": metrics,
             "grid": grid_cells,
             "dataset": ds_summary,
+            "events": event_summary,
             "dataset_meta": {
                 "dataset_size": dataset.get("dataset_size", 0) if dataset else 0,
                 "archive_champions": dataset.get("archive_champions", None)
@@ -183,6 +370,51 @@ def build_payload(
             },
         })
 
+    # When an evolution is currently running, candidate JSONL events are written
+    # before the end-of-step snapshot exists. Keep those event-only steps visible
+    # so the dashboard can be used while evolution is in flight.
+    for step in sorted(set(event_streams_by_step) - snapshot_steps):
+        event_summary = _summarize_events(event_streams_by_step[step])
+        payload_steps.append({
+            "index": len(payload_steps),
+            "global_step": step,
+            "source_file": "",
+            "dataset_file": "",
+            "metrics": {},
+            "grid": [
+                {
+                    "h": h,
+                    "d": d,
+                    "has": False,
+                    "rq": 0.0,
+                    "p": None,
+                    "H": None,
+                    "generation": None,
+                    "program_id": None,
+                    "reservoir_count": 0,
+                    "reservoir_best_rq": 0.0,
+                    "reservoir_program_ids": [],
+                    "problem": "",
+                    "answer": "",
+                }
+                for d in range(n_d)
+                for h in range(n_h)
+            ],
+            "dataset": {"cells": [], "programs": [], "problem_count": 0},
+            "events": event_summary,
+            "dataset_meta": {
+                "dataset_size": 0,
+                "archive_champions": None,
+                "frontier_champions": None,
+                "instances_per_program": None,
+                "strict_anti_reuse": None,
+            },
+        })
+
+    payload_steps.sort(key=lambda s: (int(s.get("global_step", 10**12)), s["index"]))
+    for index, step_payload in enumerate(payload_steps):
+        step_payload["index"] = index
+
     return {
         "n_h": n_h,
         "n_d": n_d,
@@ -190,8 +422,15 @@ def build_payload(
     }
 
 
-def write_html(payload: dict[str, Any], output_path: Path) -> None:
+def write_html(
+    payload: dict[str, Any], output_path: Path, auto_refresh_seconds: float = 0.0,
+) -> None:
     payload_json = json.dumps(payload, ensure_ascii=False)
+    refresh_js = (
+        f"setTimeout(() => location.reload(), {int(auto_refresh_seconds * 1000)});"
+        if auto_refresh_seconds and auto_refresh_seconds > 0
+        else ""
+    )
     html = f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -225,18 +464,29 @@ td.cell:hover {{ outline: 2px solid #e7d37f; z-index: 2; }}
 .tables {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; }}
 table.list {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
 table.list th, table.list td {{ border-bottom: 1px solid #26333d; padding: 8px; text-align: left; vertical-align: top; }}
+.status {{ font-weight: 700; }}
+.status-inserted {{ color: #9dd7c8; }}
+.status-rejected {{ color: #f0a08b; }}
+.status-h {{ color: #e7d37f; }}
+.status-failed {{ color: #c9a7ff; }}
 code {{ color: #9dd7c8; }}
 </style>
 </head>
 <body>
 <main>
   <h1>RQ-Evolve MAP-Elites Map</h1>
-  <div class="muted">Archive grid와 실제 training dataset 분포를 같은 step에서 비교합니다.</div>
+  <div class="muted">Archive snapshot, training dataset, candidate mutation/crossover events를 같은 지도 위에서 비교합니다.</div>
   <div class="toolbar">
     <span>Step</span>
     <input id="slider" type="range" min="0" max="0" value="0">
     <strong id="stepLabel"></strong>
     <button id="play">Play</button>
+  </div>
+  <div class="toolbar">
+    <span>Event playback</span>
+    <input id="eventSlider" type="range" min="0" max="0" value="0">
+    <strong id="eventLabel"></strong>
+    <button id="playEvents">Play Events</button>
   </div>
   <div class="cards" id="cards"></div>
   <div class="maps">
@@ -250,7 +500,14 @@ code {{ color: #9dd7c8; }}
       <div class="legend">색 진할수록 해당 niche에서 학습 문제가 많이 생성됨 · hover로 program/seed 확인</div>
       <div id="datasetMap"></div>
     </section>
+    <section class="panel">
+      <h2>Candidate Event Map</h2>
+      <div class="legend">event slider를 움직이면 mutation/crossover 후보가 어느 셀에 scored, inserted, rejected 되었는지 순서대로 누적됩니다.</div>
+      <div id="eventMap"></div>
+    </section>
   </div>
+  <h2>Candidate Timeline</h2>
+  <div class="panel" id="eventTable"></div>
   <h2>Dataset Programs</h2>
   <div class="panel" id="programTable"></div>
   <h2>Files</h2>
@@ -260,10 +517,13 @@ code {{ color: #9dd7c8; }}
 <script>
 const DATA = {payload_json};
 const slider = document.getElementById('slider');
+const eventSlider = document.getElementById('eventSlider');
 const label = document.getElementById('stepLabel');
+const eventLabel = document.getElementById('eventLabel');
 const tip = document.getElementById('tip');
 slider.max = Math.max(DATA.steps.length - 1, 0);
 slider.value = DATA.steps.length - 1;
+let currentStepIndex = Number(slider.value);
 
 function fmt(x, digits=3) {{
   if (x === null || x === undefined || Number.isNaN(Number(x))) return '·';
@@ -288,6 +548,58 @@ function countColor(count, maxCount) {{
   const b = Math.round(42 + 50 * t);
   return `rgb(${{r}},${{g}},${{b}})`;
 }}
+function eventColor(cell, maxCount) {{
+  const t = Math.max(0.25, Math.min(1, (cell.count || 0) / Math.max(maxCount, 1)));
+  if ((cell.inserted || 0) > 0) {{
+    return `rgb(${{Math.round(22 + 50 * t)}},${{Math.round(92 + 150 * t)}},${{Math.round(76 + 95 * t)}})`;
+  }}
+  if ((cell.h_skipped || 0) > 0 && (cell.rejected || 0) === 0) {{
+    return `rgb(${{Math.round(85 + 135 * t)}},${{Math.round(74 + 118 * t)}},${{Math.round(32 + 40 * t)}})`;
+  }}
+  if ((cell.rejected || 0) > 0) {{
+    return `rgb(${{Math.round(92 + 150 * t)}},${{Math.round(58 + 62 * t)}},${{Math.round(50 + 40 * t)}})`;
+  }}
+  return countColor(cell.count, maxCount);
+}}
+function statusClass(status, eventName='') {{
+  if (status === 'inserted') return 'status status-inserted';
+  if (status === 'rejected') return 'status status-rejected';
+  if (status === 'h_prefilter_skip') return 'status status-h';
+  if (String(eventName).includes('failed')) return 'status status-failed';
+  return 'status';
+}}
+function aggregateEvents(step, limit) {{
+  const timeline = (step.events?.timeline || []).slice(0, limit);
+  const cellsByKey = new Map();
+  const statusCounts = {{}};
+  const eventCounts = {{}};
+  for (const ev of timeline) {{
+    if (ev.status) statusCounts[ev.status] = (statusCounts[ev.status] || 0) + 1;
+    eventCounts[ev.event] = (eventCounts[ev.event] || 0) + 1;
+    if (ev.h === null || ev.h === undefined || ev.d === null || ev.d === undefined) continue;
+    const key = `${{ev.h}}:${{ev.d}}`;
+    if (!cellsByKey.has(key)) {{
+      cellsByKey.set(key, {{
+        h: Number(ev.h), d: Number(ev.d), count: 0,
+        inserted: 0, rejected: 0, h_skipped: 0, ops: {{}}, last_events: []
+      }});
+    }}
+    const cell = cellsByKey.get(key);
+    cell.count += 1;
+    if (ev.status === 'inserted') cell.inserted += 1;
+    if (ev.status === 'rejected') cell.rejected += 1;
+    if (ev.status === 'h_prefilter_skip') cell.h_skipped += 1;
+    if (ev.op) cell.ops[ev.op] = (cell.ops[ev.op] || 0) + 1;
+    cell.last_events.push(ev);
+    if (cell.last_events.length > 6) cell.last_events.shift();
+  }}
+  return {{
+    timeline,
+    cells: Array.from(cellsByKey.values()),
+    statusCounts,
+    eventCounts,
+  }};
+}}
 function makeTable(cells, valueFn, colorFn, tipFn) {{
   let html = '<table class="map"><tr><th>D \\\\ H</th>';
   for (let h = 0; h < DATA.n_h; h++) html += `<th>H${{h}}</th>`;
@@ -307,11 +619,22 @@ function makeTable(cells, valueFn, colorFn, tipFn) {{
   html += '</table>';
   return html;
 }}
-function render(index) {{
+function render(index, resetEvents=true) {{
+  currentStepIndex = index;
   const step = DATA.steps[index];
+  const totalEvents = step.events?.timeline?.length || 0;
+  eventSlider.max = totalEvents;
+  if (resetEvents || Number(eventSlider.value) > totalEvents) eventSlider.value = totalEvents;
+  renderStep(Number(eventSlider.value));
+}}
+function renderStep(eventLimit) {{
+  const step = DATA.steps[currentStepIndex];
   const metrics = step.metrics || {{}};
   const meta = step.dataset_meta || {{}};
-  label.textContent = `index ${{index}} · global_step ${{step.global_step}}`;
+  const totalEvents = step.events?.timeline?.length || 0;
+  const ev = aggregateEvents(step, eventLimit);
+  label.textContent = `index ${{currentStepIndex}} · global_step ${{step.global_step}}`;
+  eventLabel.textContent = `${{eventLimit}}/${{totalEvents}}`;
   const maxRq = Math.max(...step.grid.map(c => c.rq || 0), 0.000001);
   const dsCells = step.dataset.cells || [];
   const maxCount = Math.max(...dsCells.map(c => c.count || 0), 1);
@@ -324,12 +647,19 @@ function render(index) {{
     ['max R_Q', fmt(metrics.grid_max_rq, 4)],
     ['low-H evicted', metrics.reeval_low_h_evicted],
     ['inserted', metrics.inserted],
+    ['reservoir', metrics.reservoir_candidates],
+    ['reservoir selections', metrics.reservoir_selections],
+    ['events shown', `${{ev.timeline.length}}/${{totalEvents}}`],
+    ['verified', ev.eventCounts.candidate_verified],
+    ['event inserted', ev.statusCounts.inserted],
+    ['event rejected', ev.statusCounts.rejected],
+    ['H skipped', ev.statusCounts.h_prefilter_skip],
   ].map(([k,v]) => `<div class="card"><div class="label">${{k}}</div><div class="value">${{v ?? '·'}}</div></div>`).join('');
   document.getElementById('archiveMap').innerHTML = makeTable(
     step.grid.filter(c => c.has),
     c => fmt(c.rq, 3),
     c => rqColor(c.rq, maxRq),
-    c => `H${{c.h}} D${{c.d}}\\nprogram=${{c.program_id}}\\nRQ=${{fmt(c.rq, 5)}} p=${{fmt(c.p, 3)}} H=${{fmt(c.H, 3)}} gen=${{c.generation}}\\n\\nQ: ${{c.problem}}\\nA: ${{c.answer}}`
+    c => `H${{c.h}} D${{c.d}}\\nprogram=${{c.program_id}}\\nRQ=${{fmt(c.rq, 5)}} p=${{fmt(c.p, 3)}} H=${{fmt(c.H, 3)}} gen=${{c.generation}}\\nreservoir=${{c.reservoir_count || 0}} best=${{fmt(c.reservoir_best_rq, 4)}} ids=${{(c.reservoir_program_ids || []).join(', ') || '·'}}\\n\\nQ: ${{c.problem}}\\nA: ${{c.answer}}`
   );
   document.getElementById('datasetMap').innerHTML = makeTable(
     dsCells,
@@ -337,17 +667,50 @@ function render(index) {{
     c => countColor(c.count, maxCount),
     c => `H${{c.h}} D${{c.d}}\\ncount=${{c.count}}\\nprograms=${{c.programs.join(', ')}}\\nseeds=${{c.seed_min}}..${{c.seed_max}}\\n\\n` + (c.examples || []).map(p => `seed ${{p.seed}} · ${{p.program_id}}\\nQ: ${{p.problem}}\\nA: ${{p.answer}}`).join('\\n\\n')
   );
+  const evCells = ev.cells || [];
+  const maxEventCount = Math.max(...evCells.map(c => c.count || 0), 1);
+  document.getElementById('eventMap').innerHTML = totalEvents ? makeTable(
+    evCells,
+    c => `${{c.inserted}}/${{c.count}}`,
+    c => eventColor(c, maxEventCount),
+    c => `H${{c.h}} D${{c.d}}\\nevents=${{c.count}} inserted=${{c.inserted}} rejected=${{c.rejected}} H-skip=${{c.h_skipped}}\\nops=${{Object.entries(c.ops || {{}}).map(([k,v]) => `${{k}}:${{v}}`).join(', ') || '·'}}\\n\\n` +
+      (c.last_events || []).map(e => `#${{e.seq}} r${{e.round ?? '·'}} ${{e.op || e.event}} ${{e.status || ''}}${{e.reservoir_saved ? ' reservoir' : ''}}\\nchild=${{e.child_short || '·'}} parent=${{e.parent_short || '·'}}\\nRQ=${{fmt(e.rq, 4)}} p=${{fmt(e.p, 3)}} H=${{fmt(e.H, 3)}}\\nQ: ${{e.problem || ''}}`).join('\\n\\n')
+  ) : '<span class="muted">No candidate event log for this step.</span>';
+  const rows = ev.timeline.slice(-140);
+  document.getElementById('eventTable').innerHTML = rows.length ? (
+    `<div class="muted">Showing last ${{rows.length}} of ${{ev.timeline.length}} visible events. Move the event slider to replay scoring order.</div>` +
+    '<table class="list"><tr><th>#</th><th>round</th><th>op</th><th>status</th><th>cell</th><th>RQ / p / H</th><th>parent → child</th><th>reservoir</th><th>previous</th><th>problem</th></tr>' +
+    rows.map(e => `<tr>` +
+      `<td>${{e.seq}}</td>` +
+      `<td>${{e.round ?? '·'}}</td>` +
+      `<td>${{esc(e.op || e.event || '·')}}</td>` +
+      `<td><span class="${{statusClass(e.status, e.event)}}">${{esc(e.status || e.event || '·')}}</span></td>` +
+      `<td>${{e.h === null || e.h === undefined ? '·' : `H${{e.h}} D${{e.d}}`}}</td>` +
+      `<td>${{fmt(e.rq, 4)}} / ${{fmt(e.p, 3)}} / ${{fmt(e.H, 3)}}</td>` +
+      `<td><code>${{esc(e.parent_short || '·')}}</code> → <code>${{esc(e.child_short || '·')}}</code></td>` +
+      `<td>${{e.reservoir_saved ? esc(e.reservoir_reason || 'saved') : '·'}}</td>` +
+      `<td><code>${{esc(e.previous_short || '·')}}</code> ${{e.previous_rq === null || e.previous_rq === undefined ? '' : `RQ=${{fmt(e.previous_rq, 4)}}`}}</td>` +
+      `<td>${{esc(e.problem || e.error || e.reason || '')}}</td>` +
+      `</tr>`).join('') +
+    '</table>'
+  ) : '<span class="muted">No candidate events loaded for this step.</span>';
   const programs = step.dataset.programs || [];
   document.getElementById('programTable').innerHTML = programs.length ? (
     '<table class="list"><tr><th>program_id</th><th>count</th><th>seed range</th><th>cells</th></tr>' +
     programs.map(p => `<tr><td><code>${{esc(p.program_id)}}</code></td><td>${{p.count}}</td><td>${{p.seed_min}}..${{p.seed_max}}</td><td>${{esc((p.cells || []).join(', '))}}</td></tr>`).join('') +
     '</table>'
   ) : '<span class="muted">No dataset examples for this step.</span>';
+  const eventFiles = (step.events?.source_files || [])
+    .filter(Boolean)
+    .map(path => `<code>${{esc(path)}}</code>`)
+    .join('<br>');
   document.getElementById('files').innerHTML =
     `evolution: <code>${{esc(step.source_file)}}</code><br>` +
-    `dataset: <code>${{esc(step.dataset_file || 'not found')}}</code>`;
+    `dataset: <code>${{esc(step.dataset_file || 'not found')}}</code><br>` +
+    `events: ${{eventFiles || '<code>not found</code>'}}`;
 }}
-slider.addEventListener('input', () => render(Number(slider.value)));
+slider.addEventListener('input', () => render(Number(slider.value), true));
+eventSlider.addEventListener('input', () => render(Number(slider.value), false));
 document.getElementById('play').addEventListener('click', () => {{
   let i = 0;
   const timer = setInterval(() => {{
@@ -356,6 +719,16 @@ document.getElementById('play').addEventListener('click', () => {{
     i += 1;
     if (i >= DATA.steps.length) clearInterval(timer);
   }}, 900);
+}});
+document.getElementById('playEvents').addEventListener('click', () => {{
+  let i = 0;
+  const total = Number(eventSlider.max) || 0;
+  const timer = setInterval(() => {{
+    eventSlider.value = i;
+    render(Number(slider.value), false);
+    i += 1;
+    if (i > total) clearInterval(timer);
+  }}, 220);
 }});
 document.body.addEventListener('mouseover', e => {{
   const text = e.target?.getAttribute?.('data-tip');
@@ -370,6 +743,7 @@ document.body.addEventListener('mousemove', e => {{
 document.body.addEventListener('mouseout', e => {{
   if (e.target?.getAttribute?.('data-tip')) tip.style.display = 'none';
 }});
+{refresh_js}
 render(Number(slider.value));
 </script>
 </body>
@@ -391,7 +765,8 @@ def print_summary(payload: dict[str, Any], output_path: Path) -> None:
         "Latest: "
         f"grid_champions={latest['metrics'].get('grid_champions')}, "
         f"frontier={latest['metrics'].get('archive_frontier_champions')}, "
-        f"dataset_size={latest['dataset_meta'].get('dataset_size')}"
+        f"dataset_size={latest['dataset_meta'].get('dataset_size')}, "
+        f"events={latest['events'].get('event_count')}"
     )
     if programs:
         counts = Counter({p["program_id"]: p["count"] for p in programs})
@@ -416,19 +791,75 @@ def main() -> None:
         help="Directory containing dataset_step_*.json. Defaults to log_dir/datasets.",
     )
     parser.add_argument(
+        "--events_dir",
+        type=Path,
+        default=None,
+        help="Directory containing events_evo_*_step_*.jsonl. Defaults to log_dir/events.",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("./rq_output/evolution_map.html"),
         help="Output HTML path.",
     )
+    parser.add_argument(
+        "--watch_interval",
+        type=float,
+        default=0.0,
+        help="If >0, regenerate the HTML every N seconds for live monitoring.",
+    )
+    parser.add_argument(
+        "--auto_refresh_seconds",
+        type=float,
+        default=0.0,
+        help="If >0, make the generated HTML reload itself every N seconds.",
+    )
+    parser.add_argument(
+        "--n_h_bins",
+        type=int,
+        default=6,
+        help="Fallback H-bin count when only event logs exist.",
+    )
+    parser.add_argument(
+        "--n_d_bins",
+        type=int,
+        default=10,
+        help="Fallback D-bin count when only event logs exist.",
+    )
     args = parser.parse_args()
 
     dataset_dir = args.dataset_dir or (args.log_dir / "datasets")
-    snapshots = load_evolution_snapshots(args.log_dir)
-    datasets_by_step = load_dataset_snapshots(dataset_dir)
-    payload = build_payload(snapshots, datasets_by_step)
-    write_html(payload, args.output)
-    print_summary(payload, args.output)
+    events_dir = args.events_dir or (args.log_dir / "events")
+    auto_refresh = args.auto_refresh_seconds
+    if args.watch_interval > 0 and auto_refresh <= 0:
+        auto_refresh = args.watch_interval
+
+    def _run_once() -> None:
+        datasets_by_step = load_dataset_snapshots(dataset_dir)
+        event_streams = load_event_streams(events_dir)
+        try:
+            snapshots = load_evolution_snapshots(args.log_dir)
+        except FileNotFoundError:
+            if not event_streams:
+                raise
+            snapshots = []
+        payload = build_payload(
+            snapshots,
+            datasets_by_step,
+            event_streams,
+            default_shape=(args.n_h_bins, args.n_d_bins),
+        )
+        write_html(payload, args.output, auto_refresh)
+        print_summary(payload, args.output)
+
+    if args.watch_interval > 0:
+        import time
+
+        while True:
+            _run_once()
+            time.sleep(args.watch_interval)
+    else:
+        _run_once()
 
 
 if __name__ == "__main__":
