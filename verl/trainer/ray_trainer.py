@@ -474,6 +474,7 @@ class RayPPOTrainer:
         self.logger = Tracker(loggers=self.config.trainer.logger, config=self.config.to_dict())
         self.global_step = 0
         val_metrics: Optional[Dict[str, Any]] = None
+        last_val_step: Optional[int] = None
 
         # load checkpoint before doing anything
         self._load_checkpoint()
@@ -483,6 +484,7 @@ class RayPPOTrainer:
         if self.val_reward_fn is not None and self.config.trainer.val_before_train:
             val_metrics = self._validate()
             self.logger.log(data=val_metrics, step=self.global_step)
+            last_val_step = self.global_step
             if self.config.trainer.val_only:
                 return
 
@@ -493,6 +495,8 @@ class RayPPOTrainer:
             # immediately breaks at the first batch).
             if self.global_step >= self.training_steps:
                 break
+
+            epoch_start_step = self.global_step
 
             # Method-aligned epoch order: evolution → training-data selection →
             # Solver update. RQEvolveTrainer overrides _pre_epoch_hook to run
@@ -641,6 +645,7 @@ class RayPPOTrainer:
                         val_score = val_metrics.get("val/reward_score", None)
                         if val_score is not None:
                             print(f"[Validation] step={self.global_step}  reward_score={val_score:.4f}")
+                        last_val_step = self.global_step
 
                     if self.config.trainer.save_freq > 0 and self.global_step % self.config.trainer.save_freq == 0:
                         with timer("save_checkpoint", timing_raw):
@@ -654,15 +659,28 @@ class RayPPOTrainer:
 
                 self.logger.log(data=metrics, step=self.global_step)
 
-        # perform validation after training
-        if self.val_reward_fn is not None:
             if (
-                val_metrics is None
-                or self.config.trainer.val_freq <= 0
-                or self.global_step % self.config.trainer.val_freq != 0
+                self.val_reward_fn is not None
+                and self.config.trainer.val_every_epoch
+                and self.global_step > epoch_start_step
+                and last_val_step != self.global_step
             ):
                 val_metrics = self._validate()
                 self.logger.log(data=val_metrics, step=self.global_step)
+                last_val_step = self.global_step
+                val_score = val_metrics.get("val/reward_score", None)
+                if val_score is not None:
+                    print(
+                        f"[Validation] epoch={epoch_idx} step={self.global_step}  "
+                        f"reward_score={val_score:.4f}"
+                    )
+
+        # perform validation after training
+        if self.val_reward_fn is not None:
+            if val_metrics is None or last_val_step != self.global_step:
+                val_metrics = self._validate()
+                self.logger.log(data=val_metrics, step=self.global_step)
+                last_val_step = self.global_step
 
             print(f"Final validation metrics: {convert_dict_to_str(val_metrics)}")
 

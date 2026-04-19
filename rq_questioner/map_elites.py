@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import random as _random
+import hashlib
 import numpy as np
 from typing import Optional
 from dataclasses import dataclass, field
@@ -73,6 +74,7 @@ class MAPElitesGrid:
         self.total_selections = 0
         self.total_reservoir_insertions = 0
         self.total_reservoir_selections = 0
+        self.total_duplicate_rejections = 0
 
     # ------------------------------------------------------------------
     # Embedding & Diversity Axis
@@ -150,6 +152,62 @@ class MAPElitesGrid:
     # Grid Operations
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _normalize_signature_text(text: str) -> str:
+        return " ".join(str(text or "").strip().split())
+
+    @classmethod
+    def program_behavior_signature(
+        cls,
+        program: ProblemProgram,
+        n_seeds: int = 5,
+    ) -> str | None:
+        """Signature of seed-indexed behavior, independent of program_id.
+
+        This catches near-clone programs that generate the exact same
+        problem/answer sequence for the verification seeds but land in
+        different MAP cells due to noisy H/D estimates.
+        """
+        cache_key = f"_behavior_signature_v1_{n_seeds}"
+        cached = (program.metadata or {}).get(cache_key)
+        if cached:
+            return str(cached)
+
+        pairs = []
+        for seed in range(n_seeds):
+            inst = program.execute(seed=seed, timeout=5.0)
+            if inst is None:
+                return None
+            pairs.append((
+                cls._normalize_signature_text(inst.problem),
+                cls._normalize_signature_text(inst.answer),
+            ))
+        payload = json.dumps(pairs, ensure_ascii=False, sort_keys=True)
+        signature = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        program.metadata[cache_key] = signature
+        return signature
+
+    def _find_duplicate_behavior(
+        self,
+        program: ProblemProgram,
+    ) -> ProblemProgram | None:
+        signature = self.program_behavior_signature(program)
+        if not signature:
+            return None
+
+        for niche in self.grid.values():
+            material = []
+            if niche.champion is not None:
+                material.append(niche.champion)
+            material.extend(niche.candidates)
+            for existing in material:
+                if existing.program_id == program.program_id:
+                    continue
+                if self.program_behavior_signature(existing) == signature:
+                    program.metadata["_behavior_signature_v1_5"] = signature
+                    return existing
+        return None
+
     def register_seed(self, seed_id: str) -> int:
         """하위 호환용. embedding 기반에서는 no-op."""
         return 0
@@ -173,6 +231,21 @@ class MAPElitesGrid:
         program.rq_score = rq_score
 
         niche = self.grid[(h_bin, div_bin)]
+
+        duplicate = self._find_duplicate_behavior(program)
+        if duplicate is not None:
+            program.metadata["archive_status"] = "duplicate_rejected"
+            program.metadata["reservoir_reason"] = "duplicate_behavior_signature"
+            program.metadata["duplicate_of"] = duplicate.program_id
+            niche.history.append({
+                "program_id": program.program_id,
+                "rq": rq_score,
+                "generation": program.generation,
+                "event": "duplicate_rejected",
+                "duplicate_of": duplicate.program_id,
+            })
+            self.total_duplicate_rejections += 1
+            return False
 
         if niche.champion is None or rq_score > niche.champion_rq:
             displaced = niche.champion
@@ -500,6 +573,7 @@ class MAPElitesGrid:
             "total_selections": self.total_selections,
             "total_reservoir_insertions": self.total_reservoir_insertions,
             "total_reservoir_selections": self.total_reservoir_selections,
+            "total_duplicate_rejections": self.total_duplicate_rejections,
             "candidate_reservoir_size": self.candidate_reservoir_size,
         }
 
@@ -510,6 +584,7 @@ class MAPElitesGrid:
             "n_div_bins": self.n_div_bins,
             "h_range": self.h_range,
             "candidate_reservoir_size": self.candidate_reservoir_size,
+            "total_duplicate_rejections": self.total_duplicate_rejections,
             "stats": self.stats(),
         }
         with open(os.path.join(path, "grid_meta.json"), "w") as f:

@@ -655,6 +655,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             "total_insertions": stats["total_insertions"],
             "total_replacements": stats["total_replacements"],
             "total_reservoir_insertions": stats.get("total_reservoir_insertions", 0),
+            "total_duplicate_rejections": stats.get("total_duplicate_rejections", 0),
             # Champion distribution (frontier tracking)
             "champion_p_hat_mean": float(np.mean(p_hats)) if p_hats else 0.0,
             "champion_p_hat_std": float(np.std(p_hats)) if p_hats else 0.0,
@@ -667,6 +668,9 @@ class RQEvolveTrainer(RayPPOTrainer):
             "archive_zero_rq_champions": zero_rq,
             "dataset_non_frontier_skipped_visits": refresh_stats.get(
                 "non_frontier_skipped_visits", 0
+            ),
+            "dataset_duplicate_signature_skipped_visits": refresh_stats.get(
+                "duplicate_signature_skipped_visits", 0
             ),
             # Champion re-evaluation (self-invalidating archive)
             "reeval_count": reeval_metrics["reevaluated"],
@@ -794,6 +798,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         os.makedirs(save_dir, exist_ok=True)
 
         step = getattr(self, 'global_step', 0)
+        refresh_stats = getattr(self, "_last_refresh_stats", {}) or {}
         snapshot = {
             "global_step": step,
             "timestamp": datetime.now().isoformat(),
@@ -805,6 +810,9 @@ class RQEvolveTrainer(RayPPOTrainer):
             "dataset_size": len(problems),
             "archive_champions": archive_champs,
             "frontier_champions": frontier_champs,
+            "duplicate_signature_skipped_visits": refresh_stats.get(
+                "duplicate_signature_skipped_visits", 0
+            ),
             "problems": problems,
         }
 
@@ -1625,6 +1633,8 @@ class RQEvolveTrainer(RayPPOTrainer):
                     and child.metadata.get("archive_status") == "reservoir"
                 ),
                 "reservoir_reason": child.metadata.get("reservoir_reason"),
+                "duplicate_of": child.metadata.get("duplicate_of"),
+                "archive_status": child.metadata.get("archive_status"),
                 "frontier_status": child.metadata["frontier_status"],
                 "h_bar": h_bar,
                 "p_hat": p_hat,
@@ -1760,6 +1770,8 @@ class RQEvolveTrainer(RayPPOTrainer):
         # This is the ONLY place instances_per_program acts as a cap; seed
         # space itself is unbounded (see _next_unused_seed docstring).
         emitted_per_program: dict[str, int] = {}
+        emitted_signature_owner: dict[str, str] = {}
+        duplicate_signature_skipped = 0
 
         def _try_emit(champ, h_bin, d_bin) -> tuple[bool, bool]:
             """Try to emit one instance from ``champ``.
@@ -1769,9 +1781,16 @@ class RQEvolveTrainer(RayPPOTrainer):
               advanced — ``champ.execute`` was called (used to distinguish
                          transient seed failures from genuinely empty state).
             """
+            nonlocal duplicate_signature_skipped
             pid = champ.program_id
             if emitted_per_program.get(pid, 0) >= self.instances_per_program:
                 return False, False
+            signature = self.map_elites.program_behavior_signature(champ)
+            if signature:
+                owner = emitted_signature_owner.get(signature)
+                if owner is not None and owner != pid:
+                    duplicate_signature_skipped += 1
+                    return False, False
             seed = self._next_unused_seed(pid)
             inst = champ.execute(seed=seed)
             # Whether or not execute succeeds, mark the seed as consumed to
@@ -1789,6 +1808,8 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "seed": seed,
             })
             emitted_per_program[pid] = emitted_per_program.get(pid, 0) + 1
+            if signature:
+                emitted_signature_owner.setdefault(signature, pid)
             return True, True
 
         if self.training_selection_mode == "uniform":
@@ -1904,6 +1925,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             "archive_champions": len(all_champs),
             "frontier_champions": frontier_champs,
             "non_frontier_skipped_visits": non_frontier_skipped,
+            "duplicate_signature_skipped_visits": duplicate_signature_skipped,
         }
 
         # Persist the actual training problem list alongside the grid snapshot.
@@ -1919,6 +1941,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             f"archive={len(all_champs)} champs "
             f"(frontier={frontier_champs}), "
             f"non_frontier_skipped_visits={non_frontier_skipped}, "
+            f"duplicate_signature_skipped_visits={duplicate_signature_skipped}, "
             f"dataloader rebuilt"
         )
         if new_size == 0:
