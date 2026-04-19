@@ -80,20 +80,20 @@ trainer:
 
 rq:
   seed_programs_dir: ./seed_programs
-  n_h_bins: 6
+  n_h_bins: 10
   n_div_bins: 10
   # Actor full-vocab entropy is currently observed around 0.0-0.9 nats
   # during early Qwen3-4B runs; keep H bins calibrated to that scale so
   # MAP-Elites does not collapse into h_bin=0.
-  h_range: [0.0, 1.0]
+  h_range: [0.0, 2.0]
   # Evolution now runs once per Solver epoch via _pre_epoch_hook() —
   # evolution_pct / evolution_freq are NOT consulted. Kept here only for
   # backward-compatible YAML parsing; safe to delete.
   evolution_pct: 0.1
-  candidates_per_evo: 16
-  max_rounds: 16
-  num_rollouts: 10
-  instances_per_program: 16
+  candidates_per_evo: 8
+  max_rounds: 8
+  num_rollouts: 8
+  instances_per_program: 8
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
   h_threshold: 0.1
