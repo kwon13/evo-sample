@@ -1286,7 +1286,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             return 0, 0
 
         # Decode + execute (CPU)
-        children = []  # (child, inst, op)
+        children = []  # (child, inst, op, mutation_output, source_code)
         for i, (_, op, parent, parent_b) in enumerate(mutation_prompts):
             code_text = self.tokenizer.decode(
                 resp_ids[i].tolist(), skip_special_tokens=True
@@ -1301,6 +1301,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                     "parent_id": parent.program_id,
                     "parent_b_id": parent_b.program_id if parent_b is not None else None,
                     "status": "no_code",
+                    **self._event_text_fields("mutation_output", code_text, limit=8000),
                 })
                 continue
 
@@ -1331,6 +1332,8 @@ class RQEvolveTrainer(RayPPOTrainer):
                     "parent_b_id": parent_b.program_id if parent_b is not None else None,
                     "child_id": child.program_id,
                     "status": "verify_failed",
+                    **self._event_text_fields("mutation_output", code_text, limit=8000),
+                    **self._event_text_fields("source_code", source_code, limit=12000),
                 })
                 continue
             self._record_evolution_event({
@@ -1344,8 +1347,10 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "generation": child.generation,
                 "problem": inst.problem,
                 "answer": inst.answer,
+                **self._event_text_fields("mutation_output", code_text, limit=8000),
+                **self._event_text_fields("source_code", source_code, limit=12000),
             })
-            children.append((child, inst, op))
+            children.append((child, inst, op, code_text, source_code))
 
         if not children:
             self._record_evolution_event({
@@ -1364,7 +1369,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         #   (b) H̄ < τ_H 후보는 G rollout 자체를 skip (비용 절감)
         #   (c) 살아남은 후보만 G-1번 추가 rollout → probe와 합쳐 G개 flag
         solver_texts = []
-        for _, inst, _ in children:
+        for _, inst, _, _, _ in children:
             msgs = [{"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": inst.problem}]
             if self.tokenizer.chat_template:
@@ -1374,7 +1379,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 solver_texts.append(f"system: {SYSTEM_PROMPT}\nuser: {inst.problem}")
 
         n_children = len(children)
-        inst_answers = [inst.answer for _, inst, _ in children]
+        inst_answers = [inst.answer for _, inst, _, _, _ in children]
 
         # ---- (a-1) Probe generate: n_repeat=1 at rollout temperature ----
         probe_batch = _make_gen_batch(
@@ -1467,7 +1472,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             h_bar = h_per_child[ci]
             if not h_prefilter(h_bar, self.h_threshold):
                 skipped_h += 1
-                child, inst, op = children[ci]
+                child, inst, op, code_text, source_code = children[ci]
                 target_h = self.map_elites.h_to_bin(h_bar)
                 target_d = self.map_elites.problem_to_div_bin(inst.problem)
                 self._record_evolution_event({
@@ -1484,6 +1489,8 @@ class RQEvolveTrainer(RayPPOTrainer):
                     "probe_prediction": probe_predictions[ci],
                     "probe_correct": probe_flags[ci],
                     **self._event_text_fields("probe_response", probe_decoded[ci]),
+                    **self._event_text_fields("mutation_output", code_text, limit=8000),
+                    **self._event_text_fields("source_code", source_code, limit=12000),
                     **entropy_event_fields[ci],
                     "problem": inst.problem,
                     "answer": inst.answer,
@@ -1561,7 +1568,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         attempted = n_children
         inserted = 0
         for ci in retained_indices:
-            child, inst, op = children[ci]
+            child, inst, op, code_text, source_code = children[ci]
             h_bar = h_per_child[ci]
             flags = [probe_flags[ci]] + extra_flags_per_ci[ci]
             p_hat = sum(flags) / len(flags) if flags else 0.0
@@ -1616,6 +1623,8 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "probe_prediction": probe_predictions[ci],
                 "probe_correct": probe_flags[ci],
                 **self._event_text_fields("probe_response", probe_decoded[ci]),
+                **self._event_text_fields("mutation_output", code_text, limit=8000),
+                **self._event_text_fields("source_code", source_code, limit=12000),
                 **entropy_event_fields[ci],
                 "num_rollouts": len(flags),
                 "num_correct": sum(flags),
