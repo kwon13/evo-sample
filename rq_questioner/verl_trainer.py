@@ -165,14 +165,36 @@ def _answers_match(pred: str, gt: str) -> bool:
 
 
 def _extract_code(text: str) -> str | None:
-    m = re.search(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
-    code = m.group(1).strip() if m else text.strip()
-    lines = code.split("\n")
-    for i, line in enumerate(lines):
-        if line.strip().startswith(("def generate", "import", "from")):
-            code = "\n".join(lines[i:])
-            break
-    return code if "def generate" in code else None
+    """Extract a standalone Python generator from mutator output.
+
+    Mutators sometimes return raw code followed by a closing Markdown fence,
+    or echo prompt text before the actual fenced code. Try fenced blocks first,
+    then fall back to raw text, and always strip any trailing fence/explanation.
+    """
+    candidates = [
+        m.group(1).strip()
+        for m in re.finditer(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
+    ]
+    candidates.append(text.strip())
+
+    for code in candidates:
+        lines = code.split("\n")
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped == "python":
+                continue
+            if stripped.startswith(("def generate", "import", "from")):
+                code = "\n".join(lines[i:])
+                break
+        if "```" in code:
+            code = code.split("```", 1)[0]
+        code = code.strip()
+        if "def generate" not in code:
+            continue
+        if "random." in code and not re.search(r"^\s*import\s+random\b", code, re.M):
+            code = "import random\n" + code
+        return code
+    return None
 
 
 def _make_gen_batch(

@@ -34,47 +34,24 @@ SINGLE_ANSWER_RULE = (
     "# === HARD CONTRACT ===\n"
     "# 1. Function name MUST be `generate(seed)`.\n"
     "# 2. MUST return `(problem_text: str, answer: str)`.\n"
-    "# 3. `answer` MUST be a SINGLE exact scalar value — integer,\n"
-    "#    simple fraction like '3/7', surd like 'sqrt(2)', or a\n"
-    "#    rational combination. NOT ranges, lists, inequalities,\n"
-    "#    or decimals produced only by rounding a closed-form.\n"
-    "# 4. Derive `answer` FIRST from a mathematical identity, then\n"
-    "#    assemble the problem TEXT around that identity (inverse\n"
-    "#    construction). Never: 'compute T; then answer = T + noise'.\n"
-    "# 5. Use only stdlib + math + fractions + itertools + functools\n"
-    "#    (sympy optional). No file I/O, no randomness beyond the\n"
-    "#    seeded `random.Random(seed)`.\n"
-    "# 6. Every seed in {{0,1,2,3,4}} MUST terminate fast (<1s) and\n"
-    "#    produce a well-posed problem (no div-by-zero, no empty\n"
-    "#    choices, no infinite loops).\n"
+    "# 3. `answer` MUST be one exact SymPy-parseable scalar: integer,\n"
+    "#    fraction like '3/7', or expression like 'sqrt(2)'.\n"
+    "#    Do not return lists, ranges, words like 'undefined', or\n"
+    "#    answers that require decimal rounding.\n"
+    "# 4. Use inverse construction: choose the mathematical answer or\n"
+    "#    invariant first, then write the problem around it.\n"
+    "# 5. Use only stdlib math/fractions/itertools/functools/random;\n"
+    "#    sympy is optional. No file I/O or network calls.\n"
+    "# 6. Every seed in {{0,1,2,3,4}} must terminate fast and be valid.\n"
 )
 
 ANTI_REWARD_HACK_RULES = (
-    "# === ANTI-REWARD-HACKING RUBRIC (STRICT) ===\n"
-    "# Fitness is R_Q = p(1-p)·H. An easy way to maximise H is to\n"
-    "# produce problems that make the solver *confused*, not ones\n"
-    "# that make it *reason*. Such problems are worthless for RL.\n"
-    "# The following constructions are BANNED and will be auto-\n"
-    "# rejected by the verifier:\n"
-    "#\n"
-    "#   - `x % 1`, 'mod 1', 'remainder when X is divided by 1'\n"
-    "#     (0 for ints, an uninterpretable fractional part for\n"
-    "#      floats — no reasoning content).\n"
-    "#   - Multiplying by 1, dividing by 1, adding 0, subtracting 0.\n"
-    "#   - 'Round to N decimal places' when the exact answer is an\n"
-    "#     integer or closed-form rational.\n"
-    "#   - Chains of unrelated arithmetic ('compute A, then multiply\n"
-    "#     by an unrelated variable e'); every step must follow\n"
-    "#     from a NAMED mathematical technique.\n"
-    "#   - Floating-point cascades whose answer depends on IEEE-754\n"
-    "#     rounding or decimal-place formatting.\n"
-    "#   - Assigning random letter-variables like `a=964, b=494, ...`\n"
-    "#     that appear in the statement but have no role in the\n"
-    "#     mathematical structure (word-problem noise).\n"
-    "#   - Hiding an operation that collapses the answer to a\n"
-    "#     trivial constant (e.g. `derangement(9) % 1 == 0`).\n"
-    "#   - Problems whose answer doesn't change across the 5 test\n"
-    "#     seeds (the seed is ignored).\n"
+    "# === ANTI-REWARD-HACKING RULES ===\n"
+    "# Ban: mod 1, divide/multiply by 1, add/subtract 0, arbitrary\n"
+    "# decimal rounding, unrelated arithmetic chains, unused random\n"
+    "# variables, constant-answer generators, and ambiguous wording.\n"
+    "# Hard problems should create uncertainty about the correct\n"
+    "# technique, not about what the question means.\n"
 )
 
 REAL_DIFFICULTY_RUBRIC = (
@@ -94,7 +71,7 @@ REAL_DIFFICULTY_RUBRIC = (
 )
 
 COMPLEXITY_AXES = (
-    "# === COMPLEXITY AXES (pick 2 per mutation, not surface tweaks) ===\n"
+    "# === EXPLORATION AXES (pick 1 primary axis, optionally 1 secondary) ===\n"
     "# 1. Parametric lifting: replace a concrete constant with a\n"
     "#    parameter the solver must first DETERMINE (solve an\n"
     "#    auxiliary equation / read it off a divisibility cond.).\n"
@@ -116,32 +93,28 @@ COMPLEXITY_AXES = (
 )
 
 CONCEPT_DECLARATION = (
-    "# === CONCEPT DECLARATION (first lines of function body) ===\n"
-    "# The first two comment lines inside `generate` MUST be:\n"
+    "# === OPTIONAL READABILITY COMMENTS ===\n"
+    "# You may include these two comments inside `generate`:\n"
     "#   # CONCEPT: <primary_domain> / <secondary_domain_or_NONE>\n"
     "#   # TECHNIQUES: <comma-separated named techniques>\n"
-    "# where primary/secondary domains are drawn from:\n"
-    "#   algebra, number_theory, combinatorics, probability,\n"
-    "#   geometry, trigonometry, analysis, recurrence, inequality,\n"
-    "#   linear_algebra, logic.\n"
+    "# They are helpful but not required; correctness matters more.\n"
 )
 
 MUTATION_METHOD_RULE = (
     "# === MUTATION METHOD ===\n"
-    "# 1. Read the parent program. Name its mathematical OBJECT,\n"
-    "#    the techniques it uses, and its answer type.\n"
-    "# 2. Check whether the parent contains any banned construction\n"
-    "#    from the anti-hack rubric above. If it does, your mutation\n"
-    "#    MUST REMOVE the banned construction entirely and replace\n"
-    "#    it with a genuine reasoning step.\n"
-    "# 3. Sketch 3 structurally distinct mutations along different\n"
-    "#    complexity axes (1-6 above). Pick the one that adds the\n"
-    "#    most genuine reasoning depth without breaking decidability.\n"
-    "# 4. Do NOT merely rename variables or resize numeric ranges.\n"
-    "#    Change the mathematical STRUCTURE.\n"
-    "# 5. Before emitting code, mentally execute for seeds 0..4.\n"
-    "#    Every seed must terminate, produce a distinct problem, and\n"
-    "#    have a SymPy-parseable answer.\n"
+    "# 1. Preserve exploration: change the mathematical structure,\n"
+    "#    not just names or numeric ranges.\n"
+    "# 2. If the parent contains a banned pattern, remove it entirely.\n"
+    "# 3. Prefer one coherent object over several loosely chained tasks.\n"
+    "# 4. Before emitting code, mentally execute seeds 0..4.\n"
+)
+
+OUTPUT_FORMAT_RULE = (
+    "# === OUTPUT FORMAT ===\n"
+    "# Return ONLY raw Python source. Do not use Markdown fences.\n"
+    "# Do not repeat these instructions. Start with imports, including\n"
+    "# `import random`, then define helper functions if needed, then\n"
+    "# define `generate(seed)`.\n"
 )
 
 
@@ -187,17 +160,15 @@ MUTATE_DEPTH = (
     + REAL_DIFFICULTY_RUBRIC
     + COMPLEXITY_AXES
     + MUTATION_METHOD_RULE +
-    "# Combine at least TWO complexity axes (1-6) with at least one\n"
-    "# additional technique beyond what the parent uses.\n"
+    "# Add one substantial reasoning move beyond what the parent uses;\n"
+    "# optionally combine a second exploration axis if it stays coherent.\n"
     "#\n"
     "# Parent program:\n"
     "```python\n{code}\n```\n\n"
     + CONCEPT_DECLARATION
+    + OUTPUT_FORMAT_RULE
     + SINGLE_ANSWER_RULE +
-    "# Now emit the new program (start with the CONCEPT/TECHNIQUES\n"
-    "# comment immediately inside `generate`). Output ONLY code.\n"
-    "```python\n"
-    "import random\n"
+    "# Now emit the new exploratory in-depth generator.\n"
 )
 
 MUTATE_BREADTH = (
@@ -237,10 +208,9 @@ MUTATE_BREADTH = (
     "# Parent program (for context — do NOT reuse its object):\n"
     "```python\n{code}\n```\n\n"
     + CONCEPT_DECLARATION
+    + OUTPUT_FORMAT_RULE
     + SINGLE_ANSWER_RULE +
-    "# Emit a fresh generator in a distant domain. Output ONLY code.\n"
-    "```python\n"
-    "import random\n"
+    "# Emit a fresh exploratory generator in a distant domain.\n"
 )
 
 MUTATE_CROSSOVER = (
@@ -281,13 +251,12 @@ MUTATE_CROSSOVER = (
     "#   a graph, a polynomial, a probability space, a modulus).\n"
     "# - Build the hybrid problem AROUND that structure; every\n"
     "#   reasoning step must use it.\n"
-    "# - Declare BOTH domains in the CONCEPT line.\n"
+    "# - If you include a CONCEPT comment, mention both domains.\n"
     "#\n"
     + CONCEPT_DECLARATION
+    + OUTPUT_FORMAT_RULE
     + SINGLE_ANSWER_RULE +
-    "# Emit the hybrid generator. Output ONLY code.\n"
-    "```python\n"
-    "import random\n"
+    "# Emit the exploratory hybrid generator.\n"
 )
 
 

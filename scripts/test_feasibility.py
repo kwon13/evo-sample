@@ -439,11 +439,32 @@ class VLLMRunner:
 
     def _extract_code(self, text: str) -> Optional[str]:
         """Mutation/crossover 출력에서 코드 추출."""
-        full_code = "import random\n" + text
-        cut = full_code.find("```")
-        if cut != -1:
-            full_code = full_code[:cut].strip()
-        return full_code if "def generate" in full_code else None
+        candidates = [
+            m.group(1).strip()
+            for m in re.finditer(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
+        ]
+        candidates.append(text.strip())
+
+        for code in candidates:
+            lines = code.split("\n")
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped == "python":
+                    continue
+                if stripped.startswith(("def generate", "import", "from")):
+                    code = "\n".join(lines[i:])
+                    break
+            if "```" in code:
+                code = code.split("```", 1)[0]
+            code = code.strip()
+            if "def generate" not in code:
+                continue
+            if "random." in code and not re.search(
+                r"^\s*import\s+random\b", code, re.M
+            ):
+                code = "import random\n" + code
+            return code
+        return None
 
     def batch_mutate(
         self, tasks: list[dict], grid: Optional["MAPElitesGrid"] = None,
