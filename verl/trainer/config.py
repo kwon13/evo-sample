@@ -129,7 +129,7 @@ class RQConfig:
     seed_programs_dir: str = "./seed_programs"
     n_h_bins: int = 6
     n_div_bins: int = 10
-    h_range: list = field(default_factory=lambda: [0.0, 5.0])
+    h_range: list = field(default_factory=lambda: [0.0, 1.0])
     evolution_pct: float = 0.1
     evolution_freq: int = 50
     target_hard_champions: int = 6

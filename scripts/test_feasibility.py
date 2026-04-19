@@ -52,6 +52,11 @@ sys.path.insert(0, str(ROOT))
 from rq_questioner.program import ProblemProgram, ProblemInstance
 from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.rq_score import compute_rq_full, h_prefilter
+from rq_questioner.code_utils import (
+    extract_generator_code,
+    lint_generator_source,
+    lint_problem_instance,
+)
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
     SINGLE_ANSWER_RULE, SCORE_FEEDBACK,
@@ -73,10 +78,16 @@ load_dotenv()
 def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> Optional[ProblemInstance]:
     """Multi-seed 실행 + SymPy 답 유효성 검증."""
     from sympy import sympify
+    if lint_generator_source(program.source_code):
+        return None
     instances = []
+    problems = []
+    answers = []
     for s in range(n_seeds):
         inst = program.execute(seed=s, timeout=5.0)
         if inst is None:
+            return None
+        if lint_problem_instance(inst):
             return None
         try:
             sympify(inst.answer.strip().replace("^", "**"))
@@ -86,6 +97,12 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> Optional[Probl
             except (ValueError, TypeError):
                 return None
         instances.append(inst)
+        problems.append(_normalize(inst.problem))
+        answers.append(_normalize(inst.answer))
+    if n_seeds > 1 and len(set(problems)) <= 1:
+        return None
+    if n_seeds > 1 and len(set(answers)) <= 1:
+        return None
     return instances[0] if instances else None
 
 
@@ -389,16 +406,7 @@ class VLLMRunner:
             n=1,
         )
         text = self.llm.generate([prompt], params)[0].outputs[0].text
-
-        # 프롬프트에 "import random\n" 까지 포함됐으므로 앞에 붙여줌
-        full_code = "import random\n" + text
-
-        # ``` 이후 내용 제거 (닫는 코드블록)
-        cut = full_code.find("```")
-        if cut != -1:
-            full_code = full_code[:cut].strip()
-
-        return full_code if "def generate" in full_code else None
+        return self._extract_code(text)
 
     # ---- crossover ------------------------------------------------------
 
@@ -429,42 +437,13 @@ class VLLMRunner:
             n=1,
         )
         text = self.llm.generate([prompt], params)[0].outputs[0].text
-        full_code = "import random\n" + text
-        cut = full_code.find("```")
-        if cut != -1:
-            full_code = full_code[:cut].strip()
-        return full_code if "def generate" in full_code else None
+        return self._extract_code(text)
 
     # ---- batch methods (논문 Appendix B 스타일) --------------------------------
 
     def _extract_code(self, text: str) -> Optional[str]:
         """Mutation/crossover 출력에서 코드 추출."""
-        candidates = [
-            m.group(1).strip()
-            for m in re.finditer(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
-        ]
-        candidates.append(text.strip())
-
-        for code in candidates:
-            lines = code.split("\n")
-            for i, line in enumerate(lines):
-                stripped = line.strip()
-                if stripped == "python":
-                    continue
-                if stripped.startswith(("def generate", "import", "from")):
-                    code = "\n".join(lines[i:])
-                    break
-            if "```" in code:
-                code = code.split("```", 1)[0]
-            code = code.strip()
-            if "def generate" not in code:
-                continue
-            if "random." in code and not re.search(
-                r"^\s*import\s+random\b", code, re.M
-            ):
-                code = "import random\n" + code
-            return code
-        return None
+        return extract_generator_code(text)
 
     def batch_mutate(
         self, tasks: list[dict], grid: Optional["MAPElitesGrid"] = None,

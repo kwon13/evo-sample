@@ -45,6 +45,11 @@ from .map_elites import MAPElitesGrid
 from .program import ProblemProgram, ProblemInstance
 from .rq_score import compute_rq_full, h_prefilter
 from .verl_dataset import MapElitesDynamicDataset
+from .code_utils import (
+    extract_generator_code,
+    lint_generator_source,
+    lint_problem_instance,
+)
 
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
@@ -85,11 +90,18 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> ProblemInstanc
     """
     from sympy import sympify
 
+    if lint_generator_source(program.source_code):
+        return None
+
     instances = []
+    problems = []
+    answers = []
     for s in range(n_seeds):
         inst = program.execute(seed=s, timeout=5.0)
         if inst is None:
             return None  # 하나라도 실행 실패 → 거부
+        if lint_problem_instance(inst):
+            return None
         # SymPy로 답이 파싱 가능한지 확인
         try:
             answer_str = inst.answer.strip().replace("^", "**")
@@ -101,7 +113,13 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> ProblemInstanc
             except (ValueError, TypeError):
                 return None  # 수학적으로 무효한 답
         instances.append(inst)
+        problems.append(_normalize(inst.problem))
+        answers.append(_normalize(inst.answer))
 
+    if n_seeds > 1 and len(set(problems)) <= 1:
+        return None
+    if n_seeds > 1 and len(set(answers)) <= 1:
+        return None
     return instances[0] if instances else None
 
 
@@ -165,36 +183,7 @@ def _answers_match(pred: str, gt: str) -> bool:
 
 
 def _extract_code(text: str) -> str | None:
-    """Extract a standalone Python generator from mutator output.
-
-    Mutators sometimes return raw code followed by a closing Markdown fence,
-    or echo prompt text before the actual fenced code. Try fenced blocks first,
-    then fall back to raw text, and always strip any trailing fence/explanation.
-    """
-    candidates = [
-        m.group(1).strip()
-        for m in re.finditer(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
-    ]
-    candidates.append(text.strip())
-
-    for code in candidates:
-        lines = code.split("\n")
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped == "python":
-                continue
-            if stripped.startswith(("def generate", "import", "from")):
-                code = "\n".join(lines[i:])
-                break
-        if "```" in code:
-            code = code.split("```", 1)[0]
-        code = code.strip()
-        if "def generate" not in code:
-            continue
-        if "random." in code and not re.search(r"^\s*import\s+random\b", code, re.M):
-            code = "import random\n" + code
-        return code
-    return None
+    return extract_generator_code(text)
 
 
 def _make_gen_batch(

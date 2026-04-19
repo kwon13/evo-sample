@@ -39,7 +39,6 @@ if multiprocessing.get_start_method(allow_none=True) != "spawn":
 import argparse
 import math
 import random
-import re
 import sys
 import time
 import textwrap
@@ -58,6 +57,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from rq_questioner.program import ProblemProgram, ProblemInstance
 from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.rq_score import compute_rq_full
+from rq_questioner.code_utils import extract_generator_code
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
     SCORE_FEEDBACK,
@@ -272,32 +272,7 @@ class OllamaRunner:
 
     def _extract_code(self, text: str) -> Optional[str]:
         """Mutation/crossover 출력에서 코드 블록 추출 (VLLMRunner 와 동일)."""
-        candidates = [
-            m.group(1).strip()
-            for m in re.finditer(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
-        ]
-        candidates.append(text.strip())
-
-        for code in candidates:
-            lines = code.split("\n")
-            for i, line in enumerate(lines):
-                stripped = line.strip()
-                if stripped == "python":
-                    continue
-                if stripped.startswith(("def generate", "import", "from")):
-                    code = "\n".join(lines[i:])
-                    break
-            if "```" in code:
-                code = code.split("```", 1)[0]
-            code = code.strip()
-            if "def generate" not in code:
-                continue
-            if "random." in code and not re.search(
-                r"^\s*import\s+random\b", code, re.M
-            ):
-                code = "import random\n" + code
-            return code
-        return None
+        return extract_generator_code(text)
 
     def mutate(
         self, parent: "ProblemProgram", in_depth: bool = True,
