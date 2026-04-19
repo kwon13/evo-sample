@@ -254,6 +254,15 @@ def _summarize_events(streams: list[dict[str, Any]]) -> dict[str, Any]:
             "rq": event.get("rq_score"),
             "p": event.get("p_hat"),
             "H": event.get("h_bar"),
+            "response_tokens": event.get("response_tokens"),
+            "entropy_mean": event.get("entropy_mean"),
+            "entropy_min": event.get("entropy_min"),
+            "entropy_max": event.get("entropy_max"),
+            "entropy_std": event.get("entropy_std"),
+            "probe_prediction": event.get("probe_prediction"),
+            "probe_correct": event.get("probe_correct"),
+            "probe_response": event.get("probe_response", ""),
+            "probe_response_truncated": event.get("probe_response_truncated", False),
             "frontier_status": event.get("frontier_status"),
             "reservoir_saved": event.get("reservoir_saved"),
             "reservoir_reason": event.get("reservoir_reason"),
@@ -568,6 +577,10 @@ function statusClass(status, eventName='') {{
   if (String(eventName).includes('failed')) return 'status status-failed';
   return 'status';
 }}
+function shortText(s, n=220) {{
+  s = String(s ?? '');
+  return s.length > n ? s.slice(0, n) + '...' : s;
+}}
 function aggregateEvents(step, limit) {{
   const timeline = (step.events?.timeline || []).slice(0, limit);
   const cellsByKey = new Map();
@@ -674,12 +687,12 @@ function renderStep(eventLimit) {{
     c => `${{c.inserted}}/${{c.count}}`,
     c => eventColor(c, maxEventCount),
     c => `H${{c.h}} D${{c.d}}\\nevents=${{c.count}} inserted=${{c.inserted}} rejected=${{c.rejected}} H-skip=${{c.h_skipped}}\\nops=${{Object.entries(c.ops || {{}}).map(([k,v]) => `${{k}}:${{v}}`).join(', ') || '·'}}\\n\\n` +
-      (c.last_events || []).map(e => `#${{e.seq}} r${{e.round ?? '·'}} ${{e.op || e.event}} ${{e.status || ''}}${{e.reservoir_saved ? ' reservoir' : ''}}\\nchild=${{e.child_short || '·'}} parent=${{e.parent_short || '·'}}\\nRQ=${{fmt(e.rq, 4)}} p=${{fmt(e.p, 3)}} H=${{fmt(e.H, 3)}}\\nQ: ${{e.problem || ''}}`).join('\\n\\n')
+      (c.last_events || []).map(e => `#${{e.seq}} r${{e.round ?? '·'}} ${{e.op || e.event}} ${{e.status || ''}}${{e.reservoir_saved ? ' reservoir' : ''}}\\nchild=${{e.child_short || '·'}} parent=${{e.parent_short || '·'}}\\nRQ=${{fmt(e.rq, 4)}} p=${{fmt(e.p, 3)}} H=${{fmt(e.H, 3)}} tokens=${{e.response_tokens ?? '·'}} ent=[${{fmt(e.entropy_min, 3)}}, ${{fmt(e.entropy_max, 3)}}] std=${{fmt(e.entropy_std, 3)}}\\npred=${{e.probe_prediction || '·'}} correct=${{e.probe_correct ?? '·'}}\\nprobe: ${{shortText(e.probe_response || '')}}\\nQ: ${{e.problem || ''}}`).join('\\n\\n')
   ) : '<span class="muted">No candidate event log for this step.</span>';
   const rows = ev.timeline.slice(-140);
   document.getElementById('eventTable').innerHTML = rows.length ? (
     `<div class="muted">Showing last ${{rows.length}} of ${{ev.timeline.length}} visible events. Move the event slider to replay scoring order.</div>` +
-    '<table class="list"><tr><th>#</th><th>round</th><th>op</th><th>status</th><th>cell</th><th>RQ / p / H</th><th>parent → child</th><th>reservoir</th><th>previous</th><th>problem</th></tr>' +
+    '<table class="list"><tr><th>#</th><th>round</th><th>op</th><th>status</th><th>cell</th><th>RQ / p / H</th><th>entropy</th><th>probe</th><th>parent → child</th><th>reservoir</th><th>previous</th><th>problem</th></tr>' +
     rows.map(e => `<tr>` +
       `<td>${{e.seq}}</td>` +
       `<td>${{e.round ?? '·'}}</td>` +
@@ -687,6 +700,8 @@ function renderStep(eventLimit) {{
       `<td><span class="${{statusClass(e.status, e.event)}}">${{esc(e.status || e.event || '·')}}</span></td>` +
       `<td>${{e.h === null || e.h === undefined ? '·' : `H${{e.h}} D${{e.d}}`}}</td>` +
       `<td>${{fmt(e.rq, 4)}} / ${{fmt(e.p, 3)}} / ${{fmt(e.H, 3)}}</td>` +
+      `<td>n=${{e.response_tokens ?? '·'}} min=${{fmt(e.entropy_min, 3)}} max=${{fmt(e.entropy_max, 3)}} std=${{fmt(e.entropy_std, 3)}}</td>` +
+      `<td>pred=${{esc(e.probe_prediction || '·')}} correct=${{e.probe_correct ?? '·'}}<br>${{esc(shortText(e.probe_response || '', 260))}}</td>` +
       `<td><code>${{esc(e.parent_short || '·')}}</code> → <code>${{esc(e.child_short || '·')}}</code></td>` +
       `<td>${{e.reservoir_saved ? esc(e.reservoir_reason || 'saved') : '·'}}</td>` +
       `<td><code>${{esc(e.previous_short || '·')}}</code> ${{e.previous_rq === null || e.previous_rq === undefined ? '' : `RQ=${{fmt(e.previous_rq, 4)}}`}}</td>` +

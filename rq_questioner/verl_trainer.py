@@ -502,6 +502,39 @@ class RQEvolveTrainer(RayPPOTrainer):
                 f.write(line)
                 f.flush()
 
+    def _event_text_fields(
+        self, key: str, text: str | None, limit: int = 4000,
+    ) -> dict:
+        """Store long model outputs in JSONL without letting one event explode."""
+        text = text or ""
+        truncated = len(text) > limit
+        return {
+            key: text[:limit],
+            f"{key}_truncated": truncated,
+            f"{key}_chars": len(text),
+        }
+
+    def _entropy_event_fields(
+        self, entropies: torch.Tensor, response_mask: torch.Tensor, index: int,
+    ) -> dict:
+        """Summarize per-token entropy for one generated response."""
+        valid = entropies[index][response_mask[index].bool()].detach().float().cpu()
+        if valid.numel() == 0:
+            return {
+                "response_tokens": 0,
+                "entropy_mean": 0.0,
+                "entropy_min": 0.0,
+                "entropy_max": 0.0,
+                "entropy_std": 0.0,
+            }
+        return {
+            "response_tokens": int(valid.numel()),
+            "entropy_mean": float(valid.mean().item()),
+            "entropy_min": float(valid.min().item()),
+            "entropy_max": float(valid.max().item()),
+            "entropy_std": float(valid.std(unbiased=False).item()),
+        }
+
     def _evolution_step(self) -> dict:
         """
         Fixed-budget evolution (FunSearch 스타일).
@@ -1378,11 +1411,15 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         # Decode probe flag per child (reused as the 1st of G rollouts).
         probe_flags: list[bool] = []
+        probe_decoded: list[str] = []
+        probe_predictions: list[str | None] = []
         for ci in range(n_children):
             decoded = self.tokenizer.decode(
                 probe_resp_ids[ci].tolist(), skip_special_tokens=True
             )
             pred = _extract_boxed(decoded)
+            probe_decoded.append(decoded)
+            probe_predictions.append(pred)
             probe_flags.append(_answers_match(pred, inst_answers[ci]) if pred else False)
 
         # ---- (a-2) Full-vocab entropy via actor forward pass -----------
@@ -1418,6 +1455,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         mask_f = response_mask.float()
         h_tensor = (entropies * mask_f).sum(dim=-1) / mask_f.sum(dim=-1).clamp(min=1)
         h_per_child: list[float] = h_tensor.cpu().tolist()
+        entropy_event_fields = [
+            self._entropy_event_fields(entropies, response_mask, ci)
+            for ci in range(n_children)
+        ]
 
         # ---- (b) H prefilter: retained set only proceeds to expand -----
         retained_indices: list[int] = []
@@ -1440,6 +1481,10 @@ class RQEvolveTrainer(RayPPOTrainer):
                     "h_bar": h_bar,
                     "h_bin": target_h,
                     "d_bin": target_d,
+                    "probe_prediction": probe_predictions[ci],
+                    "probe_correct": probe_flags[ci],
+                    **self._event_text_fields("probe_response", probe_decoded[ci]),
+                    **entropy_event_fields[ci],
                     "problem": inst.problem,
                     "answer": inst.answer,
                 })
@@ -1568,7 +1613,10 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "rq_score": rq_result.rq_score,
                 "h_bin": target_h,
                 "d_bin": target_d,
+                "probe_prediction": probe_predictions[ci],
                 "probe_correct": probe_flags[ci],
+                **self._event_text_fields("probe_response", probe_decoded[ci]),
+                **entropy_event_fields[ci],
                 "num_rollouts": len(flags),
                 "num_correct": sum(flags),
                 "previous_program_id": previous_program_id,
