@@ -1368,32 +1368,30 @@ class RQEvolveTrainer(RayPPOTrainer):
     # Dataset refresh from MAP-Elites champions
     # ------------------------------------------------------------------
 
-    def _next_unused_seed(self, program_id: str) -> int | None:
-        """Smallest unused seed in ``0..instances_per_program-1``.
+    def _next_unused_seed(self, program_id: str) -> int:
+        """Smallest non-negative integer not in ``used_seeds[program_id]``.
 
-        The cap is unconditional: a single champion can contribute at most
-        ``instances_per_program`` instances to the epoch dataset, regardless of
-        how large ``training_budget`` is. Without this cap the earlier strict
-        path returned unbounded seeds, so a single frontier champion could
-        fill the whole ``training_budget`` on its own.
+        No cap. ``instances_per_program`` is a per-refresh emission limit
+        enforced in :meth:`_refresh_dataset` via a local counter — it is NOT
+        a lifetime seed-space bound for a champion. Without this separation,
+        a long-lived strict-mode champion would run out of seeds after
+        ``instances_per_program`` refreshes even though the program generator
+        accepts arbitrary integer seeds.
 
         ``strict_anti_reuse`` semantics:
-          True  — seeds never repeat across the whole run (used set persists
-                  across refreshes), so after ``instances_per_program``
-                  refreshes a champion is globally exhausted and returns
-                  ``None``. Survives through checkpoint save/load.
-          False — ``self.used_seeds`` is cleared at the START of each refresh
-                  (see :meth:`_refresh_dataset`), so the cap is enforced within
-                  one epoch but the same (program_id, seed) pair may recur
-                  across epochs.
+          True  — used set persists across refreshes (and across runs via
+                  the checkpoint sidecar), so seeds monotonically increase
+                  per program: refresh 0 → 0..15, refresh 1 → 16..31, …
+          False — :meth:`_refresh_dataset` clears ``self.used_seeds`` at
+                  refresh start, so seeds restart at 0 each refresh.
 
-        Returns ``None`` when the champion has exhausted its seed budget.
+        Always returns a valid seed (integer space is unbounded).
         """
         used = self.used_seeds.setdefault(program_id, set())
-        for s in range(self.instances_per_program):
-            if s not in used:
-                return s
-        return None
+        s = 0
+        while s in used:
+            s += 1
+        return s
 
     def _is_frontier_champion(self, champ) -> bool:
         """Whether this champion is in the learnability frontier for training.
@@ -1415,10 +1413,16 @@ class RQEvolveTrainer(RayPPOTrainer):
     def _refresh_dataset(self):
         """MAP-Elites 챔피언 → dynamic_dataset 교체 → dataloader 재구성.
 
+        ``instances_per_program`` is a **per-refresh** emission cap, NOT a
+        lifetime seed-space bound. Seeds themselves are unbounded — a strict
+        champion surviving K refreshes contributes seeds
+        ``0..K·instances_per_program − 1`` in monotonic order across the run.
+
         Selection rule (``h_priority_d_uniform``):
           Repeated H×D sweeps emit ≤1 new problem per filled niche per sweep.
-          Across sweeps, the same champion may be revisited with its next
-          unused seed **up to** ``instances_per_program`` distinct seeds.
+          Across sweeps of the same refresh, the same champion may be
+          revisited with its next unused seed until it has emitted
+          ``instances_per_program`` instances this refresh.
           Caps therefore stack as:
 
               dataset_size ≤ min(
@@ -1426,20 +1430,29 @@ class RQEvolveTrainer(RayPPOTrainer):
                   frontier_champions × instances_per_program,
               )
 
-          A few concrete examples (instances_per_program=16, budget=960):
+          Examples (instances_per_program=16, budget=960):
               frontier=1  → dataset ≤ 16
               frontier=10 → dataset ≤ 160
               frontier=60 → dataset ≤ 960 (budget saturates)
 
-          Only frontier champions (0 < p_hat < 1) contribute to training data;
-          extreme-p champions stay in the archive as mutation material.
+          Seeds across refreshes, strict_anti_reuse=True:
+              refresh 0 : prog A uses seeds 0..15
+              refresh 1 : prog A uses seeds 16..31
+              refresh 2 : prog A uses seeds 32..47
+              …
+          Seeds across refreshes, strict_anti_reuse=False:
+              every refresh restarts from seed 0.
 
-          ``training_budget`` under-fill is therefore NORMAL for small archives
-          and is emitted as an info-level log rather than an error.
+          Only frontier champions (f_low < p_hat < f_high) contribute to
+          training data; extreme-p champions stay in the archive as mutation
+          material.
+
+          ``training_budget`` under-fill is NORMAL for small archives and is
+          emitted as an info-level log rather than an error.
 
         Legacy ``uniform`` mode:
-          Iterates every frontier champion across seeds 0..instances_per_program,
-          then clamps to ``training_budget``.
+          Iterates every frontier champion up to ``instances_per_program``
+          emissions each refresh, then clamps to ``training_budget``.
         """
         old_size = len(self.dynamic_dataset.snapshot())
         new_problems: list[dict] = []
@@ -1448,31 +1461,64 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         # Non-strict anti-reuse: clear the used-seed registry so the same
         # (program_id, seed) pair may recur across refreshes (epochs).
-        # Within this refresh the cap still holds via _next_unused_seed.
+        # Strict mode keeps used_seeds so seeds monotonically advance.
         if not self.strict_anti_reuse:
             self.used_seeds.clear()
 
+        # Per-refresh emission counter: caps how many instances a single
+        # champion contributes to *this* refresh's dataset. Reset each call.
+        # This is the ONLY place instances_per_program acts as a cap; seed
+        # space itself is unbounded (see _next_unused_seed docstring).
+        emitted_per_program: dict[str, int] = {}
+
+        def _try_emit(champ, h_bin, d_bin) -> tuple[bool, bool]:
+            """Try to emit one instance from ``champ``.
+
+            Returns (appended, advanced):
+              appended — problem dict was appended to ``new_problems``.
+              advanced — ``champ.execute`` was called (used to distinguish
+                         transient seed failures from genuinely empty state).
+            """
+            pid = champ.program_id
+            if emitted_per_program.get(pid, 0) >= self.instances_per_program:
+                return False, False
+            seed = self._next_unused_seed(pid)
+            inst = champ.execute(seed=seed)
+            # Whether or not execute succeeds, mark the seed as consumed to
+            # avoid infinite retries on a permanently-broken (program, seed).
+            self.used_seeds.setdefault(pid, set()).add(seed)
+            if inst is None:
+                return False, True
+            new_problems.append({
+                "problem": inst.problem,
+                "answer": inst.answer,
+                "program_id": pid,
+                "rq_score": champ.rq_score,
+                "h_bin": h_bin,
+                "d_bin": d_bin,
+                "seed": seed,
+            })
+            emitted_per_program[pid] = emitted_per_program.get(pid, 0) + 1
+            return True, True
+
         if self.training_selection_mode == "uniform":
-            # Legacy: frontier champions × fixed seed range, clamped to budget.
+            # Legacy: frontier champions, clamped by instances_per_program and
+            # training_budget.
             champions = self.map_elites.get_all_champions()
             for champ in champions:
                 if not self._is_frontier_champion(champ):
                     non_frontier_skipped += 1
                     continue
-                for seed in range(self.instances_per_program):
-                    inst = champ.execute(seed=seed)
-                    if inst:
-                        new_problems.append({
-                            "problem": inst.problem,
-                            "answer": inst.answer,
-                            "program_id": champ.program_id,
-                            "rq_score": champ.rq_score,
-                            "h_bin": getattr(champ, "niche_h", None),
-                            "d_bin": getattr(champ, "niche_div", None),
-                            "seed": seed,
-                        })
-                        if len(new_problems) >= self.training_budget:
-                            break
+                h_bin = getattr(champ, "niche_h", None)
+                d_bin = getattr(champ, "niche_div", None)
+                while (
+                    emitted_per_program.get(champ.program_id, 0)
+                    < self.instances_per_program
+                    and len(new_problems) < self.training_budget
+                ):
+                    appended, advanced = _try_emit(champ, h_bin, d_bin)
+                    if not advanced:
+                        break  # champion hit its per-refresh cap
                 if len(new_problems) >= self.training_budget:
                     break
             new_problems = new_problems[: self.training_budget]
@@ -1508,24 +1554,11 @@ class RQEvolveTrainer(RayPPOTrainer):
                             # later sweeps may re-count if still non-frontier.
                             non_frontier_skipped += 1
                             continue
-                        seed = self._next_unused_seed(champ.program_id)
-                        if seed is None:
-                            continue
-                        advanced = True
-                        self.used_seeds.setdefault(champ.program_id, set()).add(seed)
-                        inst = champ.execute(seed=seed)
-                        if inst is None:
-                            continue
-                        new_problems.append({
-                            "problem": inst.problem,
-                            "answer": inst.answer,
-                            "program_id": champ.program_id,
-                            "rq_score": champ.rq_score,
-                            "h_bin": h_bin,
-                            "d_bin": d_bin,
-                            "seed": seed,
-                        })
-                        progress = True
+                        appended, step_advanced = _try_emit(champ, h_bin, d_bin)
+                        if appended:
+                            progress = True
+                        if step_advanced:
+                            advanced = True
                     else:
                         continue
                     break  # budget reached in inner loop, propagate
@@ -1536,14 +1569,16 @@ class RQEvolveTrainer(RayPPOTrainer):
 
                 failed_sweeps += 1
                 if not advanced:
-                    # Normal outcome when frontier_champions × instances_per_program
-                    # < training_budget (small archive) or when all frontier
-                    # champions have exhausted their seed caps. Info-level.
+                    # Normal outcome when frontier_champions ×
+                    # instances_per_program < training_budget (small archive):
+                    # every frontier champion hit its per-refresh emission cap
+                    # this sweep. Info-level.
                     logger.info(
                         f"[Evolution] Training budget under-filled (expected "
                         f"for small archive): {len(new_problems)}/"
                         f"{self.training_budget} after {sweep} sweeps; "
-                        f"no frontier champion has unused seeds left"
+                        f"all frontier champions at instances_per_program="
+                        f"{self.instances_per_program} cap"
                     )
                     break
                 if failed_sweeps >= MAX_FAILED_SWEEPS:
