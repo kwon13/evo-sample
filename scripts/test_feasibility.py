@@ -53,6 +53,11 @@ sys.path.insert(0, str(ROOT))
 from rq_questioner.program import ProblemProgram, ProblemInstance
 from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.rq_score import compute_rq_full, h_prefilter
+from rq_questioner.concepts import (
+    concept_axis_labels,
+    validate_concept_contract,
+    validate_concept_decl,
+)
 from rq_questioner.code_utils import (
     extract_generator_code,
     lint_generator_source,
@@ -92,6 +97,15 @@ def _verify_program_with_reason(
     source_reasons = lint_generator_source(program.source_code)
     if source_reasons:
         return None, "source lint: " + "; ".join(source_reasons[:3])
+
+    concept_type = program.get_concept_type()
+    concept_group = program.get_concept_group()
+    concept_reasons = validate_concept_decl(concept_type, concept_group)
+    if concept_reasons:
+        return None, "concept declaration: " + "; ".join(concept_reasons[:3])
+    program.metadata["concept_type"] = concept_type
+    program.metadata["concept_group"] = concept_group
+
     instances = []
     problems = []
     answers = []
@@ -116,6 +130,15 @@ def _verify_program_with_reason(
                     f"answer parse failed at seed={s}: "
                     f"answer={inst.answer!r} problem={inst.problem[:120]!r}"
                 )
+        contract_reasons = validate_concept_contract(
+            concept_type, inst.problem, inst.answer,
+        )
+        if contract_reasons:
+            return None, (
+                f"concept contract at seed={s}: "
+                + "; ".join(contract_reasons[:3])
+                + f" | problem={inst.problem[:120]!r} answer={inst.answer!r}"
+            )
         instances.append(inst)
         problems.append(_normalize(inst.problem))
         answers.append(_normalize(inst.answer))
@@ -303,6 +326,13 @@ def _select_uncertainty_score(
         "step_max_entropy": float(step_u),
     }
     return scores[metric], scores
+
+
+def _concept_log_fields(program: ProblemProgram) -> dict[str, Optional[str]]:
+    return {
+        "concept_type": program.get_concept_type(),
+        "concept_group": program.get_concept_group(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -945,6 +975,12 @@ def evolution_step(
                 "failure_reason": "no parseable generator code returned by mutator",
                 "parent_id": getattr(task.get("parent"), "program_id", None),
                 "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
+                "parent_concept_type": (
+                    task["parent"].get_concept_type() if task.get("parent") else None
+                ),
+                "parent_concept_group": (
+                    task["parent"].get_concept_group() if task.get("parent") else None
+                ),
             })
             if verbose:
                 print(
@@ -980,6 +1016,7 @@ def evolution_step(
                 "failure_reason": verify_reason or "unknown verification failure",
                 "parent_id": getattr(task.get("parent"), "program_id", None),
                 "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
+                **_concept_log_fields(child),
                 "source_code": code,
                 "generation": child.generation,
             })
@@ -988,6 +1025,43 @@ def evolution_step(
                     f"  execute failed ({task['op']}): "
                     f"{verify_reason or 'unknown verification failure'}"
                 )
+            continue
+
+        parent = task.get("parent")
+        parent_type = parent.get_concept_type() if parent is not None else None
+        parent_group = parent.get_concept_group() if parent is not None else None
+        child_type = child.get_concept_type()
+        child_group = child.get_concept_group()
+        concept_op_reason = None
+        if task["op"] == "in_depth" and parent_type and child_type != parent_type:
+            concept_op_reason = (
+                f"in_depth must preserve CONCEPT_TYPE "
+                f"({parent_type} -> {child_type})"
+            )
+        elif task["op"] == "in_breadth" and parent_group and child_group == parent_group:
+            concept_op_reason = (
+                f"in_breadth must change CONCEPT_GROUP "
+                f"(stayed {child_group})"
+            )
+
+        if concept_op_reason:
+            skipped_execute += 1
+            candidate_logs.append({
+                "candidate_idx": task_idx,
+                "op": task["op"],
+                "status": "concept_operator_reject",
+                "failure_reason": concept_op_reason,
+                "parent_id": getattr(parent, "program_id", None),
+                "parent_concept_type": parent_type,
+                "parent_concept_group": parent_group,
+                **_concept_log_fields(child),
+                "problem": inst.problem,
+                "answer": inst.answer,
+                "source_code": code,
+                "generation": child.generation,
+            })
+            if verbose:
+                print(f"  concept reject ({task['op']}): {concept_op_reason}")
             continue
 
         # Anti-reward-hacking reject: block banned patterns that
@@ -1003,6 +1077,7 @@ def evolution_step(
                 "failure_reason": "anti reward-hacking pattern detected",
                 "parent_id": getattr(task.get("parent"), "program_id", None),
                 "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
+                **_concept_log_fields(child),
                 "problem": inst.problem,
                 "answer": inst.answer,
                 "source_code": code,
@@ -1015,7 +1090,7 @@ def evolution_step(
         children.append((child, inst, task, task_idx))
 
     if not children:
-        return {"attempted": 0, "inserted": 0, "skipped_execute": skipped_execute,
+        return {"attempted": skipped_execute, "inserted": 0, "skipped_execute": skipped_execute,
                 "skipped_h": 0, "candidate_logs": candidate_logs}
 
     # ================================================================
@@ -1094,6 +1169,7 @@ def evolution_step(
                 "h_bar": per_child_h[ci],
                 "parent_id": getattr(task.get("parent"), "program_id", None),
                 "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
+                **_concept_log_fields(child),
                 "generation": child.generation,
             })
             continue
@@ -1130,7 +1206,7 @@ def evolution_step(
 
         # 삽입 전 기존 챔피언 정보 저장 (before→after 비교용)
         target_h = grid.h_to_bin(uncertainty_score)
-        target_d = grid.problem_to_div_bin(inst.problem)
+        target_d = grid.program_to_div_bin(child, inst.problem)
         old_niche = grid.grid.get((target_h, target_d))
         old_rq = old_niche.champion_rq if (old_niche and old_niche.champion) else -1
         old_problem = None
@@ -1150,6 +1226,7 @@ def evolution_step(
             "candidate_idx": task_idx,
             "op": task["op"],
             "status": "scored",
+            **_concept_log_fields(child),
             "problem": inst.problem,
             "answer": inst.answer,
             "p_hat": p_hat,
@@ -1198,7 +1275,7 @@ def evolution_step(
                 )
 
     return {
-        "attempted": attempted,
+        "attempted": attempted + skipped_execute,
         "inserted": inserted,
         "skipped_execute": skipped_execute,
         "skipped_h": skipped_h,
@@ -1599,7 +1676,14 @@ def main():
                         help="fixed budget: rounds per evolution step (default: 8)")
     parser.add_argument("--n_rollouts", type=int, default=10)
     parser.add_argument("--n_h_bins", type=int, default=6)
-    parser.add_argument("--n_div_bins", type=int, default=6)
+    parser.add_argument("--n_div_bins", type=int, default=None,
+                        help="D-axis bin count. Defaults to taxonomy size for concept axes.")
+    parser.add_argument(
+        "--diversity_axis",
+        choices=["concept_group", "concept_type", "embedding"],
+        default="concept_group",
+        help="MAP-Elites diversity axis. concept_group removes encoder dependency.",
+    )
     parser.add_argument("--h_range", type=float, nargs=2, default=[0.0, 5.0],
                         help="H축 범위 [min, max] (default: 0.0 5.0)")
     parser.add_argument("--h_threshold", type=float, default=0.1)
@@ -1645,6 +1729,15 @@ def main():
 
     rng = random.Random(args.seed)
     verbose = not args.quiet
+    axis_labels = concept_axis_labels(args.diversity_axis)
+    if args.n_div_bins is None:
+        args.n_div_bins = len(axis_labels) if axis_labels else 6
+    elif axis_labels and args.n_div_bins != len(axis_labels):
+        print(
+            f"[D-axis] overriding n_div_bins={args.n_div_bins} to "
+            f"{len(axis_labels)} for {args.diversity_axis}"
+        )
+        args.n_div_bins = len(axis_labels)
 
     # ---- vLLM 초기화 (지정된 경우) ----
     vllm_runner: Optional[VLLMRunner] = None
@@ -1671,6 +1764,7 @@ def main():
     print(f"  candidates : {args.candidates}")
     print(f"  n_rollouts : {args.n_rollouts}{rollout_note}")
     print(f"  uncertainty: {args.uncertainty_metric}")
+    print(f"  diversity  : {args.diversity_axis}")
     print(f"  grid       : {args.n_h_bins} × {args.n_div_bins}")
     print(f"  ucb_c      : {args.ucb_c}")
     print(f"  mode       : {mode}")
@@ -1688,6 +1782,21 @@ def main():
         )
         inst = prog.execute(seed=0, timeout=5.0)
         if inst:
+            concept_reasons = validate_concept_decl(
+                prog.get_concept_type(), prog.get_concept_group(),
+            )
+            contract_reasons = validate_concept_contract(
+                prog.get_concept_type(), inst.problem, inst.answer,
+            )
+            if concept_reasons or contract_reasons:
+                print(
+                    f"  ✗ {f.name} (concept invalid: "
+                    + "; ".join((concept_reasons + contract_reasons)[:3])
+                    + ")"
+                )
+                continue
+            prog.metadata["concept_type"] = prog.get_concept_type()
+            prog.metadata["concept_group"] = prog.get_concept_group()
             seeds.append(prog)
             if verbose:
                 print(f"  ✓ {f.name:30s} → {inst.problem[:55]}...")
@@ -1707,23 +1816,30 @@ def main():
         h_range=tuple(args.h_range),
         ucb_c=args.ucb_c,
         epsilon=args.epsilon,
+        diversity_axis=args.diversity_axis,
     )
 
-    # Embedding 기반 D축: seed 문제 텍스트로 PCA fitting
-    seed_problems = []
-    for prog in seeds:
-        for s in range(5):
-            inst = prog.execute(seed=s)
-            if inst:
-                seed_problems.append(inst.problem)
-    if seed_problems:
-        grid.fit_diversity_axis(seed_problems)
-        print(f"  D-axis fitted with {len(seed_problems)} seed problems")
+    if args.diversity_axis == "embedding":
+        # Embedding 기반 D축: seed 문제 텍스트로 PCA fitting
+        seed_problems = []
+        for prog in seeds:
+            for s in range(5):
+                inst = prog.execute(seed=s)
+                if inst:
+                    seed_problems.append(inst.problem)
+        if seed_problems:
+            grid.fit_diversity_axis(seed_problems)
+            print(f"  D-axis fitted with {len(seed_problems)} seed problems")
+    else:
+        print(f"  D-axis uses controlled {args.diversity_axis} labels")
 
-    seed_labels: dict[int, str] = {}
-    for i in range(args.n_div_bins):
-        seed_labels[i] = f"D{i}"
-    print(f"  Grid: {args.n_h_bins} H-bins x {args.n_div_bins} D-bins (embedding-based)")
+    seed_labels: dict[int, str] = {
+        i: label for i, label in enumerate(grid.diversity_labels())
+    }
+    print(
+        f"  Grid: {args.n_h_bins} H-bins x {args.n_div_bins} "
+        f"D-bins ({args.diversity_axis})"
+    )
 
     # Insert seeds — vLLM 모드면 실제 entropy/rollout, 아니면 mock
     print(f"  Scoring {len(seeds)} seeds ({'vLLM' if vllm_runner else 'mock'})...")
@@ -1852,6 +1968,8 @@ def main():
                 "niche_div": int(champ.niche_div) if hasattr(champ.niche_div, 'item') else champ.niche_div,
                 "rq_score": champ.rq_score, "p_hat": champ.p_hat,
                 "h_score": champ.h_score, "source_code": champ.source_code,
+                "concept_type": champ.get_concept_type(),
+                "concept_group": champ.get_concept_group(),
                 "problems": probs,
             })
         # Grid 스냅샷 추가
@@ -2020,6 +2138,8 @@ def main():
             "rq_score": champ.rq_score,
             "p_hat": champ.p_hat,
             "h_score": champ.h_score,
+            "concept_type": champ.get_concept_type(),
+            "concept_group": champ.get_concept_group(),
             "source_code": champ.source_code,
             "problems": problems,
         })

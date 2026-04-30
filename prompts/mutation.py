@@ -22,6 +22,7 @@ Design goals (revised):
 """
 
 from __future__ import annotations
+from rq_questioner.concepts import concept_prompt_block
 from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.program import ProblemProgram
 
@@ -92,13 +93,7 @@ COMPLEXITY_AXES = (
     "#    the solver must discover rather than a direct formula.\n"
 )
 
-CONCEPT_DECLARATION = (
-    "# === OPTIONAL READABILITY COMMENTS ===\n"
-    "# You may include these two comments inside `generate`:\n"
-    "#   # CONCEPT: <primary_domain> / <secondary_domain_or_NONE>\n"
-    "#   # TECHNIQUES: <comma-separated named techniques>\n"
-    "# They are helpful but not required; correctness matters more.\n"
-)
+CONCEPT_DECLARATION = concept_prompt_block()
 
 MUTATION_METHOD_RULE = (
     "# === MUTATION METHOD ===\n"
@@ -162,6 +157,7 @@ MUTATE_DEPTH = (
     + MUTATION_METHOD_RULE +
     "# Add one substantial reasoning move beyond what the parent uses;\n"
     "# optionally combine a second exploration axis if it stays coherent.\n"
+    "# Keep the parent's exact CONCEPT_TYPE and CONCEPT_GROUP constants.\n"
     "#\n"
     "# Parent program:\n"
     "```python\n{code}\n```\n\n"
@@ -205,6 +201,8 @@ MUTATE_BREADTH = (
     + REAL_DIFFICULTY_RUBRIC
     + COMPLEXITY_AXES
     + MUTATION_METHOD_RULE +
+    "# Choose a CONCEPT_TYPE/CONCEPT_GROUP from the whitelist that is\n"
+    "# different from the parent's domain/template.\n"
     "# Parent program (for context — do NOT reuse its object):\n"
     "```python\n{code}\n```\n\n"
     + CONCEPT_DECLARATION
@@ -252,6 +250,8 @@ MUTATE_CROSSOVER = (
     "# - Build the hybrid problem AROUND that structure; every\n"
     "#   reasoning step must use it.\n"
     "# - If you include a CONCEPT comment, mention both domains.\n"
+    "# - Define exactly one whitelisted CONCEPT_TYPE/CONCEPT_GROUP pair\n"
+    "#   that matches the single hybrid object you generate.\n"
     "#\n"
     + CONCEPT_DECLARATION
     + OUTPUT_FORMAT_RULE

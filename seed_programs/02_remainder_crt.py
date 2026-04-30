@@ -1,6 +1,9 @@
 import random
 import math
 
+CONCEPT_TYPE = "number_theory.crt_count"
+CONCEPT_GROUP = "number_theory"
+
 
 def generate(seed):
     rng = random.Random(seed)

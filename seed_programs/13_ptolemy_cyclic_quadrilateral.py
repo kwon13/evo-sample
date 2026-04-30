@@ -1,6 +1,9 @@
 import random
 from fractions import Fraction
 
+CONCEPT_TYPE = "geometry.ptolemy_cyclic_quadrilateral"
+CONCEPT_GROUP = "geometry"
+
 
 TRIPLES_BY_HYPOTENUSE = {
     65: [(16, 63), (25, 60), (33, 56), (39, 52)],

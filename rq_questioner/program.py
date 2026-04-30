@@ -12,6 +12,7 @@ import os
 import importlib.util
 import tempfile
 import traceback
+import ast
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -54,6 +55,50 @@ class ProblemProgram:
 
     def _compute_id(self) -> str:
         return hashlib.md5(self.source_code.encode()).hexdigest()[:12]
+
+    def _top_level_string_constant(self, name: str) -> Optional[str]:
+        """Read a top-level string assignment without executing source code."""
+        try:
+            tree = ast.parse(self.source_code)
+        except SyntaxError:
+            return None
+
+        for node in tree.body:
+            value_node = None
+            if isinstance(node, ast.Assign):
+                if any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
+                    value_node = node.value
+            elif isinstance(node, ast.AnnAssign):
+                if isinstance(node.target, ast.Name) and node.target.id == name:
+                    value_node = node.value
+
+            if isinstance(value_node, ast.Constant) and isinstance(value_node.value, str):
+                return value_node.value.strip()
+        return None
+
+    def get_concept_type(self) -> Optional[str]:
+        concept_type = self.metadata.get("concept_type") if self.metadata else None
+        if concept_type:
+            return str(concept_type)
+        return self._top_level_string_constant("CONCEPT_TYPE")
+
+    def get_concept_group(self) -> Optional[str]:
+        concept_group = self.metadata.get("concept_group") if self.metadata else None
+        if concept_group:
+            return str(concept_group)
+
+        declared = self._top_level_string_constant("CONCEPT_GROUP")
+        if declared:
+            return declared
+
+        concept_type = self.get_concept_type()
+        if concept_type:
+            try:
+                from .concepts import concept_group_for_type
+                return concept_group_for_type(concept_type)
+            except Exception:
+                return None
+        return None
 
     def execute(self, seed: int, timeout: float = 10.0) -> Optional[ProblemInstance]:
         """
