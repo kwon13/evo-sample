@@ -35,6 +35,7 @@ if multiprocessing.get_start_method(allow_none=True) != "spawn":
     multiprocessing.set_start_method("spawn", force=True)
 
 import argparse
+import math
 import random
 import re
 import sys
@@ -70,6 +71,14 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # Answer extraction helpers (rollout 정답 비교용)
 # ---------------------------------------------------------------------------
+
+def _normalize(s: str) -> str:
+    s = str(s).strip().lower()
+    for o, c in [("{", "}"), ("[", "]"), ("(", ")")]:
+        if s.startswith(o) and s.endswith(c):
+            s = s[1:-1].strip()
+    return s.rstrip(".").replace(",", "").replace(" ", "")
+
 
 # ---------------------------------------------------------------------------
 # Self-verification + Few-shot + Execution feedback
@@ -188,6 +197,97 @@ def _answers_match(pred: str, gt: str, tol: float = 1e-2) -> bool:
     return False
 
 
+def _normalize_answer_class(ans: Optional[str]) -> str:
+    if ans is None:
+        return "<invalid>"
+    return _normalize(ans) or "<invalid>"
+
+
+def _answer_equiv(a: str, b: str, semantic: bool) -> bool:
+    if _normalize_answer_class(a) == _normalize_answer_class(b):
+        return True
+    if semantic:
+        result = _sympy_equal(a, b)
+        if result is not None:
+            return result
+    return False
+
+
+def _answer_entropy(pred_answers: list[Optional[str]], semantic: bool = True) -> float:
+    """
+    Answer-class entropy over rollout final answers.
+
+    semantic=False: normalized exact-match vote entropy.
+    semantic=True : normalized exact match + SymPy equivalence classes.
+    """
+    if not pred_answers:
+        return 0.0
+
+    classes: list[list[str]] = []
+    for raw in pred_answers:
+        ans = raw if raw is not None else "<invalid>"
+        placed = False
+        for cls in classes:
+            if _answer_equiv(ans, cls[0], semantic=semantic):
+                cls.append(ans)
+                placed = True
+                break
+        if not placed:
+            classes.append([ans])
+
+    total = sum(len(cls) for cls in classes)
+    if total <= 0:
+        return 0.0
+    probs = [len(cls) / total for cls in classes]
+    return -sum(p * math.log(p) for p in probs if p > 0)
+
+
+def _binary_vote_entropy(flags: list[bool]) -> float:
+    """Mock fallback when answer strings are unavailable."""
+    if not flags:
+        return 0.0
+    p = sum(bool(f) for f in flags) / len(flags)
+    return -sum(q * math.log(q) for q in (p, 1.0 - p) if q > 0)
+
+
+def _select_uncertainty_score(
+    metric: str,
+    h_bar: float,
+    flags: list[bool],
+    rollout_logs: list[dict],
+) -> tuple[float, dict[str, float]]:
+    pred_answers = [log.get("extracted") for log in rollout_logs if log is not None]
+    probe_log = next((log for log in rollout_logs if log and log.get("probe")), None)
+
+    vote_u = (
+        _answer_entropy(pred_answers, semantic=False)
+        if pred_answers else _binary_vote_entropy(flags)
+    )
+    semantic_u = (
+        _answer_entropy(pred_answers, semantic=True)
+        if pred_answers else _binary_vote_entropy(flags)
+    )
+    gini_u = (
+        probe_log.get("gini_bar")
+        if probe_log and probe_log.get("gini_bar") is not None
+        else max(0.0, 1.0 - math.exp(-max(0.0, h_bar)))
+    )
+    step_u = (
+        probe_log.get("step_max_entropy")
+        if probe_log and probe_log.get("step_max_entropy") is not None
+        else h_bar
+    )
+
+    scores = {
+        "entropy": float(h_bar),
+        "gini": float(gini_u),
+        "vote_entropy": float(vote_u),
+        "semantic_entropy": float(semantic_u),
+        "step_max_entropy": float(step_u),
+    }
+    return scores[metric], scores
+
+
 # ---------------------------------------------------------------------------
 # vLLM 실제 백엔드 (mutation / rollout / entropy)
 # ---------------------------------------------------------------------------
@@ -268,6 +368,86 @@ class VLLMRunner:
             token_hs.append(h_top)
         return sum(token_hs) / len(token_hs) if token_hs else None
 
+    def _gini_from_logprobs(self, lp_list) -> Optional[float]:
+        """
+        단일 trajectory per-token top-K logprob → 근사 Gini impurity.
+
+        This mirrors _entropy_from_logprobs' top-K + uniform-tail approximation.
+        Exact full-vocab Gini should be measured in the veRL actor forward path.
+        """
+        if not lp_list:
+            return None
+        vocab_size = self.tokenizer.vocab_size or 150000
+        token_ginis = []
+        for step_dict in lp_list:
+            if step_dict is None:
+                continue
+            observed = len(step_dict)
+            if observed == 0:
+                continue
+            probs = [math.exp(lp.logprob) for lp in step_dict.values()]
+            p_rest = max(0.0, 1.0 - sum(probs))
+            sq_mass = sum(p * p for p in probs)
+            if p_rest > 1e-8 and vocab_size > observed:
+                sq_mass += (p_rest * p_rest) / (vocab_size - observed)
+            token_ginis.append(1.0 - sq_mass)
+        return sum(token_ginis) / len(token_ginis) if token_ginis else None
+
+    def _step_max_entropy_from_completion(self, text: str, token_ids, lp_list) -> Optional[float]:
+        """
+        Approximate max step entropy by aligning decoded tokens to regex step spans.
+
+        If the solver does not emit explicit "Step k:" boundaries, this falls
+        back to the trajectory mean entropy so the metric remains usable.
+        """
+        token_hs = []
+        if not lp_list:
+            return None
+        vocab_size = self.tokenizer.vocab_size or 150000
+        for step_dict in lp_list:
+            if step_dict is None or len(step_dict) == 0:
+                token_hs.append(None)
+                continue
+            probs = [math.exp(lp.logprob) for lp in step_dict.values()]
+            h_top = -sum(p * math.log(p) for p in probs if p > 0)
+            p_rest = max(0.0, 1.0 - sum(probs))
+            if p_rest > 1e-8 and vocab_size > len(step_dict):
+                h_top += -p_rest * math.log(p_rest / (vocab_size - len(step_dict)))
+            token_hs.append(h_top)
+
+        valid_hs = [h for h in token_hs if h is not None]
+        if not valid_hs:
+            return None
+
+        boundaries = list(re.finditer(r"(?im)^\s*(?:step\s*\d+|final)\s*:", text))
+        if len(boundaries) < 2 or not token_ids:
+            return sum(valid_hs) / len(valid_hs)
+
+        token_spans = []
+        cursor = 0
+        for tok_id in token_ids[:len(token_hs)]:
+            piece = self.tokenizer.decode([tok_id], skip_special_tokens=False)
+            if not piece:
+                token_spans.append((cursor, cursor))
+                continue
+            pos = text.find(piece, cursor)
+            if pos < 0:
+                pos = cursor
+            end = pos + len(piece)
+            token_spans.append((pos, end))
+            cursor = end
+
+        step_means = []
+        starts = [m.start() for m in boundaries] + [len(text)]
+        for start, end in zip(starts, starts[1:]):
+            hs = [
+                h for (tok_start, tok_end), h in zip(token_spans, token_hs)
+                if h is not None and tok_end > start and tok_start < end
+            ]
+            if hs:
+                step_means.append(sum(hs) / len(hs))
+        return max(step_means) if step_means else sum(valid_hs) / len(valid_hs)
+
     # ---- probe (entropy-only) + expand rollout -------------------------
 
     def batch_entropy_probe(
@@ -297,9 +477,16 @@ class VLLMRunner:
             pred = _extract_boxed(comp.text)
             correct = _answers_match(pred, inst.answer) if pred else False
             h_bar = self._entropy_from_logprobs(comp.logprobs)
+            gini_bar = self._gini_from_logprobs(comp.logprobs)
+            step_max_entropy = self._step_max_entropy_from_completion(
+                comp.text, getattr(comp, "token_ids", None), comp.logprobs,
+            )
             log = {
                 "rollout_idx": 0, "response": comp.text,
                 "extracted": pred, "ground_truth": inst.answer, "correct": correct,
+                "entropy_bar": h_bar,
+                "gini_bar": gini_bar,
+                "step_max_entropy": step_max_entropy,
                 "probe": True,
             }
             results.append((h_bar, correct, log))
@@ -358,6 +545,11 @@ class VLLMRunner:
         for i, comp in enumerate(outputs):
             pred = _extract_boxed(comp.text)
             correct = _answers_match(pred, inst.answer) if pred else False
+            h_i = self._entropy_from_logprobs(comp.logprobs)
+            gini_i = self._gini_from_logprobs(comp.logprobs)
+            step_i = self._step_max_entropy_from_completion(
+                comp.text, getattr(comp, "token_ids", None), comp.logprobs,
+            )
             flags.append(correct)
             logs.append({
                 "rollout_idx": i,
@@ -365,8 +557,11 @@ class VLLMRunner:
                 "extracted": pred,
                 "ground_truth": inst.answer,
                 "correct": correct,
+                "entropy_bar": h_i,
+                "gini_bar": gini_i,
+                "step_max_entropy": step_i,
+                "probe": i == 0,
             })
-            h_i = self._entropy_from_logprobs(comp.logprobs)
             if h_i is not None:
                 per_rollout_h.append(h_i)
         h_bar = sum(per_rollout_h) / len(per_rollout_h) if per_rollout_h else None
@@ -655,6 +850,7 @@ def evolution_step(
     crossover_ratio: float = 0.2,
     verbose: bool = True,
     vllm_runner: Optional[VLLMRunner] = None,
+    uncertainty_metric: str = "entropy",
 ) -> dict:
     """
     Evolution 1회 실행 — vLLM 사용 시 batched inference.
@@ -845,12 +1041,16 @@ def evolution_step(
         rollout_logs = ([probe_log] if probe_log else []) + list(extra_logs)
         p_hat = sum(flags) / len(flags) if flags else 0.0
 
+        uncertainty_score, uncertainty_scores = _select_uncertainty_score(
+            uncertainty_metric, h_bar, flags, rollout_logs,
+        )
+
         # p=0 / p=1 candidates are KEPT as archive material (mirrors the
         # training path: they produce R_Q=0 and cannot displace positive-R_Q
         # champions, but empty niches will accept them as mutation parents).
-        rq_result = compute_rq_full(flags, h_bar)
+        rq_result = compute_rq_full(flags, uncertainty_score)
         child.p_hat = p_hat
-        child.h_score = h_bar
+        child.h_score = uncertainty_score
         child.rq_score = rq_result.rq_score
         child.fitness = rq_result.rq_score
         # Frontier band hard-coded to match the training default
@@ -863,7 +1063,7 @@ def evolution_step(
         )
 
         # 삽입 전 기존 챔피언 정보 저장 (before→after 비교용)
-        target_h = grid.h_to_bin(h_bar)
+        target_h = grid.h_to_bin(uncertainty_score)
         target_d = grid.problem_to_div_bin(inst.problem)
         old_niche = grid.grid.get((target_h, target_d))
         old_rq = old_niche.champion_rq if (old_niche and old_niche.champion) else -1
@@ -874,7 +1074,7 @@ def evolution_step(
 
         was_inserted = grid.try_insert(
             program=child,
-            h_value=h_bar,
+            h_value=uncertainty_score,
             problem_text=inst.problem,
             rq_score=rq_result.rq_score,
         )
@@ -887,6 +1087,9 @@ def evolution_step(
             "answer": inst.answer,
             "p_hat": p_hat,
             "h_bar": h_bar,
+            "uncertainty_metric": uncertainty_metric,
+            "uncertainty_score": uncertainty_score,
+            "uncertainty_scores": uncertainty_scores,
             "rq_score": rq_result.rq_score,
             "frontier_status": child.metadata.get("frontier_status"),
             "inserted": was_inserted,
@@ -906,7 +1109,7 @@ def evolution_step(
                     print(
                         f"  ✓ [{op_label}] REPLACED ({child.niche_h},{child.niche_div}) "
                         f"RQ {old_rq:.4f} → {rq_result.rq_score:.4f}  "
-                        f"p={p_hat:.2f} H={h_bar:.2f}"
+                        f"p={p_hat:.2f} U[{uncertainty_metric}]={uncertainty_score:.2f}"
                     )
                     if old_problem:
                         print(f"    before: {old_problem}...")
@@ -914,14 +1117,15 @@ def evolution_step(
                 else:
                     print(
                         f"  ✓ [{op_label}] NEW ({child.niche_h},{child.niche_div}) "
-                        f"RQ={rq_result.rq_score:.4f} p={p_hat:.2f} H={h_bar:.2f}"
+                        f"RQ={rq_result.rq_score:.4f} p={p_hat:.2f} "
+                        f"U[{uncertainty_metric}]={uncertainty_score:.2f}"
                     )
                     print(f"    Q: {inst.problem[:60]}...")
         else:
             if verbose:
                 print(
                     f"  ✗ not champion "
-                    f"p={p_hat:.2f} H={h_bar:.2f} "
+                    f"p={p_hat:.2f} U[{uncertainty_metric}]={uncertainty_score:.2f} "
                     f"R_Q={rq_result.rq_score:.4f} "
                     f"(needed > {old_rq:.4f} at ({target_h},{target_d}))"
                 )
@@ -1332,6 +1536,16 @@ def main():
     parser.add_argument("--h_range", type=float, nargs=2, default=[0.0, 5.0],
                         help="H축 범위 [min, max] (default: 0.0 5.0)")
     parser.add_argument("--h_threshold", type=float, default=0.1)
+    parser.add_argument(
+        "--uncertainty_metric",
+        choices=["entropy", "gini", "vote_entropy", "semantic_entropy", "step_max_entropy"],
+        default="entropy",
+        help=(
+            "R_Q에 사용할 uncertainty U. entropy는 기존 top-k entropy, "
+            "gini는 top-k+uniform-tail 근사, vote/semantic_entropy는 rollout "
+            "boxed answer 분포, step_max_entropy는 Step/Final span별 최대 entropy."
+        ),
+    )
     parser.add_argument("--crossover_ratio", type=float, default=0.2,
                         help="crossover 연산자 비율 (default: 0.2)")
     parser.add_argument("--in_depth_ratio", type=float, default=0.5,
@@ -1389,6 +1603,7 @@ def main():
     print(f"  n_evo      : {args.n_evo}")
     print(f"  candidates : {args.candidates}")
     print(f"  n_rollouts : {args.n_rollouts}{rollout_note}")
+    print(f"  uncertainty: {args.uncertainty_metric}")
     print(f"  grid       : {args.n_h_bins} × {args.n_div_bins}")
     print(f"  ucb_c      : {args.ucb_c}")
     print(f"  mode       : {mode}")
@@ -1450,26 +1665,32 @@ def main():
         if not inst:
             continue
         if vllm_runner:
-            flags0, _, h0 = vllm_runner.rollout(inst, args.n_rollouts)
+            flags0, logs0, h0 = vllm_runner.rollout(inst, args.n_rollouts)
             if h0 is None:
                 h0 = 1.0
         else:
             h0 = _mock_entropy(inst, rng, h_mean=1.5, h_std=0.5)
             flags0 = _mock_rollout(inst, args.n_rollouts, rng)
-        rq0 = compute_rq_full(flags0, h0)
+            logs0 = []
+        u0, u_scores0 = _select_uncertainty_score(
+            args.uncertainty_metric, h0, flags0, logs0,
+        )
+        rq0 = compute_rq_full(flags0, u0)
         prog.p_hat = rq0.p_hat
-        prog.h_score = h0
+        prog.h_score = u0
         prog.rq_score = rq0.rq_score
         prog.fitness = rq0.rq_score
+        prog.metadata["uncertainty_metric"] = args.uncertainty_metric
+        prog.metadata["uncertainty_scores"] = u_scores0
         grid.try_insert(
             program=prog,
-            h_value=h0,
+            h_value=u0,
             problem_text=inst.problem,
             rq_score=rq0.rq_score,
         )
         if verbose:
             print(f"    {prog.metadata.get('source_file','?'):30s} "
-                  f"H={h0:.2f}  p={rq0.p_hat:.2f}  RQ={rq0.rq_score:.4f}")
+                  f"U={u0:.2f}  p={rq0.p_hat:.2f}  RQ={rq0.rq_score:.4f}")
 
     print_stats(grid.stats(), "init")
     print_grid(grid, seed_labels)
@@ -1509,6 +1730,7 @@ def main():
                 crossover_ratio=args.crossover_ratio,
                 verbose=verbose,
                 vllm_runner=vllm_runner,
+                uncertainty_metric=args.uncertainty_metric,
             )
 
             step_attempted += round_result["attempted"]
@@ -1583,6 +1805,43 @@ def main():
     print(f"  Total inserted  : {total_inserted}")
     insert_rate = total_inserted / total_attempted if total_attempted else 0
     print(f"  Insert rate     : {insert_rate:.1%}")
+
+    if all_candidate_logs:
+        metric_names = ["entropy", "gini", "vote_entropy", "semantic_entropy", "step_max_entropy"]
+        metric_summary = {}
+        for name in metric_names:
+            vals = []
+            for log in all_candidate_logs:
+                scores = log.get("uncertainty_scores") or {}
+                if name not in scores:
+                    continue
+                p = float(log.get("p_hat", 0.0) or 0.0)
+                vals.append(p * (1.0 - p) * float(scores[name]))
+            if vals:
+                metric_summary[name] = {
+                    "mean_rq": sum(vals) / len(vals),
+                    "max_rq": max(vals),
+                    "positive": sum(v > 0 for v in vals),
+                }
+        if metric_summary:
+            best_metric = max(
+                metric_summary,
+                key=lambda n: (metric_summary[n]["max_rq"], metric_summary[n]["mean_rq"]),
+            )
+            print("\n  Candidate-level metric comparison (same evaluated rollouts):")
+            print(f"  {'Metric':>18}  {'Mean R_Q':>10}  {'Max R_Q':>10}  {'Positive':>8}")
+            print("  " + "-" * 54)
+            for name, row in sorted(
+                metric_summary.items(), key=lambda kv: -kv[1]["max_rq"]
+            ):
+                marker = "*" if name == best_metric else " "
+                print(
+                    f"{marker} {name:>18}  "
+                    f"{row['mean_rq']:>10.4f}  "
+                    f"{row['max_rq']:>10.4f}  "
+                    f"{row['positive']:>8}"
+                )
+            print(f"  Best by max candidate R_Q: {best_metric}")
 
     print("\n  Evolution history (coverage, mean_rq, max_rq):")
     print(f"  {'Step':>6}  {'Coverage':>10}  {'Mean R_Q':>10}  {'Max R_Q':>10}  {'Champions':>10}")
