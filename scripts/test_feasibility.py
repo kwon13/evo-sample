@@ -84,35 +84,52 @@ def _normalize(s: str) -> str:
 # Self-verification + Few-shot + Execution feedback
 # ---------------------------------------------------------------------------
 
-def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> Optional[ProblemInstance]:
-    """Multi-seed 실행 + SymPy 답 유효성 검증."""
+def _verify_program_with_reason(
+    program: ProblemProgram, n_seeds: int = 5,
+) -> tuple[Optional[ProblemInstance], Optional[str]]:
+    """Multi-seed 실행 + SymPy 답 유효성 검증, with failure reason."""
     from sympy import sympify
-    if lint_generator_source(program.source_code):
-        return None
+    source_reasons = lint_generator_source(program.source_code)
+    if source_reasons:
+        return None, "source lint: " + "; ".join(source_reasons[:3])
     instances = []
     problems = []
     answers = []
     for s in range(n_seeds):
         inst = program.execute(seed=s, timeout=5.0)
         if inst is None:
-            return None
-        if lint_problem_instance(inst):
-            return None
+            return None, f"execute returned None at seed={s}"
+        instance_reasons = lint_problem_instance(inst)
+        if instance_reasons:
+            return None, (
+                f"instance lint at seed={s}: "
+                + "; ".join(instance_reasons[:3])
+                + f" | problem={inst.problem[:120]!r} answer={inst.answer!r}"
+            )
         try:
             sympify(inst.answer.strip().replace("^", "**"))
         except Exception:
             try:
                 float(inst.answer)
             except (ValueError, TypeError):
-                return None
+                return None, (
+                    f"answer parse failed at seed={s}: "
+                    f"answer={inst.answer!r} problem={inst.problem[:120]!r}"
+                )
         instances.append(inst)
         problems.append(_normalize(inst.problem))
         answers.append(_normalize(inst.answer))
     if n_seeds > 1 and len(set(problems)) <= 1:
-        return None
+        return None, f"problem lacks seed diversity across {n_seeds} seeds"
     if n_seeds > 1 and len(set(answers)) <= 1:
-        return None
-    return instances[0] if instances else None
+        return None, f"answer lacks seed diversity across {n_seeds} seeds"
+    return (instances[0] if instances else None), None
+
+
+def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> Optional[ProblemInstance]:
+    """Multi-seed 실행 + SymPy 답 유효성 검증."""
+    inst, _ = _verify_program_with_reason(program, n_seeds=n_seeds)
+    return inst
 
 
 
@@ -917,11 +934,23 @@ def evolution_step(
                 source_codes.append(_mock_mutate(t["parent"], rng))
 
     # Build children + execute (CPU, fast)
-    children = []       # (child, inst, task)
-    for task, code in zip(mutation_tasks, source_codes):
+    children = []       # (child, inst, task, original task_idx)
+    for task_idx, (task, code) in enumerate(zip(mutation_tasks, source_codes)):
         if code is None:
+            skipped_execute += 1
+            candidate_logs.append({
+                "candidate_idx": task_idx,
+                "op": task["op"],
+                "status": "mutation_failed",
+                "failure_reason": "no parseable generator code returned by mutator",
+                "parent_id": getattr(task.get("parent"), "program_id", None),
+                "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
+            })
             if verbose:
-                print(f"  {task['op']} mutation failed")
+                print(
+                    f"  {task['op']} mutation failed: "
+                    f"no parseable generator code"
+                )
             continue
 
         if task["op"] == "crossover":
@@ -941,11 +970,24 @@ def evolution_step(
             )
 
         # Multi-seed + SymPy 자가 검증
-        inst = _verify_program(child, n_seeds=5)
+        inst, verify_reason = _verify_program_with_reason(child, n_seeds=5)
         if inst is None:
             skipped_execute += 1
+            candidate_logs.append({
+                "candidate_idx": task_idx,
+                "op": task["op"],
+                "status": "execute_failed",
+                "failure_reason": verify_reason or "unknown verification failure",
+                "parent_id": getattr(task.get("parent"), "program_id", None),
+                "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
+                "source_code": code,
+                "generation": child.generation,
+            })
             if verbose:
-                print(f"  execute failed ({task['op']})")
+                print(
+                    f"  execute failed ({task['op']}): "
+                    f"{verify_reason or 'unknown verification failure'}"
+                )
             continue
 
         # Anti-reward-hacking reject: block banned patterns that
@@ -954,15 +996,27 @@ def evolution_step(
         # ahead of entropy/rollout so we don't waste GPU on them.
         if has_anti_pattern(child.source_code, inst.problem):
             skipped_execute += 1
+            candidate_logs.append({
+                "candidate_idx": task_idx,
+                "op": task["op"],
+                "status": "anti_hack_reject",
+                "failure_reason": "anti reward-hacking pattern detected",
+                "parent_id": getattr(task.get("parent"), "program_id", None),
+                "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
+                "problem": inst.problem,
+                "answer": inst.answer,
+                "source_code": code,
+                "generation": child.generation,
+            })
             if verbose:
                 print(f"  anti-hack reject ({task['op']}): {inst.problem[:80]}")
             continue
 
-        children.append((child, inst, task))
+        children.append((child, inst, task, task_idx))
 
     if not children:
         return {"attempted": 0, "inserted": 0, "skipped_execute": skipped_execute,
-                "skipped_h": 0, "candidate_logs": []}
+                "skipped_h": 0, "candidate_logs": candidate_logs}
 
     # ================================================================
     # Phase 2: Entropy probe (n=1) → H prefilter → expand rollout
@@ -970,7 +1024,7 @@ def evolution_step(
     # method.tex의 amortization 구조:
     #   probe(1회) → H̄ 측정 → H̄ < τ_H 후보는 expand rollout 생략.
     #   probe response는 동일 temperature에서 나왔으므로 첫 rollout으로 재사용.
-    instances = [inst for _, inst, _ in children]
+    instances = [inst for _, inst, _, _ in children]
 
     if vllm_runner:
         if verbose:
@@ -1026,10 +1080,22 @@ def evolution_step(
     # Phase 3: Scoring + Grid insertion (CPU, fast)
     # ================================================================
     extra_by_ci = {ci: retained_extra[j] for j, ci in enumerate(retained_local_indices)}
-    for ci, (child, inst, task) in enumerate(children):
+    for ci, (child, inst, task, task_idx) in enumerate(children):
         attempted += 1
         if ci not in extra_by_ci:
             # H prefilter skipped this candidate — no rollout scoring.
+            candidate_logs.append({
+                "candidate_idx": task_idx,
+                "op": task["op"],
+                "status": "prefilter_skipped",
+                "failure_reason": "entropy below threshold or probe failed",
+                "problem": inst.problem,
+                "answer": inst.answer,
+                "h_bar": per_child_h[ci],
+                "parent_id": getattr(task.get("parent"), "program_id", None),
+                "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
+                "generation": child.generation,
+            })
             continue
 
         h_bar = per_child_h[ci]
@@ -1081,8 +1147,9 @@ def evolution_step(
 
         # 상세 로그 기록
         candidate_logs.append({
-            "candidate_idx": ci,
+            "candidate_idx": task_idx,
             "op": task["op"],
+            "status": "scored",
             "problem": inst.problem,
             "answer": inst.answer,
             "p_hat": p_hat,
@@ -1715,6 +1782,8 @@ def main():
         # Fixed-budget evolution: max_rounds per step (no early termination)
         step_attempted = 0
         step_inserted = 0
+        step_skipped_execute = 0
+        step_skipped_h = 0
 
         for round_num in range(1, args.max_rounds + 1):
             round_result = evolution_step(
@@ -1735,6 +1804,8 @@ def main():
 
             step_attempted += round_result["attempted"]
             step_inserted += round_result["inserted"]
+            step_skipped_execute += round_result.get("skipped_execute", 0)
+            step_skipped_h += round_result.get("skipped_h", 0)
 
             for log in round_result.get("candidate_logs", []):
                 log["step"] = step
@@ -1754,8 +1825,8 @@ def main():
             "attempted": step_attempted,
             "inserted": step_inserted,
             "rounds": args.max_rounds,
-            "skipped_execute": 0,
-            "skipped_h": 0,
+            "skipped_execute": step_skipped_execute,
+            "skipped_h": step_skipped_h,
         })
 
         elapsed = time.time() - t0
@@ -1807,6 +1878,26 @@ def main():
     print(f"  Insert rate     : {insert_rate:.1%}")
 
     if all_candidate_logs:
+        status_counts = {}
+        failure_counts = {}
+        for log in all_candidate_logs:
+            status = log.get("status", "unknown")
+            status_counts[status] = status_counts.get(status, 0) + 1
+            if status != "scored":
+                reason = str(log.get("failure_reason", "unknown"))
+                reason_key = reason.split(" | ", 1)[0]
+                failure_counts[reason_key] = failure_counts.get(reason_key, 0) + 1
+
+        print("\n  Candidate status summary:")
+        for status, count in sorted(status_counts.items(), key=lambda kv: (-kv[1], kv[0])):
+            print(f"    {status:18s} {count}")
+        if failure_counts:
+            print("  Top failure reasons:")
+            for reason, count in sorted(
+                failure_counts.items(), key=lambda kv: (-kv[1], kv[0])
+            )[:5]:
+                print(f"    {count:3d}  {reason}")
+
         metric_names = ["entropy", "gini", "vote_entropy", "semantic_entropy", "step_max_entropy"]
         metric_summary = {}
         for name in metric_names:
