@@ -27,12 +27,14 @@ class MAPElitesGrid:
     """
     MAP-Elites grid: H bins (entropy/difficulty) x D bins (diversity).
 
-    D-axis can use controlled concept labels or sentence embedding + PCA:
-      - concept_group: 7 human-readable mathematical domains
-      - concept_type: 15 fine-grained seed/template labels
-      - all-MiniLM-L6-v2 로 문제 텍스트를 embed
-      - PC1 값을 균등 분할하여 D bin 결정
-      - fit_diversity_axis()로 seed 문제 기반 초기 fitting
+    Primary D-axis modes:
+      - concept_group: 7 controlled mathematical domains declared by
+        top-level program constants.
+      - concept_type: 15 controlled fine-grained skill/template labels.
+
+    Legacy/ablation mode:
+      - embedding: all-MiniLM-L6-v2 problem embeddings projected onto PC1,
+        fitted from seed problem texts via fit_diversity_axis().
 
     Parent selection: ε-greedy + rank-based UCB (Monte Carlo Elites 방식):
       - ε 확률로 uniform random (exploration)
@@ -159,13 +161,19 @@ class MAPElitesGrid:
             group = program.get_concept_group()
             if group in CONCEPT_GROUPS:
                 return CONCEPT_GROUPS.index(group)
-            return hash(group or problem_text) % self.n_div_bins
+            raise ValueError(
+                f"Invalid concept group for concept_group axis: {group!r} "
+                f"(program_id={program.program_id})"
+            )
 
         if self.diversity_axis == "concept_type":
             concept_type = program.get_concept_type()
             if concept_type in CONCEPT_TYPES:
                 return CONCEPT_TYPES.index(concept_type)
-            return hash(concept_type or problem_text) % self.n_div_bins
+            raise ValueError(
+                f"Invalid concept type for concept_type axis: {concept_type!r} "
+                f"(program_id={program.program_id})"
+            )
 
         return self.problem_to_div_bin(problem_text)
 

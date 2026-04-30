@@ -76,18 +76,26 @@ class ProblemProgram:
                 return value_node.value.strip()
         return None
 
+    def declared_concept_type(self) -> Optional[str]:
+        """Return only the CONCEPT_TYPE explicitly declared in source."""
+        return self._top_level_string_constant("CONCEPT_TYPE")
+
+    def declared_concept_group(self) -> Optional[str]:
+        """Return only the CONCEPT_GROUP explicitly declared in source."""
+        return self._top_level_string_constant("CONCEPT_GROUP")
+
     def get_concept_type(self) -> Optional[str]:
         concept_type = self.metadata.get("concept_type") if self.metadata else None
         if concept_type:
             return str(concept_type)
-        return self._top_level_string_constant("CONCEPT_TYPE")
+        return self.declared_concept_type()
 
     def get_concept_group(self) -> Optional[str]:
         concept_group = self.metadata.get("concept_group") if self.metadata else None
         if concept_group:
             return str(concept_group)
 
-        declared = self._top_level_string_constant("CONCEPT_GROUP")
+        declared = self.declared_concept_group()
         if declared:
             return declared
 

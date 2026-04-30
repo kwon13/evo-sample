@@ -98,8 +98,8 @@ def _verify_program_with_reason(
     if source_reasons:
         return None, "source lint: " + "; ".join(source_reasons[:3])
 
-    concept_type = program.get_concept_type()
-    concept_group = program.get_concept_group()
+    concept_type = program.declared_concept_type()
+    concept_group = program.declared_concept_group()
     concept_reasons = validate_concept_decl(concept_type, concept_group)
     if concept_reasons:
         return None, "concept declaration: " + "; ".join(concept_reasons[:3])
@@ -1782,11 +1782,11 @@ def main():
         )
         inst = prog.execute(seed=0, timeout=5.0)
         if inst:
-            concept_reasons = validate_concept_decl(
-                prog.get_concept_type(), prog.get_concept_group(),
-            )
+            declared_type = prog.declared_concept_type()
+            declared_group = prog.declared_concept_group()
+            concept_reasons = validate_concept_decl(declared_type, declared_group)
             contract_reasons = validate_concept_contract(
-                prog.get_concept_type(), inst.problem, inst.answer,
+                declared_type, inst.problem, inst.answer,
             )
             if concept_reasons or contract_reasons:
                 print(
@@ -1795,8 +1795,8 @@ def main():
                     + ")"
                 )
                 continue
-            prog.metadata["concept_type"] = prog.get_concept_type()
-            prog.metadata["concept_group"] = prog.get_concept_group()
+            prog.metadata["concept_type"] = declared_type
+            prog.metadata["concept_group"] = declared_group
             seeds.append(prog)
             if verbose:
                 print(f"  ✓ {f.name:30s} → {inst.problem[:55]}...")
