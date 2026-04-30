@@ -1982,3 +1982,7 @@ if __name__ == "__main__":
 
 # python scripts/test_feasibility.py --vllm_model Qwen/Qwen3-8B-Base  --tp 4 --n_evo 50 --n_h_bins 10 --n_div_bins 10
 # python scripts/test_feasibility.py --model gpt-4o-mini --n_evo 10 --candidates 4  (API mutation only)
+
+# python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric semantic_entropy
+# python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric gini
+# python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric step_max_entropy
