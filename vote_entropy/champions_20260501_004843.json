@@ -1,0 +1,668 @@
+[
+  {
+    "program_id": "8cb77d00fd91",
+    "generation": 3,
+    "niche_h": 2,
+    "niche_div": 0,
+    "rq_score": 0.4195361636510614,
+    "p_hat": 0.4,
+    "h_score": 1.7480673485460891,
+    "source_code": "import random\nimport math\n\ndef _derangement(n):\n    if n == 0:\n        return 1\n    if n == 1:\n        return 0\n    a, b = 1, 0\n    for k in range(2, n + 1):\n        a, b = b, (k - 1) * (a + b)\n    return b\n\ndef _binomial_coefficient(n, k):\n    if k > n:\n        return 0\n    if k == 0 or k == n:\n        return 1\n    k = min(k, n - k)  # Take advantage of symmetry\n    c = 1\n    for i in range(k):\n        c = c * (n - i) // (i + 1)\n    return c\n\ndef _factorial(n):\n    if n == 0 or n == 1:\n        return 1\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Exploration axis: Parametric lifting\n    # Replace a concrete constant with a parameter\n    n = rng.randint(5, 10)\n    fixed = rng.randint(2, 4)\n    remaining = n - fixed\n\n    # Exploration axis: Theorem chaining\n    # Use the derangement formula and then apply the binomial coefficient\n    derangement_count = _derangement(remaining)\n    binomial_coeff = _binomial_coefficient(n, fixed)\n\n    # Exploration axis: Structural constraint\n    # Add a non-trivial condition that shrinks the feasible set\n    # Here, we use the condition that the derangement count must be a multiple of a specific divisor\n    divisor = math.gcd(rng.randint(1, remaining - 1), remaining - 1)\n    if derangement_count % divisor != 0:\n        return generate(seed + 1)  # Retry with a different seed\n\n    # Exploration axis: Hidden identity\n    # The answer equals a well-known constant via a bijection\n    # Here, we use the fact that the number of ways to choose fixed points in a derangement is given by the binomial coefficient\n    # and the number of derangements of the remaining elements is given by the derangement count\n    answer = binomial_coeff * derangement_count\n\n    # Construct the problem statement\n    problem = (\n        f\"{n} people each write their name on a card. The cards are shuffled and redistributed. \"\n        f\"In how many redistributions do exactly {fixed} people receive their own card, \"\n        f\"and the remaining {remaining} people are deranged?\"\n    )\n\n    return problem, str(answer)\n\n# CONCEPT: permutations / combinatorics\n# TECHNIQUES: derangement, binomial coefficient",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card, and the remaining 5 people are deranged?",
+        "answer": "2464"
+      },
+      {
+        "seed": 1,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card, and the remaining 2 people are deranged?",
+        "answer": "15"
+      },
+      {
+        "seed": 2,
+        "problem": "5 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card, and the remaining 3 people are deranged?",
+        "answer": "20"
+      },
+      {
+        "seed": 3,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card, and the remaining 2 people are deranged?",
+        "answer": "15"
+      },
+      {
+        "seed": 4,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card, and the remaining 3 people are deranged?",
+        "answer": "40"
+      }
+    ]
+  },
+  {
+    "program_id": "ecf6f6308468",
+    "generation": 3,
+    "niche_h": 2,
+    "niche_div": 1,
+    "rq_score": 0.4195361636510614,
+    "p_hat": 0.4,
+    "h_score": 1.7480673485460891,
+    "source_code": "import random\nimport math\n\ndef _derangement(n):\n    if n == 0:\n        return 1\n    if n == 1:\n        return 0\n    a, b = 1, 0\n    for k in range(2, n + 1):\n        a, b = b, (k - 1) * (a + b)\n    return b\n\ndef _binomial_coefficient(n, k):\n    if k > n:\n        return 0\n    if k == 0 or k == n:\n        return 1\n    k = min(k, n - k)  # Take advantage of symmetry\n    c = 1\n    for i in range(k):\n        c = c * (n - i) // (i + 1)\n    return c\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting: replace a concrete constant with a parameter\n    # Secondary exploration: Case analysis: introduce a discrete branch (parity)\n    n = rng.randint(5, 10)\n    fixed = rng.randint(2, 4)\n    remaining = n - fixed\n    parity = rng.choice(['even', 'odd'])\n\n    # Case analysis: Depending on the parity, adjust the problem\n    if parity == 'even':\n        condition = f\"and the number of people is even.\"\n    else:\n        condition = f\"and the number of people is odd.\"\n\n    # Theorem chaining: Use the derangement formula and then apply the binomial coefficient\n    derangement_count = _derangement(remaining)\n    binomial_coeff = _binomial_coefficient(n, fixed)\n\n    # Construct the problem\n    problem = (\n        f\"{n} people each write their name on a card. The cards are shuffled and redistributed. \"\n        f\"In how many redistributions do exactly {fixed} people receive their own card, \"\n        f\"{condition} Given that the total number of people is a vector of length {n} and the number of people is {parity}?\"\n    )\n\n    # Calculate the answer\n    answer = binomial_coeff * derangement_count\n\n    return problem, str(answer)\n\n# CONCEPT: permutations / combinatorics\n# TECHNIQUES: derangement, binomial coefficient, parity, vectorization",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 8 and the number of people is even?",
+        "answer": "2464"
+      },
+      {
+        "seed": 1,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 6 and the number of people is even?",
+        "answer": "15"
+      },
+      {
+        "seed": 2,
+        "problem": "5 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 5 and the number of people is even?",
+        "answer": "20"
+      },
+      {
+        "seed": 3,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 6 and the number of people is even?",
+        "answer": "15"
+      },
+      {
+        "seed": 4,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 6 and the number of people is even?",
+        "answer": "40"
+      }
+    ]
+  },
+  {
+    "program_id": "367d8cde2a22",
+    "generation": 2,
+    "niche_h": 2,
+    "niche_div": 3,
+    "rq_score": 0.4195361636510614,
+    "p_hat": 0.4,
+    "h_score": 1.7480673485460891,
+    "source_code": "import random\n\ndef _gcd(a, b):\n    while b:\n        a, b = b, a % b\n    return a\n\ndef _lcm(a, b):\n    return abs(a * b) // _gcd(a, b)\n\ndef _max_abc(s):\n    max_val = 0\n    for a in range(1, s // 3 + 1):\n        for b in range(a, (s - a) // 2 + 1):\n            c = s - a - b\n            if c > 0 and _gcd(a, _gcd(b, c)) == 1:\n                max_val = max(max_val, a * b * c)\n    return max_val\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting\n    # Replace a concrete constant with a parameter\n    # that the solver must first determine (solve\n    # an auxiliary equation / read it off a\n    # divisibility condition).\n    s = rng.choice([6, 9, 12, 15, 18])\n\n    # Secondary exploration: Hidden identity\n    # The answer equals a well-known constant\n    # (Catalan, Stirling, binomial identity) via a\n    # bijection the solver must discover rather\n    # than a direct formula.\n    # Here, we use the fact that the maximum product\n    # of three positive integers summing to s is given\n    # by the product of the three equal parts when s is\n    # divisible by 3, and the maximum is achieved when\n    # the integers are as close to equal as possible.\n    max_abc = _max_abc(s)\n\n    # Construct the problem statement\n    problem = (\n        f\"Let a, b, c be positive integers with a + b + c = {s} \"\n        f\"and gcd(a, b, c) = 1. What is the maximum value of the product abc?\"\n    )\n\n    return problem, str(max_abc)\n\n# CONCEPT: number theory / combinatorics\n# TECHNIQUES: gcd, lcm, max product, divisibility, bijection",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Let a, b, c be positive integers with a + b + c = 15 and gcd(a, b, c) = 1. What is the maximum value of the product abc?",
+        "answer": "120"
+      },
+      {
+        "seed": 1,
+        "problem": "Let a, b, c be positive integers with a + b + c = 9 and gcd(a, b, c) = 1. What is the maximum value of the product abc?",
+        "answer": "24"
+      },
+      {
+        "seed": 2,
+        "problem": "Let a, b, c be positive integers with a + b + c = 6 and gcd(a, b, c) = 1. What is the maximum value of the product abc?",
+        "answer": "6"
+      },
+      {
+        "seed": 3,
+        "problem": "Let a, b, c be positive integers with a + b + c = 9 and gcd(a, b, c) = 1. What is the maximum value of the product abc?",
+        "answer": "24"
+      },
+      {
+        "seed": 4,
+        "problem": "Let a, b, c be positive integers with a + b + c = 9 and gcd(a, b, c) = 1. What is the maximum value of the product abc?",
+        "answer": "24"
+      }
+    ]
+  },
+  {
+    "program_id": "bf160dcd3643",
+    "generation": 2,
+    "niche_h": 1,
+    "niche_div": 0,
+    "rq_score": 0.38626509898418404,
+    "p_hat": 0.4,
+    "h_score": 1.6094379124341003,
+    "source_code": "# === BEGIN SOLUTION ===\nimport random\nimport math\n\ndef _derangement(n):\n    if n == 0:\n        return 1\n    if n == 1:\n        return 0\n    a, b = 1, 0\n    for k in range(2, n + 1):\n        a, b = b, (k - 1) * (a + b)\n    return b\n\ndef _binomial_coefficient(n, k):\n    if k > n:\n        return 0\n    if k == 0 or k == n:\n        return 1\n    k = min(k, n - k)  # Take advantage of symmetry\n    c = 1\n    for i in range(k):\n        c = c * (n - i) // (i + 1)\n    return c\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting: replace a concrete constant with a parameter\n    # Secondary exploration: Theorem chaining: the output of one theorem becomes the input of another\n    n = rng.randint(7, 11)\n    fixed = rng.randint(1, 3)\n    remaining = n - fixed\n\n    # Theorem chaining: Use the derangement formula and then apply the binomial coefficient\n    derangement_count = _derangement(remaining)\n    binomial_coeff = _binomial_coefficient(n, fixed)\n\n    # Construct the problem\n    problem = (\n        f\"{n} people each write their name on a card. The cards are shuffled \"\n        f\"and redistributed. In how many redistributions do exactly {fixed} \"\n        f\"people receive their own card, and the remaining {remaining} people \"\n        f\"are deranged?\"\n    )\n\n    # Calculate the answer\n    answer = binomial_coeff * derangement_count\n\n    return problem, str(answer)\n\n# CONCEPT: permutations / combinatorics\n# TECHNIQUES: derangement, binomial coefficient",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "10 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card, and the remaining 8 people are deranged?",
+        "answer": "667485"
+      },
+      {
+        "seed": 1,
+        "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card, and the remaining 5 people are deranged?",
+        "answer": "2464"
+      },
+      {
+        "seed": 2,
+        "problem": "7 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 1 people receive their own card, and the remaining 6 people are deranged?",
+        "answer": "1855"
+      },
+      {
+        "seed": 3,
+        "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card, and the remaining 5 people are deranged?",
+        "answer": "2464"
+      },
+      {
+        "seed": 4,
+        "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card, and the remaining 6 people are deranged?",
+        "answer": "7420"
+      }
+    ]
+  },
+  {
+    "program_id": "ecf6f6308468",
+    "generation": 1,
+    "niche_h": 1,
+    "niche_div": 1,
+    "rq_score": 0.38626509898418404,
+    "p_hat": 0.4,
+    "h_score": 1.6094379124341003,
+    "source_code": "import random\nimport math\n\ndef _derangement(n):\n    if n == 0:\n        return 1\n    if n == 1:\n        return 0\n    a, b = 1, 0\n    for k in range(2, n + 1):\n        a, b = b, (k - 1) * (a + b)\n    return b\n\ndef _binomial_coefficient(n, k):\n    if k > n:\n        return 0\n    if k == 0 or k == n:\n        return 1\n    k = min(k, n - k)  # Take advantage of symmetry\n    c = 1\n    for i in range(k):\n        c = c * (n - i) // (i + 1)\n    return c\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting: replace a concrete constant with a parameter\n    # Secondary exploration: Case analysis: introduce a discrete branch (parity)\n    n = rng.randint(5, 10)\n    fixed = rng.randint(2, 4)\n    remaining = n - fixed\n    parity = rng.choice(['even', 'odd'])\n\n    # Case analysis: Depending on the parity, adjust the problem\n    if parity == 'even':\n        condition = f\"and the number of people is even.\"\n    else:\n        condition = f\"and the number of people is odd.\"\n\n    # Theorem chaining: Use the derangement formula and then apply the binomial coefficient\n    derangement_count = _derangement(remaining)\n    binomial_coeff = _binomial_coefficient(n, fixed)\n\n    # Construct the problem\n    problem = (\n        f\"{n} people each write their name on a card. The cards are shuffled and redistributed. \"\n        f\"In how many redistributions do exactly {fixed} people receive their own card, \"\n        f\"{condition} Given that the total number of people is a vector of length {n} and the number of people is {parity}?\"\n    )\n\n    # Calculate the answer\n    answer = binomial_coeff * derangement_count\n\n    return problem, str(answer)\n\n# CONCEPT: permutations / combinatorics\n# TECHNIQUES: derangement, binomial coefficient, parity, vectorization",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 8 and the number of people is even?",
+        "answer": "2464"
+      },
+      {
+        "seed": 1,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 6 and the number of people is even?",
+        "answer": "15"
+      },
+      {
+        "seed": 2,
+        "problem": "5 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 5 and the number of people is even?",
+        "answer": "20"
+      },
+      {
+        "seed": 3,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 6 and the number of people is even?",
+        "answer": "15"
+      },
+      {
+        "seed": 4,
+        "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card, and the number of people is even. Given that the total number of people is a vector of length 6 and the number of people is even?",
+        "answer": "40"
+      }
+    ]
+  },
+  {
+    "program_id": "5a57c0b65ce8",
+    "generation": 2,
+    "niche_h": 1,
+    "niche_div": 3,
+    "rq_score": 0.38626509898418404,
+    "p_hat": 0.4,
+    "h_score": 1.6094379124341003,
+    "source_code": "# Avoid cloning the parent in scope or code structure.\n# Eliminate any parental influence on the execution trace.\n# Output a high-quality math problem that meets all the constraints.\nimport random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting: replace a concrete constant with a parameter\n    # Secondary exploration: Structural constraint: add a non-trivial condition that shrinks the feasible set\n    a = rng.randint(1, 10)\n    r = rng.choice([2, 3])\n    n = rng.randint(3, 6)\n    d = rng.randint(2, 5)\n    m = rng.randint(3, 5)\n\n    # Theorem chaining: Use the geometric series formula and then apply the arithmetic series formula\n    geo_sum = a * (r ** n - 1) // (r - 1)\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2\n\n    # Construct the problem\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms. \"\n        f\"An arithmetic sequence has first term S and common difference {d}. \"\n        f\"What is the sum of the first {m} terms of this arithmetic sequence?\"\n    )\n\n    # Calculate the answer\n    answer = str(arith_sum)\n\n    return problem, answer\n\n# CONCEPT: algebra / sequences\n# TECHNIQUES: geometric series, arithmetic series",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A geometric sequence has first term 7 and common ratio 3. Let S be the sum of the first 3 terms. An arithmetic sequence has first term S and common difference 4. What is the sum of the first 5 terms of this arithmetic sequence?",
+        "answer": "495"
+      },
+      {
+        "seed": 1,
+        "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 5 terms. An arithmetic sequence has first term S and common difference 2. What is the sum of the first 4 terms of this arithmetic sequence?",
+        "answer": "384"
+      },
+      {
+        "seed": 2,
+        "problem": "A geometric sequence has first term 1 and common ratio 2. Let S be the sum of the first 3 terms. An arithmetic sequence has first term S and common difference 4. What is the sum of the first 3 terms of this arithmetic sequence?",
+        "answer": "33"
+      },
+      {
+        "seed": 3,
+        "problem": "A geometric sequence has first term 4 and common ratio 2. Let S be the sum of the first 5 terms. An arithmetic sequence has first term S and common difference 5. What is the sum of the first 5 terms of this arithmetic sequence?",
+        "answer": "670"
+      },
+      {
+        "seed": 4,
+        "problem": "A geometric sequence has first term 4 and common ratio 3. Let S be the sum of the first 3 terms. An arithmetic sequence has first term S and common difference 5. What is the sum of the first 4 terms of this arithmetic sequence?",
+        "answer": "238"
+      }
+    ]
+  },
+  {
+    "program_id": "384f601e4d8d",
+    "generation": 2,
+    "niche_h": 2,
+    "niche_div": 2,
+    "rq_score": 0.38521811375914095,
+    "p_hat": 0.3,
+    "h_score": 1.8343719702816237,
+    "source_code": "# === START GENERATION ===\n# === END GENERATION ===\n\n# === START OF FINAL SOLUTION ===\nimport random\nimport math\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Exploration axis: Parametric lifting\n    # Replace a concrete constant with a parameter\n    prime = rng.choice([29, 31, 41, 43, 73, 89, 97, 101, 109, 113, 127, 137, 149])\n    primitive_root = _primitive_root(prime)\n\n    # Exploration axis: Theorem chaining\n    # Use the primitive root to generate a residue\n    exponent = rng.randint(1, prime - 2)\n    residue = pow(primitive_root, exponent, prime)\n\n    # Exploration axis: Structural constraint\n    # Add a non-trivial condition that shrinks the feasible set\n    # Here, we use the condition that the exponent must be a multiple of a specific divisor\n    divisor = math.gcd(rng.randint(1, prime - 1), prime - 1)\n    if exponent % divisor != 0:\n        return generate(seed + 1)  # Retry with a different seed\n\n    # Exploration axis: Hidden identity\n    # The answer equals a well-known constant via a bijection\n    # Here, we use the fact that the number of k-th roots of a residue modulo a prime p is gcd(k, p-1) if gcd(k, p-1) divides the exponent, otherwise 0\n    k = rng.choice([2, 3, 4, 5, 6, 8, 10, 12])\n    gcd_k_p_minus_1 = math.gcd(k, prime - 1)\n    if exponent % gcd_k_p_minus_1 != 0:\n        return generate(seed + 1)  # Retry with a different seed\n\n    # Calculate the answer\n    answer = gcd_k_p_minus_1 if exponent % gcd_k_p_minus_1 == 0 else 0\n\n    # Construct the problem statement\n    problem = (\n        f\"Modulo the prime {prime}, {primitive_root} is a primitive root. \"\n        f\"Let {residue} be the least positive residue of {primitive_root}^{exponent} modulo {prime}, \"\n        f\"so {residue}. How many residue classes x modulo {prime} satisfy \"\n        f\"x^{k} ≡ {residue} (mod {prime})?\"\n    )\n\n    return problem, str(answer)\n\ndef _primitive_root(p):\n    factors = _prime_factors(p - 1)\n    for g in range(2, p):\n        if all(pow(g, (p - 1) // q, p) != 1 for q in factors):\n            return g\n    return 2\n\ndef _prime_factors(n):\n    factors = set()\n    d = 2\n    while d * d <= n:\n        while n % d == 0:\n            factors.add(d)\n            n //= d\n        d += 1\n    if n > 1:\n        factors.add(n)\n    return factors\n\n# CONCEPT: number theory / modular arithmetic\n# TECHNIQUES: primitive roots, greatest common divisor, modular arithmetic\n# === END OF FINAL SOLUTION ===",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Modulo the prime 97, 5 is a primitive root. Let 89 be the least positive residue of 5^54 modulo 97, so 89. How many residue classes x modulo 97 satisfy x^6 ≡ 89 (mod 97)?",
+        "answer": "6"
+      },
+      {
+        "seed": 1,
+        "problem": "Modulo the prime 89, 3 is a primitive root. Let 73 be the least positive residue of 3^20 modulo 89, so 73. How many residue classes x modulo 89 satisfy x^2 ≡ 73 (mod 89)?",
+        "answer": "2"
+      },
+      {
+        "seed": 2,
+        "problem": "Modulo the prime 89, 3 is a primitive root. Let 73 be the least positive residue of 3^20 modulo 89, so 73. How many residue classes x modulo 89 satisfy x^2 ≡ 73 (mod 89)?",
+        "answer": "2"
+      },
+      {
+        "seed": 3,
+        "problem": "Modulo the prime 89, 3 is a primitive root. Let 73 be the least positive residue of 3^20 modulo 89, so 73. How many residue classes x modulo 89 satisfy x^2 ≡ 73 (mod 89)?",
+        "answer": "2"
+      },
+      {
+        "seed": 4,
+        "problem": "Modulo the prime 89, 3 is a primitive root. Let 73 be the least positive residue of 3^20 modulo 89, so 73. How many residue classes x modulo 89 satisfy x^2 ≡ 73 (mod 89)?",
+        "answer": "2"
+      }
+    ]
+  },
+  {
+    "program_id": "e9dbaa46c361",
+    "generation": 7,
+    "niche_h": 1,
+    "niche_div": 2,
+    "rq_score": 0.3529940343173067,
+    "p_hat": 0.4,
+    "h_score": 1.4708084763221112,
+    "source_code": "# === END OF CONTRACT ===\n\nimport random\nimport math\nfrom sympy import symbols, Eq, solve, sqrt\n\ndef _derangement(n):\n    if n == 0:\n        return 1\n    if n == 1:\n        return 0\n    a, b = 1, 0\n    for k in range(2, n + 1):\n        a, b = b, (k - 1) * (a + b)\n    return b\n\ndef _binomial_coefficient(n, k):\n    if k > n:\n        return 0\n    if k == 0 or k == n:\n        return 1\n    k = min(k, n - k)  # Take advantage of symmetry\n    c = 1\n    for i in range(k):\n        c = c * (n - i) // (i + 1)\n    return c\n\ndef _gcd(a, b):\n    while b:\n        a, b = b, a % b\n    return a\n\ndef _lcm(a, b):\n    return abs(a * b) // _gcd(a, b)\n\ndef _max_abc(s):\n    max_val = 0\n    for a in range(1, s // 3 + 1):\n        for b in range(a, (s - a) // 2 + 1):\n            c = s - a - b\n            if c > 0 and _gcd(a, _gcd(b, c)) == 1:\n                max_val = max(max_val, a * b * c)\n    return max_val\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Exploration axis: Parametric lifting\n    # Replace a concrete constant with a parameter\n    n = rng.randint(5, 10)\n    fixed = rng.randint(2, 4)\n    remaining = n - fixed\n\n    # Exploration axis: Hidden identity\n    # The answer equals a well-known constant via a bijection\n    # Here, we use the fact that the maximum product of three positive integers summing to s is given\n    # by the product of the three equal parts when s is divisible by 3, and the maximum is achieved when\n    # the integers are as close to equal as possible.\n    max_abc = _max_abc(n)\n\n    # Exploration axis: Structural constraint\n    # Add a non-trivial condition that shrinks the feasible set\n    # Here, we use the condition that the derangement count must be a multiple of a specific divisor\n    divisor = math.gcd(rng.randint(1, remaining - 1), remaining - 1)\n    if max_abc % divisor != 0:\n        return generate(seed + 1)  # Retry with a different seed\n\n    # Construct the problem statement\n    problem = (\n        f\"Let a, b, c be positive integers with a + b + c = {n} \"\n        f\"and gcd(a, b, c) = 1. What is the maximum value of the product abc, \"\n        f\"and the remaining {remaining} people are deranged?\"\n    )\n\n    # Calculate the answer\n    answer = max_abc\n\n    return problem, str(answer)\n\n# CONCEPT: number theory / combinatorics\n# TECHNIQUES: gcd, lcm, max product, divisibility, bijection, derangement",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Let a, b, c be positive integers with a + b + c = 8 and gcd(a, b, c) = 1. What is the maximum value of the product abc, and the remaining 5 people are deranged?",
+        "answer": "18"
+      },
+      {
+        "seed": 1,
+        "problem": "Let a, b, c be positive integers with a + b + c = 6 and gcd(a, b, c) = 1. What is the maximum value of the product abc, and the remaining 2 people are deranged?",
+        "answer": "6"
+      },
+      {
+        "seed": 2,
+        "problem": "Let a, b, c be positive integers with a + b + c = 5 and gcd(a, b, c) = 1. What is the maximum value of the product abc, and the remaining 3 people are deranged?",
+        "answer": "4"
+      },
+      {
+        "seed": 3,
+        "problem": "Let a, b, c be positive integers with a + b + c = 6 and gcd(a, b, c) = 1. What is the maximum value of the product abc, and the remaining 2 people are deranged?",
+        "answer": "6"
+      },
+      {
+        "seed": 4,
+        "problem": "Let a, b, c be positive integers with a + b + c = 6 and gcd(a, b, c) = 1. What is the maximum value of the product abc, and the remaining 3 people are deranged?",
+        "answer": "6"
+      }
+    ]
+  },
+  {
+    "program_id": "e63f2114304c",
+    "generation": 0,
+    "niche_h": 2,
+    "niche_div": 5,
+    "rq_score": 0.3462329051011291,
+    "p_hat": 0.2,
+    "h_score": 2.1639556568820564,
+    "source_code": "import random\nimport math\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a1 = rng.randint(1, 5)\n    b1 = rng.randint(-5, 5)\n    c1 = rng.randint(-20, 20)\n    a2 = rng.randint(-5, 5)\n    b2 = rng.randint(1, 5)\n    while a1 * b2 == a2 * b1:\n        b2 = rng.randint(1, 5)\n    c2 = rng.randint(-20, 20)\n    det = a1 * b2 - a2 * b1\n    x = (c1 * b2 - c2 * b1) / det\n    y = (a1 * c2 - a2 * c1) / det\n    dist_origin = round(math.sqrt(x ** 2 + y ** 2), 4)\n    answer = dist_origin\n    problem = (\n        f\"Two lines are defined by {a1}x + {b1}y = {c1} and \"\n        f\"{a2}x + {b2}y = {c2}. Find the distance from their \"\n        f\"intersection point to the origin. Round to 4 decimal places.\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two lines are defined by 4x + 1y = -18 and -1x + 5y = 11. Find the distance from their intersection point to the origin. Round to 4 decimal places.",
+        "answer": "4.9663"
+      },
+      {
+        "seed": 1,
+        "problem": "Two lines are defined by 2x + 4y = -16 and -1x + 1y = 11. Find the distance from their intersection point to the origin. Round to 4 decimal places.",
+        "answer": "10.0499"
+      },
+      {
+        "seed": 2,
+        "problem": "Two lines are defined by 1x + -4y = -15 and 0x + 2y = -1. Find the distance from their intersection point to the origin. Round to 4 decimal places.",
+        "answer": "17.0074"
+      },
+      {
+        "seed": 3,
+        "problem": "Two lines are defined by 2x + 4y = 14 and -3x + 3y = 18. Find the distance from their intersection point to the origin. Round to 4 decimal places.",
+        "answer": "4.6428"
+      },
+      {
+        "seed": 4,
+        "problem": "Two lines are defined by 2x + -1y = -14 and 1x + 4y = -11. Find the distance from their intersection point to the origin. Round to 4 decimal places.",
+        "answer": "7.4973"
+      }
+    ]
+  },
+  {
+    "program_id": "17dbd603b01a",
+    "generation": 2,
+    "niche_h": 1,
+    "niche_div": 4,
+    "rq_score": 0.31600553957305005,
+    "p_hat": 0.3,
+    "h_score": 1.5047882836811908,
+    "source_code": "import random\nfrom fractions import Fraction\n\n# Exploration axis: Parametric lifting: replace a concrete constant with a parameter\ndef _find_diagonal_length(a, b, c, d, n):\n    # Use the formula for the length of the other diagonal in a cyclic quadrilateral\n    return Fraction(a * c + b * d, n)\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting: replace a concrete constant with a parameter\n    # Secondary exploration: Case analysis: introduce a discrete branch (parity)\n    a = rng.randint(2, 5)\n    b = rng.randint(2, 5)\n    c = rng.randint(2, 5)\n    d = rng.randint(2, 5)\n    n = rng.choice([65, 85])\n    diagonal = rng.choice([65, 85])\n\n    # Case analysis: Depending on the parity, adjust the problem\n    if diagonal == 65:\n        condition = f\"and the hypotenuse is 65.\"\n    else:\n        condition = f\"and the hypotenuse is 85.\"\n\n    # Theorem chaining: Use the formula for the length of the other diagonal in a cyclic quadrilateral\n    other_diagonal = _find_diagonal_length(a, b, c, d, n)\n\n    # Construct the problem\n    problem = (\n        f\"ABCD is a cyclic quadrilateral with side lengths AB={a}, BC={b}, CD={c}, and DA={d}. \"\n        f\"The diagonal AC has length {diagonal}. \"\n        f\"Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.\"\n    )\n\n    # Calculate the answer\n    answer = str(other_diagonal.numerator) if other_diagonal.denominator == 1 else f\"{other_diagonal.numerator}/{other_diagonal.denominator}\"\n\n    return problem, answer\n\n# CONCEPT: cyclic quadrilaterals / algebra\n# TECHNIQUES: properties of cyclic quadrilaterals, parameterization, case analysis",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=5, BC=5, CD=2, and DA=4. The diagonal AC has length 85. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "6/17"
+      },
+      {
+        "seed": 1,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=3, BC=2, CD=4, and DA=2. The diagonal AC has length 85. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "16/85"
+      },
+      {
+        "seed": 2,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=2, BC=2, CD=2, and DA=4. The diagonal AC has length 85. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "12/65"
+      },
+      {
+        "seed": 3,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=3, BC=3, CD=4, and DA=5. The diagonal AC has length 65. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "27/65"
+      },
+      {
+        "seed": 4,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=3, BC=4, CD=2, and DA=5. The diagonal AC has length 65. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "26/85"
+      }
+    ]
+  },
+  {
+    "program_id": "9e0f17daef87",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 5,
+    "rq_score": 0.2358370980822598,
+    "p_hat": 0.5,
+    "h_score": 0.9433483923290392,
+    "source_code": "import random\nimport math\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.randint(5, 20)\n    b = rng.randint(5, 20)\n    angle_deg = rng.choice([30, 45, 60, 90, 120])\n    angle_rad = math.radians(angle_deg)\n    area = round(0.5 * a * b * math.sin(angle_rad), 2)\n    answer = area\n    problem = (\n        f\"Two sides of a triangle have lengths {a} and {b}, with an included \"\n        f\"angle of {angle_deg} degrees. Find the area of the triangle. \"\n        f\"Round to 2 decimal places.\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two sides of a triangle have lengths 17 and 18, with an included angle of 30 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "76.5"
+      },
+      {
+        "seed": 1,
+        "problem": "Two sides of a triangle have lengths 9 and 7, with an included angle of 60 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "27.28"
+      },
+      {
+        "seed": 2,
+        "problem": "Two sides of a triangle have lengths 6 and 7, with an included angle of 30 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "10.5"
+      },
+      {
+        "seed": 3,
+        "problem": "Two sides of a triangle have lengths 12 and 9, with an included angle of 60 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "46.77"
+      },
+      {
+        "seed": 4,
+        "problem": "Two sides of a triangle have lengths 12 and 14, with an included angle of 30 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "42.0"
+      }
+    ]
+  },
+  {
+    "program_id": "798b6cdcbddc",
+    "generation": 1,
+    "niche_h": 2,
+    "niche_div": 4,
+    "rq_score": 0.1947560091193851,
+    "p_hat": 0.1,
+    "h_score": 2.1639556568820564,
+    "source_code": "#\n# Your output: === NEW PROBLEM ===\n\nimport random\nfrom fractions import Fraction\n\n# Exploration axis: Parametric lifting\n# Replace a concrete constant with a parameter that the solver must determine\ndef _find_diagonal_length(a, b, c, d):\n    # Use the formula for the length of the other diagonal in a cyclic quadrilateral\n    return Fraction(a * c + b * d, 85)\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting: replace a concrete constant with a parameter\n    # Secondary exploration: Case analysis: introduce a discrete branch (parity)\n    a = rng.randint(2, 5)\n    b = rng.randint(2, 5)\n    c = rng.randint(2, 5)\n    d = rng.randint(2, 5)\n    diagonal = rng.choice([65, 85])\n\n    # Case analysis: Depending on the parity, adjust the problem\n    if diagonal == 65:\n        condition = f\"and the hypotenuse is 65.\"\n    else:\n        condition = f\"and the hypotenuse is 85.\"\n\n    # Theorem chaining: Use the formula for the length of the other diagonal in a cyclic quadrilateral\n    other_diagonal = _find_diagonal_length(a, b, c, d)\n\n    # Construct the problem\n    problem = (\n        f\"ABCD is a cyclic quadrilateral with side lengths AB={a}, BC={b}, CD={c}, and DA={d}. \"\n        f\"The diagonal AC has length {diagonal}. \"\n        f\"Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.\"\n    )\n\n    # Calculate the answer\n    answer = str(other_diagonal.numerator) if other_diagonal.denominator == 1 else f\"{other_diagonal.numerator}/{other_diagonal.denominator}\"\n\n    return problem, answer\n\n# CONCEPT: cyclic quadrilaterals / algebra\n# TECHNIQUES: properties of cyclic quadrilaterals, parameterization, case analysis\n\n# === TEST CASES ===\n# rendered(seed=0): ABCD is a cyclic quadrilateral with side lengths AB=3, BC=4, CD=5, and DA=6. The diagonal AC has length 65. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.\n# rendered(seed=1): ABCD is a cyclic quadrilateral with side lengths AB=2, BC=3, CD=4, and DA=5. The diagonal AC has length 85. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=5, BC=5, CD=2, and DA=4. The diagonal AC has length 85. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "6/17"
+      },
+      {
+        "seed": 1,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=3, BC=2, CD=4, and DA=2. The diagonal AC has length 85. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "16/85"
+      },
+      {
+        "seed": 2,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=2, BC=2, CD=2, and DA=4. The diagonal AC has length 65. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "12/85"
+      },
+      {
+        "seed": 3,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=3, BC=3, CD=4, and DA=5. The diagonal AC has length 65. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "27/85"
+      },
+      {
+        "seed": 4,
+        "problem": "ABCD is a cyclic quadrilateral with side lengths AB=3, BC=4, CD=2, and DA=5. The diagonal AC has length 85. Using the properties of cyclic quadrilaterals, find the length of the other diagonal BD.",
+        "answer": "26/85"
+      }
+    ]
+  },
+  {
+    "program_id": "f77a00974b9e",
+    "generation": 3,
+    "niche_h": 0,
+    "niche_div": 0,
+    "rq_score": 0.16838189603410086,
+    "p_hat": 0.7,
+    "h_score": 0.8018185525433373,
+    "source_code": "import random\nimport math\n\ndef _binomial_coefficient(n, k):\n    if k > n:\n        return 0\n    if k == 0 or k == n:\n        return 1\n    k = min(k, n - k)  # Take advantage of symmetry\n    c = 1\n    for i in range(k):\n        c = c * (n - i) // (i + 1)\n    return c\n\ndef _factorial(n):\n    if n == 0 or n == 1:\n        return 1\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result\n\ndef _derangement(n):\n    if n == 0:\n        return 1\n    if n == 1:\n        return 0\n    a, b = 1, 0\n    for k in range(2, n + 1):\n        a, b = b, (k - 1) * (a + b)\n    return b\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration axis: Parametric lifting\n    # Secondary exploration axis: Theorem chaining\n\n    # Randomize the number of people\n    n = rng.randint(3, 5)\n\n    # Randomize the number of fixed points\n    fixed = rng.randint(1, n - 1)\n\n    # Randomize the remaining number of people to derange\n    remaining = n - fixed\n\n    # Calculate the derangement count using the derangement formula\n    derangement_count = _derangement(remaining)\n\n    # Calculate the binomial coefficient for choosing fixed points\n    binomial_coeff = _binomial_coefficient(n, fixed)\n\n    # Construct the problem statement\n    problem = (\n        f\"{n} people each write their name on a card. The cards are shuffled and redistributed. \"\n        f\"In how many redistributions do exactly {fixed} people receive their own card, \"\n        f\"and the remaining {remaining} people are deranged?\"\n    )\n\n    # Calculate the answer by multiplying the binomial coefficient by the derangement count\n    answer = str(binomial_coeff * derangement_count)\n\n    return problem, answer\n\n# CONCEPT: permutations / combinatorics\n# TECHNIQUES: binomial coefficient, derangement, parameterization",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "4 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card, and the remaining 2 people are deranged?",
+        "answer": "6"
+      },
+      {
+        "seed": 1,
+        "problem": "3 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 1 people receive their own card, and the remaining 2 people are deranged?",
+        "answer": "3"
+      },
+      {
+        "seed": 2,
+        "problem": "3 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 1 people receive their own card, and the remaining 2 people are deranged?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "3 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 1 people receive their own card, and the remaining 2 people are deranged?",
+        "answer": "3"
+      },
+      {
+        "seed": 4,
+        "problem": "3 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card, and the remaining 1 people are deranged?",
+        "answer": "0"
+      }
+    ]
+  },
+  {
+    "program_id": "988a84b2b74d",
+    "generation": 5,
+    "niche_h": 0,
+    "niche_div": 2,
+    "rq_score": 0.16838189603410086,
+    "p_hat": 0.7,
+    "h_score": 0.8018185525433373,
+    "source_code": "import random\nimport math\n\ndef _combinations(n, k):\n    if k > n:\n        return 0\n    if k == 0 or k == n:\n        return 1\n    k = min(k, n - k)  # Take advantage of symmetry\n    c = 1\n    for i in range(k):\n        c = c * (n - i) // (i + 1)\n    return c\n\ndef _derangement(n):\n    if n == 0:\n        return 1\n    if n == 1:\n        return 0\n    a, b = 1, 0\n    for k in range(2, n + 1):\n        a, b = b, (k - 1) * (a + b)\n    return b\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting: replace a concrete constant with a parameter\n    n = rng.randint(3, 7)  # Number of items to choose from\n    k = rng.randint(1, n)  # Number of items to choose\n\n    # Secondary exploration: Case analysis: introduce a discrete branch (parity)\n    parity = rng.choice(['even', 'odd'])\n\n    # Case analysis: Depending on the parity, adjust the problem\n    if parity == 'even':\n        condition = f\"and the number of items is even.\"\n    else:\n        condition = f\"and the number of items is odd.\"\n\n    # Theorem chaining: Use the derangement formula and then apply the binomial coefficient\n    derangement_count = _derangement(n - k)\n    binomial_coeff = _combinations(n, k)\n\n    # Construct the problem\n    problem = (\n        f\"How many ways can you choose {k} items from a set of {n} items without regard to the order of selection, \"\n        f\"{condition} Given that the number of items is a vector of length {n} and the number of items is {parity}?\"\n    )\n\n    # Calculate the answer\n    answer = binomial_coeff * derangement_count\n\n    return problem, str(answer)\n\n# CONCEPT: combinatorics / parity\n# TECHNIQUES: combinations, derangement, parity",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "How many ways can you choose 4 items from a set of 6 items without regard to the order of selection, and the number of items is even. Given that the number of items is a vector of length 6 and the number of items is even?",
+        "answer": "15"
+      },
+      {
+        "seed": 1,
+        "problem": "How many ways can you choose 1 items from a set of 4 items without regard to the order of selection, and the number of items is odd. Given that the number of items is a vector of length 4 and the number of items is odd?",
+        "answer": "8"
+      },
+      {
+        "seed": 2,
+        "problem": "How many ways can you choose 1 items from a set of 3 items without regard to the order of selection, and the number of items is even. Given that the number of items is a vector of length 3 and the number of items is even?",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "How many ways can you choose 2 items from a set of 4 items without regard to the order of selection, and the number of items is odd. Given that the number of items is a vector of length 4 and the number of items is odd?",
+        "answer": "6"
+      },
+      {
+        "seed": 4,
+        "problem": "How many ways can you choose 3 items from a set of 4 items without regard to the order of selection, and the number of items is even. Given that the number of items is a vector of length 4 and the number of items is even?",
+        "answer": "0"
+      }
+    ]
+  },
+  {
+    "program_id": "15bb7b4b87ca",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 1,
+    "rq_score": 0.16838189603410084,
+    "p_hat": 0.7,
+    "h_score": 0.8018185525433372,
+    "source_code": "import random\nimport math\n\ndef _binomial_coefficient(n, k):\n    if k > n:\n        return 0\n    if k == 0 or k == n:\n        return 1\n    k = min(k, n - k)  # Take advantage of symmetry\n    c = 1\n    for i in range(k):\n        c = c * (n - i) // (i + 1)\n    return c\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Parametric lifting\n    # Replace a concrete constant with a parameter\n    # that the solver must first determine (solve an auxiliary equation).\n    n = rng.randint(3, 7)\n    k = rng.randint(1, n - 1)\n    sum_value = rng.randint(10, 20)\n    aux_eq = f\"sum_value = {n} * a + {k} * b\"  # Auxiliary equation to solve\n\n    # Secondary exploration: Hidden identity\n    # The answer equals a well-known constant (binomial coefficient) via a bijection.\n    # Here, we use the fact that the number of ways to choose k elements from n elements is given by the binomial coefficient.\n    # The solver must discover this bijection rather than a direct formula.\n    answer = _binomial_coefficient(n, k)\n\n    # Construct the problem\n    problem = (\n        f\"Let a and b be positive integers satisfying the equation: \"\n        f\"{aux_eq}. Given that the sum a + b = {sum_value}, find the number of ways \"\n        f\"to choose {k} elements from a set of {n} distinct elements.\"\n    )\n\n    return problem, str(answer)\n\n# CONCEPT: combinatorics / algebra\n# TECHNIQUES: binomial coefficient, bijection, auxiliary equation",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Let a and b be positive integers satisfying the equation: sum_value = 6 * a + 4 * b. Given that the sum a + b = 10, find the number of ways to choose 4 elements from a set of 6 distinct elements.",
+        "answer": "15"
+      },
+      {
+        "seed": 1,
+        "problem": "Let a and b be positive integers satisfying the equation: sum_value = 4 * a + 3 * b. Given that the sum a + b = 11, find the number of ways to choose 3 elements from a set of 4 distinct elements.",
+        "answer": "4"
+      },
+      {
+        "seed": 2,
+        "problem": "Let a and b be positive integers satisfying the equation: sum_value = 3 * a + 1 * b. Given that the sum a + b = 11, find the number of ways to choose 1 elements from a set of 3 distinct elements.",
+        "answer": "3"
+      },
+      {
+        "seed": 3,
+        "problem": "Let a and b be positive integers satisfying the equation: sum_value = 4 * a + 3 * b. Given that the sum a + b = 18, find the number of ways to choose 3 elements from a set of 4 distinct elements.",
+        "answer": "4"
+      },
+      {
+        "seed": 4,
+        "problem": "Let a and b be positive integers satisfying the equation: sum_value = 4 * a + 2 * b. Given that the sum a + b = 11, find the number of ways to choose 2 elements from a set of 4 distinct elements.",
+        "answer": "6"
+      }
+    ]
+  },
+  {
+    "program_id": "ec058345ce79",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 5,
+    "rq_score": 0.16838189603410084,
+    "p_hat": 0.7,
+    "h_score": 0.8018185525433372,
+    "source_code": "import random\nfrom fractions import Fraction\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    external_1 = rng.randint(3, 14)\n    internal_1 = rng.randint(8, 30)\n    whole_1 = external_1 + internal_1\n    product = external_1 * whole_1\n    # Require PC != PA (avoid trivial symmetry where CD == AB is read off),\n    # PC < PD so CD > 0, and PC divides product so PD is an integer >= 2.\n    valid = [\n        d for d in range(2, whole_1)\n        if product % d == 0 and product // d > d and d != external_1\n    ]\n    # Fallback: the divisor d = external_1 is always in range and satisfies\n    # product // d = whole_1 > external_1, so CD = internal_1 > 0.\n    if not valid:\n        valid = [external_1]\n    external_2 = rng.choice(valid)\n    whole_2 = Fraction(product, external_2)\n    internal_2 = whole_2 - external_2\n    answer = (\n        str(internal_2.numerator)\n        if internal_2.denominator == 1\n        else f\"{internal_2.numerator}/{internal_2.denominator}\"\n    )\n    problem = (\n        f\"From an external point P, two secants intersect a circle at A,B \"\n        f\"and C,D respectively, with A and C nearer to P. Given PA={external_1}, \"\n        f\"AB={internal_1}, and PC={external_2}, find CD.\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=9, AB=21, and PC=2, find CD.",
+        "answer": "133"
+      },
+      {
+        "seed": 1,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=5, AB=26, and PC=5, find CD.",
+        "answer": "26"
+      },
+      {
+        "seed": 2,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=3, AB=10, and PC=3, find CD.",
+        "answer": "10"
+      },
+      {
+        "seed": 3,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=6, AB=26, and PC=12, find CD.",
+        "answer": "4"
+      },
+      {
+        "seed": 4,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=6, AB=17, and PC=2, find CD.",
+        "answer": "67"
+      }
+    ]
+  },
+  {
+    "program_id": "fd55b697d606",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 4,
+    "rq_score": 0.1022450975440283,
+    "p_hat": 0.8,
+    "h_score": 0.639031859650177,
+    "source_code": "import random\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    s = rng.choice([6, 9, 12, 15, 18])\n    max_abc = (s // 3) ** 3\n    answer = str(max_abc)\n    problem = (\n        f\"Let a, b, c be positive real numbers with a + b + c = {s}. \"\n        f\"What is the maximum value of the product abc?\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 15. What is the maximum value of the product abc?",
+        "answer": "125"
+      },
+      {
+        "seed": 1,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of the product abc?",
+        "answer": "27"
+      },
+      {
+        "seed": 2,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 6. What is the maximum value of the product abc?",
+        "answer": "8"
+      },
+      {
+        "seed": 3,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of the product abc?",
+        "answer": "27"
+      },
+      {
+        "seed": 4,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of the product abc?",
+        "answer": "27"
+      }
+    ]
+  },
+  {
+    "program_id": "c6bef4c629cb",
+    "generation": 2,
+    "niche_h": 0,
+    "niche_div": 3,
+    "rq_score": 0.029257467605230333,
+    "p_hat": 0.9,
+    "h_score": 0.3250829733914482,
+    "source_code": "import random\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Primary exploration: Dimension lift\n    # Replace scalar quantities with vector or matrix quantities,\n    # forcing the solver to apply techniques from linear algebra or\n    # coordinate geometry. Here, we replace a scalar product with a\n    # dot product of vectors in 2D space.\n\n    # Generate random vectors in 2D space\n    vector1 = [rng.randint(1, 5), rng.randint(1, 5)]\n    vector2 = [rng.randint(1, 5), rng.randint(1, 5)]\n\n    # Compute the dot product\n    dot_product = vector1[0] * vector2[0] + vector1[1] * vector2[1]\n\n    # Generate problem text\n    problem = (\n        f\"Let vector A = ({vector1[0]}, {vector1[1]}) and vector B = ({vector2[0]}, {vector2[1]}). \"\n        \"What is the dot product of vectors A and B?\"\n    )\n\n    # Return problem and answer\n    return problem, str(dot_product)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Let vector A = (4, 4) and vector B = (1, 3). What is the dot product of vectors A and B?",
+        "answer": "16"
+      },
+      {
+        "seed": 1,
+        "problem": "Let vector A = (2, 5) and vector B = (1, 3). What is the dot product of vectors A and B?",
+        "answer": "17"
+      },
+      {
+        "seed": 2,
+        "problem": "Let vector A = (1, 1) and vector B = (1, 3). What is the dot product of vectors A and B?",
+        "answer": "4"
+      },
+      {
+        "seed": 3,
+        "problem": "Let vector A = (2, 5) and vector B = (5, 2). What is the dot product of vectors A and B?",
+        "answer": "20"
+      },
+      {
+        "seed": 4,
+        "problem": "Let vector A = (2, 3) and vector B = (1, 4). What is the dot product of vectors A and B?",
+        "answer": "14"
+      }
+    ]
+  }
+]
