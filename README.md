@@ -30,8 +30,8 @@
 | **ProblemProgram** | 문제 생성 함수를 감싼 진화 단위. `source_code` + 실행 캐시 + `p_hat/h_score/rq_score` 보유 | [program.py](rq_questioner/program.py) |
 | **ProblemInstance** | `ProblemProgram.execute(seed)` 의 반환값. `(problem: str, answer: str)` | [program.py](rq_questioner/program.py) |
 | **p_hat** | Solver가 rollout G번 중 맞춘 비율 (문제의 난이도, 0~1) | [rq_score.py:estimate_pass_rate](rq_questioner/rq_score.py) |
-| **U / H (uncertainty)** | R_Q에 쓰는 불확실성 점수. `entropy`, `gini`, `step_max_entropy`, `vote_entropy`, `semantic_entropy` 중 선택 | [verl_trainer.py](rq_questioner/verl_trainer.py) |
-| **R_Q** | `p_hat · (1 - p_hat) · U` — learnability × uncertainty proxy | [rq_score.py:compute_rq](rq_questioner/rq_score.py) |
+| **H / H_span_max** | R_Q에 쓰는 output entropy 지표. 기본값 `h`는 response token 평균 H, `h_span_max`는 reasoning/sentence span 최대 H | [verl_trainer.py](rq_questioner/verl_trainer.py) |
+| **R_Q** | `p_hat · (1 - p_hat) · H` — learnability × gradient-strength proxy | [rq_score.py:compute_rq](rq_questioner/rq_score.py) |
 | **niche** | `(H_bin, D_bin)` 좌표의 격자 cell. cell당 champion 1개 유지 | [map_elites.py:NicheInfo](rq_questioner/map_elites.py) |
 | **D축** | 기본값은 6개 controlled concept group. `concept_type` 또는 legacy `embedding` PCA 축도 선택 가능 | [map_elites.py](rq_questioner/map_elites.py) |
 | **champion** | 해당 niche 안에서 R_Q 최고인 `ProblemProgram` | [map_elites.py:try_insert](rq_questioner/map_elites.py) |

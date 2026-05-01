@@ -322,7 +322,7 @@ class RQTaskRunner:
             candidates_per_evo=rq_cfg_get("candidates_per_evo", 8),
             max_rounds=rq_cfg_get("max_rounds", 8),
             num_rollouts=rq_cfg_get("num_rollouts", 10),
-            uncertainty_metric=rq_cfg_get("uncertainty_metric", "entropy"),
+            uncertainty_metric=rq_cfg_get("uncertainty_metric", "h"),
             instances_per_program=instances_per_program,
             in_depth_ratio=rq_cfg_get("in_depth_ratio", 0.5),
             crossover_ratio=rq_cfg_get("crossover_ratio", 0.2),

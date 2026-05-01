@@ -192,50 +192,8 @@ def _answers_match(pred: str, gt: str) -> bool:
     return False
 
 
-def _answer_equiv(a: str, b: str, semantic: bool) -> bool:
-    if _normalize(a) == _normalize(b):
-        return True
-    if semantic:
-        result = _sympy_equal(a, b)
-        if result is not None:
-            return result
-    return False
-
-
-def _answer_entropy(pred_answers: list[str | None], semantic: bool = False) -> float:
-    """Entropy over extracted answer classes from multiple rollouts."""
-    if not pred_answers:
-        return 0.0
-
-    classes: list[list[str]] = []
-    for raw in pred_answers:
-        ans = raw if raw is not None else "<invalid>"
-        placed = False
-        for cls in classes:
-            if _answer_equiv(ans, cls[0], semantic=semantic):
-                cls.append(ans)
-                placed = True
-                break
-        if not placed:
-            classes.append([ans])
-
-    total = sum(len(cls) for cls in classes)
-    if total <= 0:
-        return 0.0
-    probs = [len(cls) / total for cls in classes]
-    return -sum(p * np.log(p) for p in probs if p > 0)
-
-
-def _binary_vote_entropy(flags: list[bool]) -> float:
-    if not flags:
-        return 0.0
-    p = sum(bool(f) for f in flags) / len(flags)
-    return -sum(q * np.log(q) for q in (p, 1.0 - p) if q > 0)
-
-
-def _gini_from_entropy_fallback(h_bar: float) -> float:
-    """Fallback impurity proxy when only full-vocab Shannon entropy is available."""
-    return max(0.0, 1.0 - float(np.exp(-max(0.0, h_bar))))
+def _canonical_uncertainty_metric(metric: str) -> str:
+    return metric
 
 
 def _select_uncertainty_score(
@@ -243,24 +201,13 @@ def _select_uncertainty_score(
     h_bar: float,
     flags: list[bool],
     pred_answers: list[str | None],
-    step_max_entropy: float | None = None,
+    h_span_max: float | None = None,
 ) -> tuple[float, dict[str, float]]:
-    vote_u = (
-        _answer_entropy(pred_answers, semantic=False)
-        if pred_answers else _binary_vote_entropy(flags)
-    )
-    semantic_u = (
-        _answer_entropy(pred_answers, semantic=True)
-        if pred_answers else _binary_vote_entropy(flags)
-    )
-    gini_u = _gini_from_entropy_fallback(h_bar)
-    step_u = h_bar if step_max_entropy is None else step_max_entropy
+    metric = _canonical_uncertainty_metric(metric)
+    span_u = h_bar if h_span_max is None else h_span_max
     scores = {
-        "entropy": float(h_bar),
-        "gini": float(gini_u),
-        "vote_entropy": float(vote_u),
-        "semantic_entropy": float(semantic_u),
-        "step_max_entropy": float(step_u),
+        "h": float(h_bar),
+        "h_span_max": float(span_u),
     }
     if metric not in scores:
         raise ValueError(f"Unknown uncertainty_metric: {metric}")
@@ -391,7 +338,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         candidates_per_evo: int = 8,
         max_rounds: int = 8,
         num_rollouts: int = 16,
-        uncertainty_metric: str = "entropy",
+        uncertainty_metric: str = "h",
         instances_per_program: int = 3,
         in_depth_ratio: float = 0.5,
         crossover_ratio: float = 0.2,
@@ -423,9 +370,9 @@ class RQEvolveTrainer(RayPPOTrainer):
         self.candidates_per_evo = candidates_per_evo
         self.max_rounds = max_rounds
         self.num_rollouts = num_rollouts
+        uncertainty_metric = _canonical_uncertainty_metric(uncertainty_metric)
         allowed_uncertainty = {
-            "entropy", "gini", "vote_entropy",
-            "semantic_entropy", "step_max_entropy",
+            "h", "h_span_max",
         }
         if uncertainty_metric not in allowed_uncertainty:
             raise ValueError(f"Unknown uncertainty_metric: {uncertainty_metric}")
@@ -639,7 +586,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             "entropy_std": float(valid.std(unbiased=False).item()),
         }
 
-    def _step_max_entropy_from_response(
+    def _span_max_entropy_from_response(
         self,
         text: str,
         token_ids,
@@ -647,7 +594,13 @@ class RQEvolveTrainer(RayPPOTrainer):
         response_mask: torch.Tensor,
         index: int,
     ) -> float | None:
-        """Max mean token entropy over explicit Step/Final spans in one response."""
+        """Max mean token entropy over reasoning spans in one response.
+
+        Prefer explicit "Step k:" / "Final:" spans. If the model does not
+        format its answer that way, fall back to sentence/newline spans so the
+        metric still captures local uncertainty peaks instead of degenerating
+        to the whole-response mean.
+        """
         valid_mask = response_mask[index].bool().detach().cpu().tolist()
         token_hs_raw = entropies[index].detach().float().cpu().tolist()
         token_hs = [h if m else None for h, m in zip(token_hs_raw, valid_mask)]
@@ -655,9 +608,8 @@ class RQEvolveTrainer(RayPPOTrainer):
         if not valid_hs:
             return None
 
-        boundaries = list(re.finditer(r"(?im)^\s*(?:step\s*\d+|final)\s*:", text or ""))
-        if len(boundaries) < 2 or token_ids is None:
-            return float(sum(valid_hs) / len(valid_hs))
+        text = text or ""
+        explicit_boundaries = list(re.finditer(r"(?im)^\s*(?:step\s*\d+|final)\s*:", text))
 
         try:
             ids = token_ids[index].detach().cpu().tolist()
@@ -684,18 +636,33 @@ class RQEvolveTrainer(RayPPOTrainer):
             token_spans.append((pos, end))
             cursor = end
 
-        starts = [m.start() for m in boundaries] + [len(text)]
-        step_means = []
-        for start, end in zip(starts, starts[1:]):
+        if explicit_boundaries:
+            starts = [m.start() for m in explicit_boundaries] + [len(text)]
+            spans = list(zip(starts, starts[1:]))
+        else:
+            # Sentence/newline fallback. This catches common CoT formats that
+            # use paragraphs or prose sentences instead of "Step n:" markers.
+            spans = []
+            start = 0
+            for match in re.finditer(r"(?:[.!?]\s+|\n+)", text):
+                end = match.end()
+                if end > start:
+                    spans.append((start, end))
+                start = end
+            if start < len(text):
+                spans.append((start, len(text)))
+
+        span_means = []
+        for start, end in spans:
             hs = [
                 h for (tok_start, tok_end), h in zip(token_spans, token_hs)
                 if h is not None and tok_end > start and tok_start < end
             ]
             if hs:
-                step_means.append(sum(hs) / len(hs))
-        if not step_means:
+                span_means.append(sum(hs) / len(hs))
+        if not span_means:
             return float(sum(valid_hs) / len(valid_hs))
-        return float(max(step_means))
+        return float(max(span_means))
 
     def _evolution_step(self) -> dict:
         """
@@ -1257,8 +1224,8 @@ class RQEvolveTrainer(RayPPOTrainer):
         h_tensor = (entropies * mask_f).sum(dim=-1) / mask_f.sum(dim=-1).clamp(min=1)
         h_per_pair: list[float] = h_tensor.cpu().tolist()
         response_token_ids = probe_resp_ids
-        step_max_per_pair = [
-            self._step_max_entropy_from_response(
+        span_max_per_pair = [
+            self._span_max_entropy_from_response(
                 probe_decoded[ci], response_token_ids, entropies, response_mask, ci,
             )
             for ci in range(n_pairs)
@@ -1354,7 +1321,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 h_bar,
                 flags,
                 pred_answers,
-                step_max_per_pair[ci],
+                span_max_per_pair[ci],
             )
             new_rq = new_p_hat * (1.0 - new_p_hat) * uncertainty_score
 
@@ -1705,8 +1672,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             self._entropy_event_fields(entropies, response_mask, ci)
             for ci in range(n_children)
         ]
-        step_max_per_child = [
-            self._step_max_entropy_from_response(
+        span_max_per_child = [
+            self._span_max_entropy_from_response(
                 probe_decoded[ci], probe_resp_ids, entropies, response_mask, ci,
             )
             for ci in range(n_children)
@@ -1831,7 +1798,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 h_bar,
                 flags,
                 pred_answers,
-                step_max_per_child[ci],
+                span_max_per_child[ci],
             )
 
             rq_result = compute_rq_full(flags, uncertainty_score)

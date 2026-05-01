@@ -106,9 +106,9 @@ rq:
   #   embedding    : legacy sentence-embedding PCA axis
   diversity_axis: concept_group
   n_div_bins: 6
-  # H bins are applied to the selected uncertainty_metric U(x). With
-  # vote_entropy/semantic_entropy and num_rollouts=8, max U is log(8)=2.08.
-  # Token entropy/gini ablations may need their own calibration.
+  # H bins are applied to the selected uncertainty_metric. The paper default is
+  # token-level entropy, matching the Fisher/gradient derivation. The supported
+  # metrics are h and h_span_max.
   h_range: [0.0, 2.0]
   # Evolution now runs once per Solver epoch via _pre_epoch_hook() —
   # evolution_pct / evolution_freq are NOT consulted. Kept here only for
@@ -119,9 +119,10 @@ rq:
   # rq.num_rollouts는 R_Q scoring용 rollout 수 (evolution 내부).
   # worker.rollout.n (GRPO group size)과 완전히 독립.
   num_rollouts: 8
-  # R_Q uncertainty U(x):
-  #   entropy, gini, step_max_entropy, vote_entropy, semantic_entropy
-  uncertainty_metric: vote_entropy
+  # R_Q uncertainty metric:
+  #   h           : mean output-token entropy H
+  #   h_span_max : max entropy over output reasoning/sentence spans H_span_max
+  uncertainty_metric: h
   instances_per_program: 16
   crossover_ratio: 0.2
   in_depth_ratio: 0.5

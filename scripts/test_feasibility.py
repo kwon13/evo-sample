@@ -237,94 +237,25 @@ def _answers_match(pred: str, gt: str, tol: float = 1e-2) -> bool:
     return False
 
 
-def _normalize_answer_class(ans: Optional[str]) -> str:
-    if ans is None:
-        return "<invalid>"
-    return _normalize(ans) or "<invalid>"
-
-
-def _answer_equiv(a: str, b: str, semantic: bool) -> bool:
-    if _normalize_answer_class(a) == _normalize_answer_class(b):
-        return True
-    if semantic:
-        result = _sympy_equal(a, b)
-        if result is not None:
-            return result
-    return False
-
-
-def _answer_entropy(pred_answers: list[Optional[str]], semantic: bool = True) -> float:
-    """
-    Answer-class entropy over rollout final answers.
-
-    semantic=False: normalized exact-match vote entropy.
-    semantic=True : normalized exact match + SymPy equivalence classes.
-    """
-    if not pred_answers:
-        return 0.0
-
-    classes: list[list[str]] = []
-    for raw in pred_answers:
-        ans = raw if raw is not None else "<invalid>"
-        placed = False
-        for cls in classes:
-            if _answer_equiv(ans, cls[0], semantic=semantic):
-                cls.append(ans)
-                placed = True
-                break
-        if not placed:
-            classes.append([ans])
-
-    total = sum(len(cls) for cls in classes)
-    if total <= 0:
-        return 0.0
-    probs = [len(cls) / total for cls in classes]
-    return -sum(p * math.log(p) for p in probs if p > 0)
-
-
-def _binary_vote_entropy(flags: list[bool]) -> float:
-    """Mock fallback when answer strings are unavailable."""
-    if not flags:
-        return 0.0
-    p = sum(bool(f) for f in flags) / len(flags)
-    return -sum(q * math.log(q) for q in (p, 1.0 - p) if q > 0)
-
-
 def _select_uncertainty_score(
     metric: str,
     h_bar: float,
     flags: list[bool],
     rollout_logs: list[dict],
 ) -> tuple[float, dict[str, float]]:
-    pred_answers = [log.get("extracted") for log in rollout_logs if log is not None]
     probe_log = next((log for log in rollout_logs if log and log.get("probe")), None)
-
-    vote_u = (
-        _answer_entropy(pred_answers, semantic=False)
-        if pred_answers else _binary_vote_entropy(flags)
-    )
-    semantic_u = (
-        _answer_entropy(pred_answers, semantic=True)
-        if pred_answers else _binary_vote_entropy(flags)
-    )
-    gini_u = (
-        probe_log.get("gini_bar")
-        if probe_log and probe_log.get("gini_bar") is not None
-        else max(0.0, 1.0 - math.exp(-max(0.0, h_bar)))
-    )
-    step_u = (
-        probe_log.get("step_max_entropy")
-        if probe_log and probe_log.get("step_max_entropy") is not None
+    span_u = (
+        probe_log.get("h_span_max")
+        if probe_log and probe_log.get("h_span_max") is not None
         else h_bar
     )
 
     scores = {
-        "entropy": float(h_bar),
-        "gini": float(gini_u),
-        "vote_entropy": float(vote_u),
-        "semantic_entropy": float(semantic_u),
-        "step_max_entropy": float(step_u),
+        "h": float(h_bar),
+        "h_span_max": float(span_u),
     }
+    if metric not in scores:
+        raise ValueError(f"Unknown uncertainty_metric: {metric}")
     return scores[metric], scores
 
 
@@ -415,37 +346,12 @@ class VLLMRunner:
             token_hs.append(h_top)
         return sum(token_hs) / len(token_hs) if token_hs else None
 
-    def _gini_from_logprobs(self, lp_list) -> Optional[float]:
+    def _span_max_entropy_from_completion(self, text: str, token_ids, lp_list) -> Optional[float]:
         """
-        단일 trajectory per-token top-K logprob → 근사 Gini impurity.
+        Approximate H_span_max by aligning decoded tokens to reasoning spans.
 
-        This mirrors _entropy_from_logprobs' top-K + uniform-tail approximation.
-        Exact full-vocab Gini should be measured in the veRL actor forward path.
-        """
-        if not lp_list:
-            return None
-        vocab_size = self.tokenizer.vocab_size or 150000
-        token_ginis = []
-        for step_dict in lp_list:
-            if step_dict is None:
-                continue
-            observed = len(step_dict)
-            if observed == 0:
-                continue
-            probs = [math.exp(lp.logprob) for lp in step_dict.values()]
-            p_rest = max(0.0, 1.0 - sum(probs))
-            sq_mass = sum(p * p for p in probs)
-            if p_rest > 1e-8 and vocab_size > observed:
-                sq_mass += (p_rest * p_rest) / (vocab_size - observed)
-            token_ginis.append(1.0 - sq_mass)
-        return sum(token_ginis) / len(token_ginis) if token_ginis else None
-
-    def _step_max_entropy_from_completion(self, text: str, token_ids, lp_list) -> Optional[float]:
-        """
-        Approximate max step entropy by aligning decoded tokens to regex step spans.
-
-        If the solver does not emit explicit "Step k:" boundaries, this falls
-        back to the trajectory mean entropy so the metric remains usable.
+        Prefer explicit "Step k:" / "Final:" spans. If absent, fall back to
+        sentence/newline spans so prose CoT outputs still expose local peaks.
         """
         token_hs = []
         if not lp_list:
@@ -466,8 +372,9 @@ class VLLMRunner:
         if not valid_hs:
             return None
 
-        boundaries = list(re.finditer(r"(?im)^\s*(?:step\s*\d+|final)\s*:", text))
-        if len(boundaries) < 2 or not token_ids:
+        text = text or ""
+        step_boundaries = list(re.finditer(r"(?im)^\s*(?:step\s*\d+|final)\s*:", text))
+        if not token_ids:
             return sum(valid_hs) / len(valid_hs)
 
         token_spans = []
@@ -484,16 +391,29 @@ class VLLMRunner:
             token_spans.append((pos, end))
             cursor = end
 
-        step_means = []
-        starts = [m.start() for m in boundaries] + [len(text)]
-        for start, end in zip(starts, starts[1:]):
+        if step_boundaries:
+            starts = [m.start() for m in step_boundaries] + [len(text)]
+            spans = list(zip(starts, starts[1:]))
+        else:
+            spans = []
+            start = 0
+            for match in re.finditer(r"(?:[.!?]\s+|\n+)", text):
+                end = match.end()
+                if end > start:
+                    spans.append((start, end))
+                start = end
+            if start < len(text):
+                spans.append((start, len(text)))
+
+        span_means = []
+        for start, end in spans:
             hs = [
                 h for (tok_start, tok_end), h in zip(token_spans, token_hs)
                 if h is not None and tok_end > start and tok_start < end
             ]
             if hs:
-                step_means.append(sum(hs) / len(hs))
-        return max(step_means) if step_means else sum(valid_hs) / len(valid_hs)
+                span_means.append(sum(hs) / len(hs))
+        return max(span_means) if span_means else sum(valid_hs) / len(valid_hs)
 
     # ---- probe (entropy-only) + expand rollout -------------------------
 
@@ -524,16 +444,14 @@ class VLLMRunner:
             pred = _extract_boxed(comp.text)
             correct = _answers_match(pred, inst.answer) if pred else False
             h_bar = self._entropy_from_logprobs(comp.logprobs)
-            gini_bar = self._gini_from_logprobs(comp.logprobs)
-            step_max_entropy = self._step_max_entropy_from_completion(
+            h_span_max = self._span_max_entropy_from_completion(
                 comp.text, getattr(comp, "token_ids", None), comp.logprobs,
             )
             log = {
                 "rollout_idx": 0, "response": comp.text,
                 "extracted": pred, "ground_truth": inst.answer, "correct": correct,
                 "entropy_bar": h_bar,
-                "gini_bar": gini_bar,
-                "step_max_entropy": step_max_entropy,
+                "h_span_max": h_span_max,
                 "probe": True,
             }
             results.append((h_bar, correct, log))
@@ -593,8 +511,7 @@ class VLLMRunner:
             pred = _extract_boxed(comp.text)
             correct = _answers_match(pred, inst.answer) if pred else False
             h_i = self._entropy_from_logprobs(comp.logprobs)
-            gini_i = self._gini_from_logprobs(comp.logprobs)
-            step_i = self._step_max_entropy_from_completion(
+            span_i = self._span_max_entropy_from_completion(
                 comp.text, getattr(comp, "token_ids", None), comp.logprobs,
             )
             flags.append(correct)
@@ -605,8 +522,7 @@ class VLLMRunner:
                 "ground_truth": inst.answer,
                 "correct": correct,
                 "entropy_bar": h_i,
-                "gini_bar": gini_i,
-                "step_max_entropy": step_i,
+                "h_span_max": span_i,
                 "probe": i == 0,
             })
             if h_i is not None:
@@ -897,7 +813,7 @@ def evolution_step(
     crossover_ratio: float = 0.2,
     verbose: bool = True,
     vllm_runner: Optional[VLLMRunner] = None,
-    uncertainty_metric: str = "entropy",
+    uncertainty_metric: str = "h",
 ) -> dict:
     """
     Evolution 1회 실행 — vLLM 사용 시 batched inference.
@@ -1689,12 +1605,11 @@ def main():
     parser.add_argument("--h_threshold", type=float, default=0.1)
     parser.add_argument(
         "--uncertainty_metric",
-        choices=["entropy", "gini", "vote_entropy", "semantic_entropy", "step_max_entropy"],
-        default="entropy",
+        choices=["h", "h_span_max"],
+        default="h",
         help=(
-            "R_Q에 사용할 uncertainty U. entropy는 기존 top-k entropy, "
-            "gini는 top-k+uniform-tail 근사, vote/semantic_entropy는 rollout "
-            "boxed answer 분포, step_max_entropy는 Step/Final span별 최대 entropy."
+            "R_Q에 사용할 uncertainty. h는 mean output-token entropy, "
+            "h_span_max는 Step/Final 또는 sentence/newline span별 최대 entropy."
         ),
     )
     parser.add_argument("--crossover_ratio", type=float, default=0.2,
@@ -2016,7 +1931,7 @@ def main():
             )[:5]:
                 print(f"    {count:3d}  {reason}")
 
-        metric_names = ["entropy", "gini", "vote_entropy", "semantic_entropy", "step_max_entropy"]
+        metric_names = ["h", "h_span_max"]
         metric_summary = {}
         for name in metric_names:
             vals = []
@@ -2194,6 +2109,5 @@ if __name__ == "__main__":
 # python scripts/test_feasibility.py --vllm_model Qwen/Qwen3-8B-Base  --tp 4 --n_evo 50 --n_h_bins 10 --n_div_bins 10
 # python scripts/test_feasibility.py --model gpt-4o-mini --n_evo 10 --candidates 4  (API mutation only)
 
-# python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric semantic_entropy
-# python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric gini
-# python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric step_max_entropy
+# python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric h
+# python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric h_span_max
