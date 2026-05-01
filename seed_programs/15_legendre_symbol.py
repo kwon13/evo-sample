@@ -1,5 +1,8 @@
 import random
 
+CONCEPT_TYPE = "number_theory.legendre_symbol"
+CONCEPT_GROUP = "number_theory"
+
 
 def _legendre(a, p):
     """Euler's criterion. Returns -1, 0, or 1."""

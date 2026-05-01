@@ -7,6 +7,7 @@ import hashlib
 import numpy as np
 from typing import Optional
 from dataclasses import dataclass, field
+from .concepts import CONCEPT_GROUPS, CONCEPT_TYPES
 from .program import ProblemProgram
 
 
@@ -24,12 +25,16 @@ class NicheInfo:
 
 class MAPElitesGrid:
     """
-    MAP-Elites grid: H bins (entropy/difficulty) x D bins (embedding diversity).
+    MAP-Elites grid: H bins (entropy/difficulty) x D bins (diversity).
 
-    D-axis uses sentence embedding + PCA (연구 제안서 3.3절):
-      - all-MiniLM-L6-v2 로 문제 텍스트를 embed
-      - PC1 값을 균등 분할하여 D bin 결정
-      - fit_diversity_axis()로 seed 문제 기반 초기 fitting
+    Primary D-axis modes:
+      - concept_group: 7 controlled mathematical domains declared by
+        top-level program constants.
+      - concept_type: 15 controlled fine-grained skill/template labels.
+
+    Legacy/ablation mode:
+      - embedding: all-MiniLM-L6-v2 problem embeddings projected onto PC1,
+        fitted from seed problem texts via fit_diversity_axis().
 
     Parent selection: ε-greedy + rank-based UCB (Monte Carlo Elites 방식):
       - ε 확률로 uniform random (exploration)
@@ -45,7 +50,16 @@ class MAPElitesGrid:
         epsilon: float = 0.3,
         seed_ids: list[str] | None = None,
         candidate_reservoir_size: int = 4,
+        diversity_axis: str = "embedding",
     ):
+        if diversity_axis not in {"embedding", "concept_group", "concept_type"}:
+            raise ValueError(f"Unknown diversity_axis: {diversity_axis}")
+        self.diversity_axis = diversity_axis
+        if diversity_axis == "concept_group":
+            n_div_bins = len(CONCEPT_GROUPS)
+        elif diversity_axis == "concept_type":
+            n_div_bins = len(CONCEPT_TYPES)
+
         self.n_h_bins = n_h_bins
         self.n_div_bins = n_div_bins
         self.h_range = h_range
@@ -137,6 +151,39 @@ class MAPElitesGrid:
         bin_idx = int((proj - self._pca_min) / bin_width)
         return min(bin_idx, self.n_div_bins - 1)
 
+    def program_to_div_bin(
+        self,
+        program: ProblemProgram,
+        problem_text: str = "",
+    ) -> int:
+        """Map a program to a diversity bin under the configured D-axis."""
+        if self.diversity_axis == "concept_group":
+            group = program.get_concept_group()
+            if group in CONCEPT_GROUPS:
+                return CONCEPT_GROUPS.index(group)
+            raise ValueError(
+                f"Invalid concept group for concept_group axis: {group!r} "
+                f"(program_id={program.program_id})"
+            )
+
+        if self.diversity_axis == "concept_type":
+            concept_type = program.get_concept_type()
+            if concept_type in CONCEPT_TYPES:
+                return CONCEPT_TYPES.index(concept_type)
+            raise ValueError(
+                f"Invalid concept type for concept_type axis: {concept_type!r} "
+                f"(program_id={program.program_id})"
+            )
+
+        return self.problem_to_div_bin(problem_text)
+
+    def diversity_labels(self) -> list[str]:
+        if self.diversity_axis == "concept_group":
+            return list(CONCEPT_GROUPS)
+        if self.diversity_axis == "concept_type":
+            return list(CONCEPT_TYPES)
+        return [f"D{i}" for i in range(self.n_div_bins)]
+
     # ------------------------------------------------------------------
     # H-axis
     # ------------------------------------------------------------------
@@ -220,11 +267,11 @@ class MAPElitesGrid:
         rq_score: float = 0.0,
     ) -> bool:
         """
-        문제 텍스트 embedding 기반으로 D bin 결정 후 삽입 시도.
+        configured D-axis 기반으로 D bin 결정 후 삽입 시도.
         빈 niche이거나 기존 champion보다 R_Q가 높으면 삽입.
         """
         h_bin = self.h_to_bin(h_value)
-        div_bin = self.problem_to_div_bin(problem_text)
+        div_bin = self.program_to_div_bin(program, problem_text)
 
         program.niche_h = h_bin
         program.niche_div = div_bin
@@ -358,7 +405,7 @@ class MAPElitesGrid:
         old_h_bin = program.niche_h
         old_div_bin = program.niche_div
         new_h_bin = self.h_to_bin(new_h_value)
-        new_div_bin = self.problem_to_div_bin(problem_text)
+        new_div_bin = self.program_to_div_bin(program, problem_text)
 
         if new_h_bin == old_h_bin and new_div_bin == old_div_bin:
             program.h_score = new_h_value

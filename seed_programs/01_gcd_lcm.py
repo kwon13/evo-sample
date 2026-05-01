@@ -1,6 +1,9 @@
 import random
 import math
 
+CONCEPT_TYPE = "number_theory.gcd_lcm_sync"
+CONCEPT_GROUP = "number_theory"
+
 
 def generate(seed):
     rng = random.Random(seed)

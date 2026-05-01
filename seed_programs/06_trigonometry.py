@@ -1,6 +1,9 @@
 import random
 import math
 
+CONCEPT_TYPE = "geometry.trig_area"
+CONCEPT_GROUP = "geometry"
+
 
 def generate(seed):
     rng = random.Random(seed)

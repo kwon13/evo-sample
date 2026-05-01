@@ -1,5 +1,8 @@
 import random
 
+CONCEPT_TYPE = "sequence.geometric_to_arithmetic_sum"
+CONCEPT_GROUP = "sequence"
+
 
 def generate(seed):
     rng = random.Random(seed)
