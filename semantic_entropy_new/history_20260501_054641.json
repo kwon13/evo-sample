@@ -1,0 +1,62 @@
+[
+  {
+    "step": 1,
+    "coverage": 0.25,
+    "mean_rq": 0.24719675112635414,
+    "max_rq": 0.41433029534265864,
+    "champions": 9,
+    "attempted": 64,
+    "inserted": 1,
+    "rounds": 8,
+    "skipped_execute": 54,
+    "skipped_h": 0
+  },
+  {
+    "step": 2,
+    "coverage": 0.25,
+    "mean_rq": 0.26883630769517475,
+    "max_rq": 0.41433029534265864,
+    "champions": 9,
+    "attempted": 64,
+    "inserted": 1,
+    "rounds": 8,
+    "skipped_execute": 54,
+    "skipped_h": 0
+  },
+  {
+    "step": 3,
+    "coverage": 0.3055555555555556,
+    "mean_rq": 0.22925198789096368,
+    "max_rq": 0.41433029534265864,
+    "champions": 11,
+    "attempted": 64,
+    "inserted": 2,
+    "rounds": 8,
+    "skipped_execute": 53,
+    "skipped_h": 0
+  },
+  {
+    "step": 4,
+    "coverage": 0.3055555555555556,
+    "mean_rq": 0.246566724676396,
+    "max_rq": 0.41433029534265864,
+    "champions": 11,
+    "attempted": 64,
+    "inserted": 2,
+    "rounds": 8,
+    "skipped_execute": 53,
+    "skipped_h": 0
+  },
+  {
+    "step": 5,
+    "coverage": 0.3055555555555556,
+    "mean_rq": 0.24703998543170538,
+    "max_rq": 0.4195361636510614,
+    "champions": 11,
+    "attempted": 64,
+    "inserted": 1,
+    "rounds": 8,
+    "skipped_execute": 54,
+    "skipped_h": 0
+  }
+]

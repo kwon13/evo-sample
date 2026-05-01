@@ -1,0 +1,431 @@
+[
+  {
+    "program_id": "e04623914bdf",
+    "generation": 1,
+    "niche_h": 2,
+    "niche_div": 4,
+    "rq_score": 0.4195361636510614,
+    "p_hat": 0.4,
+    "h_score": 1.7480673485460891,
+    "concept_type": "geometry.power_of_point_secants",
+    "concept_group": "geometry",
+    "source_code": "import random\n#\n\nCONCEPT_TYPE = \"geometry.power_of_point_secants\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Parametric lifting: Replace concrete lengths with variables\n    external_1 = rng.randint(3, 14)\n    internal_1 = rng.randint(8, 30)\n    whole_1 = external_1 + internal_1\n    product = external_1 * whole_1\n\n    # Case analysis: Introduce a condition that forces case enumeration\n    # (e.g., whether CD is an integer or not)\n    is_integer = rng.choice([True, False])\n    if is_integer:\n        # Case 1: CD is an integer\n        valid = [d for d in range(2, whole_1) if product % d == 0 and product // d > d and d != external_1]\n        if not valid:\n            valid = [external_1]\n        external_2 = rng.choice(valid)\n        whole_2 = product // external_2\n        internal_2 = whole_2 - external_2\n        answer = internal_2\n    else:\n        # Case 2: CD is not an integer (force the solver to handle fractions)\n        external_2 = Fraction(product, rng.randint(2, whole_1))\n        whole_2 = external_1 * whole_1 / external_2\n        internal_2 = whole_2 - external_1\n        answer = internal_2\n\n    problem = (\n        f\"From an external point P, two secants intersect a circle at A,B \"\n        f\"and C,D respectively, with A and C nearer to P. Given PA={external_1}, \"\n        f\"AB={internal_1}, and PC={external_2}, find CD.\"\n    )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=9, AB=21, and PC=5, find CD.",
+        "answer": "49"
+      },
+      {
+        "seed": 1,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=5, AB=26, and PC=5, find CD.",
+        "answer": "26"
+      },
+      {
+        "seed": 2,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=3, AB=10, and PC=3, find CD.",
+        "answer": "10"
+      },
+      {
+        "seed": 3,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=6, AB=26, and PC=4, find CD.",
+        "answer": "44"
+      },
+      {
+        "seed": 4,
+        "problem": "From an external point P, two secants intersect a circle at A,B and C,D respectively, with A and C nearer to P. Given PA=6, AB=17, and PC=3, find CD.",
+        "answer": "43"
+      }
+    ]
+  },
+  {
+    "program_id": "794db2028cf8",
+    "generation": 3,
+    "niche_h": 1,
+    "niche_div": 1,
+    "rq_score": 0.38626509898418404,
+    "p_hat": 0.4,
+    "h_score": 1.6094379124341003,
+    "concept_type": "combinatorics.committee_count",
+    "concept_group": "combinatorics",
+    "source_code": "import random\nimport math\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    n_men = rng.randint(5, 10)\n    n_women = rng.randint(5, 10)\n    committee = rng.randint(4, 8)\n    total = n_men + n_women\n    all_ways = math.comb(total, committee)\n    all_men = math.comb(n_men, committee) if n_men >= committee else 0\n    all_women = math.comb(n_women, committee) if n_women >= committee else 0\n    answer = all_ways - all_men - all_women\n    problem = (\n        f\"A club has {n_men} men and {n_women} women. A committee of \"\n        f\"{committee} people is to be formed with at least 2 men and \"\n        f\"at least 2 women. How many ways can this committee be formed?\"\n    )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A club has 8 men and 8 women. A committee of 4 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "1680"
+      },
+      {
+        "seed": 1,
+        "problem": "A club has 6 men and 9 women. A committee of 4 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "1224"
+      },
+      {
+        "seed": 2,
+        "problem": "A club has 5 men and 5 women. A committee of 4 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "200"
+      },
+      {
+        "seed": 3,
+        "problem": "A club has 6 men and 9 women. A committee of 8 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "6426"
+      },
+      {
+        "seed": 4,
+        "problem": "A club has 6 men and 7 women. A committee of 4 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "665"
+      }
+    ]
+  },
+  {
+    "program_id": "d520561b52e1",
+    "generation": 3,
+    "niche_h": 2,
+    "niche_div": 1,
+    "rq_score": 0.3852181137591409,
+    "p_hat": 0.3,
+    "h_score": 1.8343719702816235,
+    "concept_type": "combinatorics.committee_count",
+    "concept_group": "combinatorics",
+    "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    n_men = rng.randint(5, 9)\n    n_women = rng.randint(5, 9)\n    committee = rng.randint(4, 6)\n    total = n_men + n_women\n    all_ways = math.comb(total, committee)\n    all_men = math.comb(n_men, committee) if n_men >= committee else 0\n    all_women = math.comb(n_women, committee) if n_women >= committee else 0\n    answer = all_ways - all_men - all_women\n    problem = (\n        f\"A club has {n_men} men and {n_women} women. A committee of \"\n        f\"{committee} people is to be formed with at least 2 men and \"\n        f\"at least 2 women. How many ways can this committee be formed?\"\n    )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A club has 8 men and 8 women. A committee of 4 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "1680"
+      },
+      {
+        "seed": 1,
+        "problem": "A club has 6 men and 9 women. A committee of 4 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "1224"
+      },
+      {
+        "seed": 2,
+        "problem": "A club has 5 men and 5 women. A committee of 4 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "200"
+      },
+      {
+        "seed": 3,
+        "problem": "A club has 6 men and 9 women. A committee of 6 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "4920"
+      },
+      {
+        "seed": 4,
+        "problem": "A club has 6 men and 7 women. A committee of 4 people is to be formed with at least 2 men and at least 2 women. How many ways can this committee be formed?",
+        "answer": "665"
+      }
+    ]
+  },
+  {
+    "program_id": "6937dcfa43ad",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 2,
+    "rq_score": 0.3744665341942488,
+    "p_hat": 0.5,
+    "h_score": 1.4978661367769952,
+    "concept_type": "sequence.geometric_to_arithmetic_sum",
+    "concept_group": "sequence",
+    "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.randint(2, 5)\n    r = rng.choice([2, 3])\n    n = rng.randint(4, 8)\n    geo_sum = a * (r ** n - 1) // (r - 1)\n    d = rng.randint(5, 20)\n    m = rng.randint(5, 10)\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2\n    answer = arith_sum\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms. \"\n        f\"An arithmetic sequence has first term S and common difference {d}. \"\n        f\"What is the sum of the first {m} terms of this arithmetic sequence?\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 13. What is the sum of the first 9 terms of this arithmetic sequence?",
+        "answer": "2268"
+      },
+      {
+        "seed": 1,
+        "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 8. What is the sum of the first 8 terms of this arithmetic sequence?",
+        "answer": "1736"
+      },
+      {
+        "seed": 2,
+        "problem": "A geometric sequence has first term 2 and common ratio 2. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 16. What is the sum of the first 6 terms of this arithmetic sequence?",
+        "answer": "420"
+      },
+      {
+        "seed": 3,
+        "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 20. What is the sum of the first 10 terms of this arithmetic sequence?",
+        "answer": "2790"
+      },
+      {
+        "seed": 4,
+        "problem": "A geometric sequence has first term 3 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 17. What is the sum of the first 8 terms of this arithmetic sequence?",
+        "answer": "1436"
+      }
+    ]
+  },
+  {
+    "program_id": "12565c8946de",
+    "generation": 0,
+    "niche_h": 2,
+    "niche_div": 0,
+    "rq_score": 0.3462329051011291,
+    "p_hat": 0.2,
+    "h_score": 2.1639556568820564,
+    "concept_type": "number_theory.crt_count",
+    "concept_group": "number_theory",
+    "source_code": "import random\nimport math\n\nCONCEPT_TYPE = \"number_theory.crt_count\"\nCONCEPT_GROUP = \"number_theory\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    m1 = rng.choice([3, 5, 7])\n    m2 = rng.choice([4, 7, 9, 11])\n    while m2 == m1 or math.gcd(m1, m2) != 1:\n        m2 = rng.choice([4, 7, 9, 11, 13])\n    r1 = rng.randint(1, m1 - 1)\n    r2 = rng.randint(1, m2 - 1)\n    product = m1 * m2\n    base = next(n for n in range(1, product + 1) if n % m1 == r1 and n % m2 == r2)\n    upper = rng.randint(200, 500)\n    count = 0\n    val = base\n    while val <= upper:\n        count += 1\n        val += product\n    answer = count\n    problem = (\n        f\"A positive integer N leaves a remainder of {r1} when divided by {m1}, \"\n        f\"and a remainder of {r2} when divided by {m2}. \"\n        f\"How many such integers N exist in the range 1 to {upper}, inclusive?\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 5, and a remainder of 5 when divided by 11. How many such integers N exist in the range 1 to 461, inclusive?",
+        "answer": "9"
+      },
+      {
+        "seed": 1,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 1 when divided by 4. How many such integers N exist in the range 1 to 453, inclusive?",
+        "answer": "38"
+      },
+      {
+        "seed": 2,
+        "problem": "A positive integer N leaves a remainder of 1 when divided by 3, and a remainder of 2 when divided by 4. How many such integers N exist in the range 1 to 286, inclusive?",
+        "answer": "24"
+      },
+      {
+        "seed": 3,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 5 when divided by 7. How many such integers N exist in the range 1 to 442, inclusive?",
+        "answer": "21"
+      },
+      {
+        "seed": 4,
+        "problem": "A positive integer N leaves a remainder of 2 when divided by 3, and a remainder of 2 when divided by 4. How many such integers N exist in the range 1 to 279, inclusive?",
+        "answer": "24"
+      }
+    ]
+  },
+  {
+    "program_id": "b96f4fcdf225",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 3,
+    "rq_score": 0.3398091751662516,
+    "p_hat": 0.5,
+    "h_score": 1.3592367006650063,
+    "concept_type": "linear_algebra.linear_system_sum",
+    "concept_group": "algebra",
+    "source_code": "import random\n\nCONCEPT_TYPE = \"linear_algebra.linear_system_sum\"\nCONCEPT_GROUP = \"algebra\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    x_sol = rng.randint(-5, 5)\n    y_sol = rng.randint(-5, 5)\n    z_sol = rng.randint(-5, 5)\n    coeffs = [[rng.randint(-3, 3) for _ in range(3)] for _ in range(3)]\n    for _ in range(100):\n        a = coeffs\n        det = (a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])\n               - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])\n               + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]))\n        if det != 0:\n            break\n        coeffs = [[rng.randint(-3, 3) for _ in range(3)] for _ in range(3)]\n    else:\n        coeffs = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]\n    rhs = [sum(coeffs[i][j] * [x_sol, y_sol, z_sol][j] for j in range(3)) for i in range(3)]\n    answer = x_sol + y_sol + z_sol\n    eqs = []\n    for i in range(3):\n        c = coeffs[i]\n        eqs.append(f\"{c[0]}x + {c[1]}y + {c[2]}z = {rhs[i]}\")\n    problem = (\n        f\"Solve the system: {eqs[0]}, {eqs[1]}, {eqs[2]}. Find x + y + z.\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Solve the system: 1x + -2y + 1z = -6, -2x + -1y + -2z = 7, 3x + -3y + 1z = -5. Find x + y + z.",
+        "answer": "-3"
+      },
+      {
+        "seed": 1,
+        "problem": "Solve the system: -1x + -3y + 0z = -9, 3x + 0y + 0z = -9, 2x + 0y + 3z = -18. Find x + y + z.",
+        "answer": "-3"
+      },
+      {
+        "seed": 2,
+        "problem": "Solve the system: -1x + 3y + -2z = 1, 2x + 3y + 2z = -30, 3x + -1y + -1z = -7. Find x + y + z.",
+        "answer": "-13"
+      },
+      {
+        "seed": 3,
+        "problem": "Solve the system: -2x + -1y + 1z = 3, 0x + 2y + 1z = 11, -3x + 1y + -3z = 1. Find x + y + z.",
+        "answer": "5"
+      },
+      {
+        "seed": 4,
+        "problem": "Solve the system: 2x + 0y + 0z = -4, -2x + -3y + -3z = 19, -3x + 0y + 1z = 2. Find x + y + z.",
+        "answer": "-7"
+      }
+    ]
+  },
+  {
+    "program_id": "89389b8aef3b",
+    "generation": 0,
+    "niche_h": 1,
+    "niche_div": 0,
+    "rq_score": 0.3051518161382544,
+    "p_hat": 0.5,
+    "h_score": 1.2206072645530175,
+    "concept_type": "number_theory.gcd_lcm_sync",
+    "concept_group": "number_theory",
+    "source_code": "import random\nimport math\n\nCONCEPT_TYPE = \"number_theory.gcd_lcm_sync\"\nCONCEPT_GROUP = \"number_theory\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.choice([6, 8, 10, 12, 15])\n    b = rng.choice([9, 12, 14, 16, 18, 20])\n    c = rng.choice([10, 15, 20, 21, 24, 25, 30])\n    lcm_ab = a * b // math.gcd(a, b)\n    lcm_abc = lcm_ab * c // math.gcd(lcm_ab, c)\n    hours = rng.choice([6, 8, 10, 12])\n    total_minutes = hours * 60\n    answer = total_minutes // lcm_abc\n    problem = (\n        f\"Three bus routes depart from the same station. Route A departs every \"\n        f\"{a} minutes, Route B every {b} minutes, and Route C every {c} minutes. \"\n        f\"If all three depart simultaneously at 6:00 AM, how many more times \"\n        f\"will all three depart together within the next {hours} hours?\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Three bus routes depart from the same station. Route A departs every 12 minutes, Route B every 16 minutes, and Route C every 10 minutes. If all three depart simultaneously at 6:00 AM, how many more times will all three depart together within the next 10 hours?",
+        "answer": "2"
+      },
+      {
+        "seed": 1,
+        "problem": "Three bus routes depart from the same station. Route A departs every 8 minutes, Route B every 18 minutes, and Route C every 30 minutes. If all three depart simultaneously at 6:00 AM, how many more times will all three depart together within the next 6 hours?",
+        "answer": "1"
+      },
+      {
+        "seed": 2,
+        "problem": "Three bus routes depart from the same station. Route A departs every 6 minutes, Route B every 9 minutes, and Route C every 10 minutes. If all three depart simultaneously at 6:00 AM, how many more times will all three depart together within the next 10 hours?",
+        "answer": "6"
+      },
+      {
+        "seed": 3,
+        "problem": "Three bus routes depart from the same station. Route A departs every 8 minutes, Route B every 18 minutes, and Route C every 24 minutes. If all three depart simultaneously at 6:00 AM, how many more times will all three depart together within the next 8 hours?",
+        "answer": "6"
+      },
+      {
+        "seed": 4,
+        "problem": "Three bus routes depart from the same station. Route A departs every 8 minutes, Route B every 14 minutes, and Route C every 10 minutes. If all three depart simultaneously at 6:00 AM, how many more times will all three depart together within the next 12 hours?",
+        "answer": "2"
+      }
+    ]
+  },
+  {
+    "program_id": "0c78f003a3e7",
+    "generation": 3,
+    "niche_h": 0,
+    "niche_div": 1,
+    "rq_score": 0.1022450975440283,
+    "p_hat": 0.8,
+    "h_score": 0.639031859650177,
+    "concept_type": "combinatorics.committee_count",
+    "concept_group": "combinatorics",
+    "source_code": "import random\nimport math\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    n_men = rng.randint(2, 7)\n    n_women = rng.randint(3, 8)\n    committee = rng.randint(3, 5)\n    total = n_men + n_women\n    all_ways = math.comb(total, committee)\n    all_men = math.comb(n_men, committee) if n_men >= committee else 0\n    all_women = math.comb(n_women, committee) if n_women >= committee else 0\n    answer = all_ways - all_men - all_women\n    problem = (\n        f\"A club has {n_men} men and {n_women} women. A committee of \"\n        f\"{committee} people is to be formed with at least 1 man and \"\n        f\"at least 1 woman. How many ways can this committee be formed?\"\n    )\n\n    return problem, str(answer)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "A club has 5 men and 6 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. How many ways can this committee be formed?",
+        "answer": "135"
+      },
+      {
+        "seed": 1,
+        "problem": "A club has 3 men and 7 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. How many ways can this committee be formed?",
+        "answer": "84"
+      },
+      {
+        "seed": 2,
+        "problem": "A club has 2 men and 3 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. How many ways can this committee be formed?",
+        "answer": "9"
+      },
+      {
+        "seed": 3,
+        "problem": "A club has 3 men and 7 women. A committee of 5 people is to be formed with at least 1 man and at least 1 woman. How many ways can this committee be formed?",
+        "answer": "231"
+      },
+      {
+        "seed": 4,
+        "problem": "A club has 3 men and 5 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. How many ways can this committee be formed?",
+        "answer": "45"
+      }
+    ]
+  },
+  {
+    "program_id": "0325d9ffea62",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 4,
+    "rq_score": 0.029257467605230333,
+    "p_hat": 0.9,
+    "h_score": 0.3250829733914482,
+    "concept_type": "geometry.trig_area",
+    "concept_group": "geometry",
+    "source_code": "import random\nimport math\n\nCONCEPT_TYPE = \"geometry.trig_area\"\nCONCEPT_GROUP = \"geometry\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.randint(5, 20)\n    b = rng.randint(5, 20)\n    angle_deg = rng.choice([30, 45, 60, 90, 120])\n    angle_rad = math.radians(angle_deg)\n    area = round(0.5 * a * b * math.sin(angle_rad), 2)\n    answer = area\n    problem = (\n        f\"Two sides of a triangle have lengths {a} and {b}, with an included \"\n        f\"angle of {angle_deg} degrees. Find the area of the triangle. \"\n        f\"Round to 2 decimal places.\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Two sides of a triangle have lengths 17 and 18, with an included angle of 30 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "76.5"
+      },
+      {
+        "seed": 1,
+        "problem": "Two sides of a triangle have lengths 9 and 7, with an included angle of 60 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "27.28"
+      },
+      {
+        "seed": 2,
+        "problem": "Two sides of a triangle have lengths 6 and 7, with an included angle of 30 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "10.5"
+      },
+      {
+        "seed": 3,
+        "problem": "Two sides of a triangle have lengths 12 and 9, with an included angle of 60 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "46.77"
+      },
+      {
+        "seed": 4,
+        "problem": "Two sides of a triangle have lengths 12 and 14, with an included angle of 30 degrees. Find the area of the triangle. Round to 2 decimal places.",
+        "answer": "42.0"
+      }
+    ]
+  },
+  {
+    "program_id": "aa3bfbc2bbd5",
+    "generation": 0,
+    "niche_h": 0,
+    "niche_div": 5,
+    "rq_score": 0.029257467605230333,
+    "p_hat": 0.9,
+    "h_score": 0.3250829733914482,
+    "concept_type": "inequality.am_gm_product",
+    "concept_group": "inequality",
+    "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    s = rng.choice([6, 9, 12, 15, 18])\n    max_abc = (s // 3) ** 3\n    answer = str(max_abc)\n    problem = (\n        f\"Let a, b, c be positive real numbers with a + b + c = {s}. \"\n        f\"What is the maximum value of the product abc?\"\n    )\n\n    return problem, str(answer)\n",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 15. What is the maximum value of the product abc?",
+        "answer": "125"
+      },
+      {
+        "seed": 1,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of the product abc?",
+        "answer": "27"
+      },
+      {
+        "seed": 2,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 6. What is the maximum value of the product abc?",
+        "answer": "8"
+      },
+      {
+        "seed": 3,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of the product abc?",
+        "answer": "27"
+      },
+      {
+        "seed": 4,
+        "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of the product abc?",
+        "answer": "27"
+      }
+    ]
+  },
+  {
+    "program_id": "1e454d4e8380",
+    "generation": 1,
+    "niche_h": 0,
+    "niche_div": 3,
+    "rq_score": 0.0,
+    "p_hat": 0.0,
+    "h_score": 0.5004024235381879,
+    "concept_type": "algebra.quadratic_vieta_reciprocal",
+    "concept_group": "algebra",
+    "source_code": "import random\nfrom fractions import Fraction\n\nCONCEPT_TYPE = \"algebra.quadratic_vieta_reciprocal\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Parametric lifting: introduce a parameter that the solver must determine\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n    c = rng.randint(1, 10)\n\n    # Create a quadratic equation with roots r1 and r2\n    r1 = a\n    r2 = b\n    p = r1 * r2\n    s = r1 + r2\n\n    # The problem asks for the sum of the reciprocals of the roots\n    # which is given by Vieta's formula: 1/r1 + 1/r2 = -b/a\n    reciprocal_sum = Fraction(-s, p)\n\n    # Construct the problem text\n    problem = (\n        f\"The quadratic equation x^2 + {b}x + {c} = 0 has two real roots. \"\n        f\"Find the sum of the reciprocals of its roots (1/r1 + 1/r2) as a fraction.\"\n    )\n\n    return problem, str(reciprocal_sum)",
+    "problems": [
+      {
+        "seed": 0,
+        "problem": "The quadratic equation x^2 + 7x + 1 = 0 has two real roots. Find the sum of the reciprocals of its roots (1/r1 + 1/r2) as a fraction.",
+        "answer": "-2/7"
+      },
+      {
+        "seed": 1,
+        "problem": "The quadratic equation x^2 + 10x + 2 = 0 has two real roots. Find the sum of the reciprocals of its roots (1/r1 + 1/r2) as a fraction.",
+        "answer": "-13/30"
+      },
+      {
+        "seed": 2,
+        "problem": "The quadratic equation x^2 + 2x + 2 = 0 has two real roots. Find the sum of the reciprocals of its roots (1/r1 + 1/r2) as a fraction.",
+        "answer": "-3/2"
+      },
+      {
+        "seed": 3,
+        "problem": "The quadratic equation x^2 + 10x + 9 = 0 has two real roots. Find the sum of the reciprocals of its roots (1/r1 + 1/r2) as a fraction.",
+        "answer": "-7/20"
+      },
+      {
+        "seed": 4,
+        "problem": "The quadratic equation x^2 + 5x + 2 = 0 has two real roots. Find the sum of the reciprocals of its roots (1/r1 + 1/r2) as a fraction.",
+        "answer": "-9/20"
+      }
+    ]
+  }
+]
