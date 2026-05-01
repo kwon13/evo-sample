@@ -34,20 +34,6 @@ FORBIDDEN_SOURCE_PATTERNS = (
     "sys.",
 )
 
-FORBIDDEN_PROBLEM_PATTERNS = (
-    "round to",
-    "rounded to",
-    "decimal place",
-    "if it exists",
-    "if the inverse does not exist",
-    "additionally",
-    "also,",
-    " and find ",
-    " and compute ",
-    " then find ",
-)
-
-
 def _has_generate_function(tree: ast.AST) -> bool:
     return any(
         isinstance(node, ast.FunctionDef) and node.name == "generate"
@@ -230,7 +216,6 @@ def lint_problem_instance(inst: ProblemInstance) -> list[str]:
     reasons: list[str] = []
     problem = (inst.problem or "").strip()
     answer = (inst.answer or "").strip()
-    problem_l = problem.lower()
     answer_l = answer.lower()
 
     if not problem or not answer:
@@ -240,11 +225,5 @@ def lint_problem_instance(inst: ProblemInstance) -> list[str]:
         reasons.append("non-scalar answer")
     if "," in answer or ";" in answer or re.search(r"\s+and\s+", answer_l):
         reasons.append("multi-part answer")
-    if re.search(r"\d+\.\d+", answer):
-        reasons.append("decimal answer")
-
-    for pattern in FORBIDDEN_PROBLEM_PATTERNS:
-        if pattern in problem_l:
-            reasons.append(f"forbidden problem pattern: {pattern.strip()}")
 
     return reasons

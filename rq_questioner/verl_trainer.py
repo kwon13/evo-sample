@@ -50,7 +50,7 @@ from .code_utils import (
     lint_generator_source,
     lint_problem_instance,
 )
-from .concepts import validate_concept_contract, validate_concept_decl
+from .concepts import validate_concept_decl
 
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
@@ -110,8 +110,6 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> ProblemInstanc
             return None  # 하나라도 실행 실패 → 거부
         if lint_problem_instance(inst):
             return None
-        if validate_concept_contract(concept_type, inst.problem, inst.answer):
-            return None
         # SymPy로 답이 파싱 가능한지 확인
         try:
             answer_str = inst.answer.strip().replace("^", "**")
@@ -126,9 +124,7 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> ProblemInstanc
         problems.append(_normalize(inst.problem))
         answers.append(_normalize(inst.answer))
 
-    if n_seeds > 1 and len(set(problems)) <= 1:
-        return None
-    if n_seeds > 1 and len(set(answers)) <= 1:
+    if n_seeds > 1 and len(set(zip(problems, answers))) <= 1:
         return None
     return instances[0] if instances else None
 

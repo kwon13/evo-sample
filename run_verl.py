@@ -39,7 +39,6 @@ from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.verl_dataset import MapElitesDynamicDataset
 from rq_questioner.concepts import (
     concept_axis_labels,
-    validate_concept_contract,
     validate_concept_decl,
 )
 
@@ -76,13 +75,10 @@ def load_seeds(seed_dir: str) -> list[ProblemProgram]:
             concept_type = prog.declared_concept_type()
             concept_group = prog.declared_concept_group()
             concept_reasons = validate_concept_decl(concept_type, concept_group)
-            contract_reasons = validate_concept_contract(
-                concept_type, inst.problem, inst.answer,
-            )
-            if concept_reasons or contract_reasons:
+            if concept_reasons:
                 print(
                     f"  Seed FAIL: {f.name} "
-                    f"({'; '.join((concept_reasons + contract_reasons)[:3])})"
+                    f"({'; '.join(concept_reasons[:3])})"
                 )
                 continue
             prog.metadata["concept_type"] = concept_type

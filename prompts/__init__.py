@@ -8,7 +8,6 @@ from .mutation import (
     build_score_feedback,
     build_few_shot_examples,
     build_execution_feedback,
-    has_anti_pattern,
 )
 
 from .solver import (

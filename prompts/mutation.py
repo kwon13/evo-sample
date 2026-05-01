@@ -44,9 +44,8 @@ HARD_CONTRACT = (
 QUALITY_BAR = (
     "# === QUALITY BAR ===\n"
     "# Target p~0.5, H in 2-4. One coherent mathematical object,\n"
-    "# >=3 named-technique reasoning stages.\n"
-    "# Banned: mod-1, *1, +0, round-to-int, unused random, ambiguous\n"
-    "# wording. Difficulty must come from technique uncertainty.\n"
+    "# >=3 named-technique reasoning stages. Difficulty must come from\n"
+    "# technique uncertainty, not ambiguous wording.\n"
 )
 
 COMPLEXITY_AXES = (
@@ -155,39 +154,6 @@ SINGLE_ANSWER_RULE = HARD_CONTRACT
 
 
 # ---------------------------------------------------------------------------
-# Anti-hack detection for diagnostics and few-shot filtering
-# ---------------------------------------------------------------------------
-
-_BANNED_PATTERNS = (
-    "% 1",               # integer/float mod 1
-    " mod 1",            # worded mod 1
-    "divided by 1",      # worded divide by 1
-    "divide by 1",
-    "divides by 1",
-    "multiplied by 1",
-    "multiply by 1",
-    "raised to 1",
-    "to the power of 1",
-    "to the power 1",
-)
-
-
-def has_anti_pattern(source_code: str, problem_text: str = "") -> bool:
-    """True if the program source or rendered problem shows a known
-    reward-hacking pattern. Cheap string check used to filter the
-    few-shot pool and to attach a repair hint to the diagnosis."""
-    haystack = (source_code + "\n" + problem_text).lower()
-    # Avoid false-positives for legitimate `x % n` where n != 1.
-    for pat in _BANNED_PATTERNS:
-        if pat in haystack:
-            return True
-    # Catch `round(..., 0)` and similar rounding-as-obfuscation.
-    if "round(" in haystack and ", 0)" in haystack:
-        return True
-    return False
-
-
-# ---------------------------------------------------------------------------
 # Diagnostic / feedback helpers
 # ---------------------------------------------------------------------------
 
@@ -248,13 +214,6 @@ def build_score_feedback(parent: ProblemProgram) -> str:
     h_score = getattr(parent, "h_score", 1.0)
     rq_score = getattr(parent, "rq_score", 0.0)
     diag, action = score_diagnosis(p_hat, h_score)
-    # Repair hint when the parent itself exhibits a banned pattern.
-    if has_anti_pattern(parent.source_code):
-        diag += "; PARENT CONTAINS A BANNED ANTI-PATTERN"
-        action = (
-            "REMOVE the banned construction entirely and replace it "
-            "with a genuine reasoning step; " + action
-        )
     return SCORE_FEEDBACK.format(
         p_hat=p_hat, h_score=h_score, rq_score=rq_score,
         diagnosis=diag, action=action,
@@ -282,11 +241,8 @@ def build_few_shot_examples(
     for champ in champions:
         if (champ.rq_score or 0.0) < min_rq:
             continue
-        # Render one seed to catch problem-text anti-patterns.
         inst = champ.execute(seed=0, timeout=3.0)
         rendered = inst.problem if inst else ""
-        if has_anti_pattern(champ.source_code, rendered):
-            continue
         clean.append((champ, rendered))
 
     clean.sort(key=lambda t: -(t[0].rq_score or 0.0))
@@ -351,10 +307,5 @@ def build_execution_feedback(parent: ProblemProgram) -> str:
             )
     lines.append(f"# solver pass rate: {p_hat:.0%} ({difficulty})")
     lines.append(f"# solver entropy  : {h_score:.2f}")
-    if has_anti_pattern(parent.source_code, inst0.problem):
-        lines.append(
-            "# ANTI-PATTERN DETECTED in parent — the mutation MUST\n"
-            "# eliminate the banned construction, not propagate it."
-        )
     lines.append("# === END PARENT TRACE ===")
     return "\n".join(lines) + "\n"

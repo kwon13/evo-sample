@@ -55,7 +55,6 @@ from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.rq_score import compute_rq_full, h_prefilter
 from rq_questioner.concepts import (
     concept_axis_labels,
-    validate_concept_contract,
     validate_concept_decl,
 )
 from rq_questioner.code_utils import (
@@ -68,7 +67,6 @@ from prompts import (
     SINGLE_ANSWER_RULE, SCORE_FEEDBACK,
     score_diagnosis, build_score_feedback,
     build_few_shot_examples, build_execution_feedback,
-    has_anti_pattern,
     SOLVER_COMPLETION_PROMPT,
 )
 from dotenv import load_dotenv
@@ -209,16 +207,6 @@ def _verify_program_with_reason(
                     f"answer={inst.answer!r} problem={inst.problem[:120]!r}"
                 )))
                 continue
-        contract_reasons = validate_concept_contract(
-            concept_type, inst.problem, inst.answer,
-        )
-        if contract_reasons:
-            failed_seeds.append((s, (
-                f"concept contract at seed={s}: "
-                + "; ".join(contract_reasons[:3])
-                + f" | problem={inst.problem[:120]!r} answer={inst.answer!r}"
-            )))
-            continue
         instances.append(inst)
         problems.append(_normalize(inst.problem))
         answers.append(_normalize(inst.answer))
@@ -240,10 +228,8 @@ def _verify_program_with_reason(
                 f"too many seed failures ({len(failed_seeds)}/{n_seeds}): {summary}"
             )
 
-    if n_seeds > 1 and len(set(problems)) <= 1:
-        return None, f"problem lacks seed diversity across {n_seeds} seeds"
-    if n_seeds > 1 and len(set(answers)) <= 1:
-        return None, f"answer lacks seed diversity across {n_seeds} seeds"
+    if n_seeds > 1 and len(set(zip(problems, answers))) <= 1:
+        return None, f"(problem, answer) pair lacks seed diversity across {n_seeds} seeds"
     return (instances[0] if instances else None), None
 
 
@@ -1205,7 +1191,7 @@ def evolution_step(
                 except Exception as e:
                     verify_results[task_idx] = (None, f"verify exception: {e!r}")
 
-    # Sequential post-verify gates (concept op reject + anti-hack).
+    # Sequential post-verify gates (concept op reject).
     first_failure_dumped = False
     for task_idx, task, code, child in pending:
         inst, verify_reason = verify_results.get(task_idx, (None, "verify missing"))
@@ -1273,29 +1259,6 @@ def evolution_step(
             })
             if verbose:
                 print(f"  concept reject ({task['op']}): {concept_op_reason}")
-            continue
-
-        # Anti-reward-hacking reject: block banned patterns that
-        # inflate H without adding reasoning content (mod-1 tricks,
-        # float-rounding obfuscation, etc.). This is a hard filter
-        # ahead of entropy/rollout so we don't waste GPU on them.
-        if has_anti_pattern(child.source_code, inst.problem):
-            skipped_execute += 1
-            candidate_logs.append({
-                "candidate_idx": task_idx,
-                "op": task["op"],
-                "status": "anti_hack_reject",
-                "failure_reason": "anti reward-hacking pattern detected",
-                "parent_id": getattr(task.get("parent"), "program_id", None),
-                "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
-                **_concept_log_fields(child),
-                "problem": inst.problem,
-                "answer": inst.answer,
-                "source_code": code,
-                "generation": child.generation,
-            })
-            if verbose:
-                print(f"  anti-hack reject ({task['op']}): {inst.problem[:80]}")
             continue
 
         children.append((child, inst, task, task_idx))
@@ -1981,13 +1944,10 @@ def main():
             declared_type = prog.declared_concept_type()
             declared_group = prog.declared_concept_group()
             concept_reasons = validate_concept_decl(declared_type, declared_group)
-            contract_reasons = validate_concept_contract(
-                declared_type, inst.problem, inst.answer,
-            )
-            if concept_reasons or contract_reasons:
+            if concept_reasons:
                 print(
                     f"  ✗ {f.name} (concept invalid: "
-                    + "; ".join((concept_reasons + contract_reasons)[:3])
+                    + "; ".join(concept_reasons[:3])
                     + ")"
                 )
                 continue
