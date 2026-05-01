@@ -30,10 +30,10 @@
 | **ProblemProgram** | 문제 생성 함수를 감싼 진화 단위. `source_code` + 실행 캐시 + `p_hat/h_score/rq_score` 보유 | [program.py](rq_questioner/program.py) |
 | **ProblemInstance** | `ProblemProgram.execute(seed)` 의 반환값. `(problem: str, answer: str)` | [program.py](rq_questioner/program.py) |
 | **p_hat** | Solver가 rollout G번 중 맞춘 비율 (문제의 난이도, 0~1) | [rq_score.py:estimate_pass_rate](rq_questioner/rq_score.py) |
-| **H (entropy)** | Solver 출력 분포의 불확실성. vLLM=token logprobs, Ollama=semantic entropy | [rq_score.py](rq_questioner/rq_score.py) |
-| **R_Q** | `p_hat · (1 - p_hat) · H` — learnability × gradient-strength proxy | [rq_score.py:compute_rq](rq_questioner/rq_score.py) |
+| **U / H (uncertainty)** | R_Q에 쓰는 불확실성 점수. `entropy`, `gini`, `step_max_entropy`, `vote_entropy`, `semantic_entropy` 중 선택 | [verl_trainer.py](rq_questioner/verl_trainer.py) |
+| **R_Q** | `p_hat · (1 - p_hat) · U` — learnability × uncertainty proxy | [rq_score.py:compute_rq](rq_questioner/rq_score.py) |
 | **niche** | `(H_bin, D_bin)` 좌표의 격자 cell. cell당 champion 1개 유지 | [map_elites.py:NicheInfo](rq_questioner/map_elites.py) |
-| **D축** | 문제 텍스트의 sentence-embedding을 PCA로 떨어뜨린 다양성 축 | [map_elites.py:fit_diversity_axis](rq_questioner/map_elites.py) |
+| **D축** | 기본값은 6개 controlled concept group. `concept_type` 또는 legacy `embedding` PCA 축도 선택 가능 | [map_elites.py](rq_questioner/map_elites.py) |
 | **champion** | 해당 niche 안에서 R_Q 최고인 `ProblemProgram` | [map_elites.py:try_insert](rq_questioner/map_elites.py) |
 | **in-depth / in-breadth / crossover** | 3가지 mutation 연산자 | [prompts/mutation.py](prompts/mutation.py) |
 
@@ -107,9 +107,9 @@ evo-sample/
 [시작]
   │
   ├─ Phase 0. 초기화
-  │    ├─ seed_programs/*.py 17개 로드 → ProblemProgram 생성
+  │    ├─ seed_programs/*.py 로드 → ProblemProgram 생성
   │    ├─ 각 seed 를 execute(seed=0..4) 해서 샘플 문제 뽑음
-  │    ├─ sentence-embedding PCA로 D축 fitting
+  │    ├─ controlled concept D축 사용 (embedding 축이면 PCA fitting)
   │    └─ 각 seed 에 대해 H, p_hat 측정 → R_Q → MAPElitesGrid.try_insert()
   │
   └─ Phase 1~N. Evolution Loop (--n_evo step)
@@ -179,8 +179,11 @@ runner.batch_entropy(instances)             -> list[float | None]
 - `ProblemInstance(problem: str, answer: str)`
 
 ### [rq_questioner/map_elites.py](rq_questioner/map_elites.py)
-- `MAPElitesGrid(n_h_bins, n_div_bins, h_range, ucb_c, epsilon)`
-  - `fit_diversity_axis(problems)` — sentence-embedding PCA로 D축 학습
+- `MAPElitesGrid(n_h_bins, n_div_bins, h_range, ucb_c, epsilon, diversity_axis)`
+  - `diversity_axis="concept_group"` — 6개 controlled category D축
+  - `diversity_axis="concept_type"` — 15개 fine-grained template D축
+  - `diversity_axis="embedding"` — sentence-embedding PCA legacy D축
+  - `fit_diversity_axis(problems)` — embedding 축에서만 seed 문제로 PCA 학습
   - `sample_parent() / sample_two_parents()` — ε-greedy + rank-UCB
   - `try_insert(program, h_value, problem_text, rq_score) -> bool` — 동일 niche champion과 비교 후 교체
   - `stats() -> {coverage, num_champions, mean_rq, max_rq, hard_champions, ...}`

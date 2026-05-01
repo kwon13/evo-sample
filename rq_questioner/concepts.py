@@ -14,7 +14,7 @@ CONCEPT_TYPE_TO_GROUP: dict[str, str] = {
     "geometry.trig_area": "geometry",
     "geometry.line_intersection_distance": "geometry",
     "sequence.linear_recurrence": "sequence",
-    "linear_algebra.linear_system_sum": "linear_algebra",
+    "linear_algebra.linear_system_sum": "algebra",
     "inequality.am_gm_product": "inequality",
     "number_theory.kth_root_mod_prime": "number_theory",
     "combinatorics.derangement_fixed_points": "combinatorics",
@@ -29,7 +29,6 @@ CONCEPT_GROUPS: tuple[str, ...] = (
     "sequence",
     "algebra",
     "geometry",
-    "linear_algebra",
     "inequality",
 )
 
@@ -177,4 +176,3 @@ def concept_prompt_block() -> str:
         "# CONCEPT_GROUP must exactly match the prefix/domain group of\n"
         "# CONCEPT_TYPE. Do not invent new labels or synonyms.\n"
     )
-
