@@ -92,6 +92,59 @@ def _candidate_blocks(text: str) -> list[tuple[int, str]]:
     return blocks
 
 
+_CONCEPT_TYPE_ASSIGN_RE = re.compile(
+    r"""^(\s*CONCEPT_TYPE\s*(?::\s*[^=]+)?=\s*)(['"])([^'"]+)\2""",
+    re.M,
+)
+_CONCEPT_GROUP_ASSIGN_RE = re.compile(
+    r"""^(\s*CONCEPT_GROUP\s*(?::\s*[^=]+)?=\s*)(['"])([^'"]+)\2""",
+    re.M,
+)
+
+
+def _rescue_concept_labels(source: str) -> str:
+    """Repair near-miss CONCEPT_TYPE/GROUP literals via fuzzy match.
+
+    Rewrites a single unknown CONCEPT_TYPE assignment to its nearest
+    whitelisted neighbour (and re-aligns CONCEPT_GROUP if needed). Skip
+    the rescue when multiple unknowns appear or no neighbour is close
+    enough — better to fail loudly downstream than silently mislabel.
+    """
+    from .concepts import (
+        CONCEPT_TYPES, CONCEPT_TYPE_TO_GROUP, nearest_concept_type,
+    )
+
+    type_match = _CONCEPT_TYPE_ASSIGN_RE.search(source)
+    if type_match is None:
+        return source
+    declared_type = type_match.group(3).strip()
+    if declared_type in CONCEPT_TYPES:
+        return source
+    rescued = nearest_concept_type(declared_type)
+    if rescued is None:
+        return source
+
+    new_type_assign = (
+        f"{type_match.group(1)}{type_match.group(2)}{rescued}{type_match.group(2)}"
+    )
+    source = (
+        source[:type_match.start()] + new_type_assign + source[type_match.end():]
+    )
+    expected_group = CONCEPT_TYPE_TO_GROUP.get(rescued)
+    if expected_group:
+        group_match = _CONCEPT_GROUP_ASSIGN_RE.search(source)
+        if group_match and group_match.group(3) != expected_group:
+            new_group_assign = (
+                f"{group_match.group(1)}{group_match.group(2)}{expected_group}{group_match.group(2)}"
+            )
+            source = (
+                source[:group_match.start()]
+                + new_group_assign
+                + source[group_match.end():]
+            )
+    return source
+
+
 def extract_generator_code(text: str) -> str | None:
     """Extract the best AST-valid Python source defining ``generate``.
 
@@ -126,6 +179,7 @@ def extract_generator_code(text: str) -> str | None:
             r"^\s*import\s+random\b", parsed, re.M
         ):
             parsed = "import random\n" + parsed
+        parsed = _rescue_concept_labels(parsed)
         scored.append((score, pos, parsed))
 
     if not scored:

@@ -31,86 +31,35 @@ from rq_questioner.program import ProblemProgram
 # Static rubric blocks (concatenated into every mutation template)
 # ---------------------------------------------------------------------------
 
-SINGLE_ANSWER_RULE = (
+HARD_CONTRACT = (
     "# === HARD CONTRACT ===\n"
-    "# 1. Function name MUST be `generate(seed)`.\n"
-    "# 2. MUST return `(problem_text: str, answer: str)`.\n"
-    "# 3. `answer` MUST be one exact SymPy-parseable scalar: integer,\n"
-    "#    fraction like '3/7', or expression like 'sqrt(2)'.\n"
-    "#    Do not return lists, ranges, words like 'undefined', or\n"
-    "#    answers that require decimal rounding.\n"
-    "# 4. Use inverse construction: choose the mathematical answer or\n"
-    "#    invariant first, then write the problem around it.\n"
-    "# 5. Use only stdlib math/fractions/itertools/functools/random;\n"
-    "#    sympy is optional. No file I/O or network calls.\n"
-    "# 6. Every seed in {{0,1,2,3,4}} must terminate fast and be valid.\n"
+    "# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n"
+    "# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n"
+    "#   No lists/ranges, no words, no decimals needing rounding.\n"
+    "# - Inverse construction: pick the answer first, then the problem.\n"
+    "# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n"
+    "# - Every seed in 0..4 must terminate fast and be valid.\n"
 )
 
-ANTI_REWARD_HACK_RULES = (
-    "# === ANTI-REWARD-HACKING RULES ===\n"
-    "# Ban: mod 1, divide/multiply by 1, add/subtract 0, arbitrary\n"
-    "# decimal rounding, unrelated arithmetic chains, unused random\n"
-    "# variables, constant-answer generators, and ambiguous wording.\n"
-    "# Hard problems should create uncertainty about the correct\n"
-    "# technique, not about what the question means.\n"
-)
-
-REAL_DIFFICULTY_RUBRIC = (
-    "# === WHAT 'HARD' MEANS HERE ===\n"
-    "# A good R_Q program produces problems with:\n"
-    "#   (a) a single coherent mathematical OBJECT — an equation,\n"
-    "#       a combinatorial configuration, a number-theoretic\n"
-    "#       condition, a geometric figure, a recurrence, ...;\n"
-    "#   (b) a reasoning trace of at least 3 stages, each applying\n"
-    "#       a NAMED technique (Vieta, CRT, inclusion-exclusion,\n"
-    "#       Fermat's little thm, generating functions, modular\n"
-    "#       inverse, telescoping, Newton's identities, AM-GM, ...);\n"
-    "#   (c) an exact closed-form answer derived from (a) by (b),\n"
-    "#       not by ad-hoc concatenation of operations;\n"
-    "#   (d) genuine solver uncertainty from *which technique to\n"
-    "#       apply*, not from ambiguous wording.\n"
+QUALITY_BAR = (
+    "# === QUALITY BAR ===\n"
+    "# Target p~0.5, H in 2-4. One coherent mathematical object,\n"
+    "# >=3 named-technique reasoning stages.\n"
+    "# Banned: mod-1, *1, +0, round-to-int, unused random, ambiguous\n"
+    "# wording. Difficulty must come from technique uncertainty.\n"
 )
 
 COMPLEXITY_AXES = (
-    "# === EXPLORATION AXES (pick 1 primary axis, optionally 1 secondary) ===\n"
-    "# 1. Parametric lifting: replace a concrete constant with a\n"
-    "#    parameter the solver must first DETERMINE (solve an\n"
-    "#    auxiliary equation / read it off a divisibility cond.).\n"
-    "# 2. Case analysis: introduce a discrete branch (parity,\n"
-    "#    congruence class, sign, sub-interval) that forces the\n"
-    "#    solver to enumerate cases and combine partial answers.\n"
-    "# 3. Theorem chaining: the output of one theorem becomes the\n"
-    "#    input of another (Vieta -> Newton's identity -> evaluate\n"
-    "#    a symmetric polynomial; CRT -> modular inverse -> solve).\n"
-    "# 4. Structural constraint: add a non-trivial condition that\n"
-    "#    shrinks the feasible set (integrality, coprimality,\n"
-    "#    monotonicity, convexity, divisibility).\n"
-    "# 5. Dimension / domain lift: scalar -> vector, Z -> Z[i],\n"
-    "#    real -> complex, 2D figure -> 3D figure, deterministic\n"
-    "#    -> probabilistic.\n"
-    "# 6. Hidden identity: the answer equals a well-known constant\n"
-    "#    (Catalan, Stirling, binomial identity) via a bijection\n"
-    "#    the solver must discover rather than a direct formula.\n"
+    "# === AXES (pick 1, optionally 1 more) ===\n"
+    "# 1. Parametric lifting (solve aux equation for a constant)\n"
+    "# 2. Case analysis (parity / congruence / sign branch)\n"
+    "# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n"
+    "# 4. Structural constraint (integrality, coprimality, monotone)\n"
+    "# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n"
+    "# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n"
 )
 
 CONCEPT_DECLARATION = concept_prompt_block()
-
-MUTATION_METHOD_RULE = (
-    "# === MUTATION METHOD ===\n"
-    "# 1. Preserve exploration: change the mathematical structure,\n"
-    "#    not just names or numeric ranges.\n"
-    "# 2. If the parent contains a banned pattern, remove it entirely.\n"
-    "# 3. Prefer one coherent object over several loosely chained tasks.\n"
-    "# 4. Before emitting code, mentally execute seeds 0..4.\n"
-)
-
-OUTPUT_FORMAT_RULE = (
-    "# === OUTPUT FORMAT ===\n"
-    "# Return ONLY raw Python source. Do not use Markdown fences.\n"
-    "# Do not repeat these instructions. Start with imports, including\n"
-    "# `import random`, then define helper functions if needed, then\n"
-    "# define `generate(seed)`.\n"
-)
 
 
 # ---------------------------------------------------------------------------
@@ -134,130 +83,75 @@ SCORE_FEEDBACK = (
 # ---------------------------------------------------------------------------
 
 MUTATE_DEPTH = (
-    "# ROLE: You are a research mathematician designing a harder\n"
-    "# variant of an existing problem-generation program for RL\n"
-    "# training of a math-reasoning model.\n"
-    "#\n"
-    "# GOAL: A new `generate(seed)` whose problems have genuinely\n"
-    "# deeper reasoning structure — NOT just bigger numbers or\n"
-    "# longer text. Stay in the SAME mathematical domain as the\n"
-    "# parent, but add reasoning depth.\n"
-    "#\n"
-    "# TARGET METRICS: p_hat ~ 0.5, H in [2.0, 4.0] from *real*\n"
-    "# reasoning uncertainty (which technique to invoke, which\n"
-    "# case to pick), not from ambiguous wording.\n"
-    "#\n"
-    "{few_shot}"
-    "{score_feedback}"
-    "{exec_feedback}"
-    "#\n"
-    + ANTI_REWARD_HACK_RULES
-    + REAL_DIFFICULTY_RUBRIC
-    + COMPLEXITY_AXES
-    + MUTATION_METHOD_RULE +
-    "# Add one substantial reasoning move beyond what the parent uses;\n"
-    "# optionally combine a second exploration axis if it stays coherent.\n"
-    "# Keep the parent's exact CONCEPT_TYPE and CONCEPT_GROUP constants.\n"
+    "# TASK: Write a deeper variant of the parent generator.\n"
+    "# Same domain, more reasoning. Not just bigger numbers.\n"
     "#\n"
     "# Parent program:\n"
-    "```python\n{code}\n```\n\n"
+    "```python\n{code}\n```\n"
+    "#\n"
+    "{score_feedback}"
+    "{exec_feedback}"
+    "{few_shot}"
+    "#\n"
+    + QUALITY_BAR
+    + COMPLEXITY_AXES +
+    "# - Add one substantial reasoning move; optionally a second axis.\n"
+    "# - Keep CONCEPT_TYPE = '{parent_concept_type}' and\n"
+    "#   CONCEPT_GROUP = '{parent_concept_group}' EXACTLY.\n"
+    "# - If the parent has a banned pattern, remove it.\n"
+    "#\n"
     + CONCEPT_DECLARATION
-    + OUTPUT_FORMAT_RULE
-    + SINGLE_ANSWER_RULE +
-    "# Now emit the new exploratory in-depth generator.\n"
+    + HARD_CONTRACT
 )
 
 MUTATE_BREADTH = (
-    "# ROLE: You are a research mathematician DIVERSIFYING an\n"
-    "# evolutionary archive of problem-generation programs for\n"
-    "# RL training of a math-reasoning model.\n"
+    "# TASK: Write a generator in a DIFFERENT domain than the parent,\n"
+    "# at matching quality. New mathematical object, no reuse.\n"
     "#\n"
-    "# GOAL: A program in a COMPLETELY DIFFERENT mathematical\n"
-    "# domain from the parent, with matching quality and depth.\n"
-    "# The new problem must NOT be a rewording of the parent and\n"
-    "# must NOT share its mathematical OBJECT.\n"
+    "# Parent program (context only — do NOT reuse its object):\n"
+    "```python\n{code}\n```\n"
     "#\n"
-    "# TARGET METRICS: p_hat ~ 0.5, H in [2.0, 4.0] from real\n"
-    "# reasoning uncertainty.\n"
-    "#\n"
-    "{few_shot}"
     "{score_feedback}"
     "{exec_feedback}"
+    "{few_shot}"
     "#\n"
-    "# === DOMAIN SWITCH TABLE (pick a distant row, NOT adjacent) ===\n"
-    "#   algebra / quadratics   -> number theory (CRT, LTE, orders)\n"
-    "#   euclidean geometry     -> probability on discrete structures\n"
-    "#   combinatorics          -> recurrences + generating functions\n"
-    "#   probability            -> modular arithmetic / Bezout\n"
-    "#   sequences              -> coordinate geometry / vectors\n"
-    "#   trigonometry           -> complex numbers / roots of unity\n"
-    "#   logarithms             -> inequalities (AM-GM, Jensen)\n"
-    "#   linear systems/algebra -> discrete calculus / telescoping\n"
-    "#   calculus               -> inclusion-exclusion / Polya\n"
-    "# (If the parent is already in the right column, pick a left-\n"
-    "# column entry or invent a further domain, e.g. p-adic tools.)\n"
+    + QUALITY_BAR
+    + COMPLEXITY_AXES +
+    "# - Pick CONCEPT_TYPE from the whitelist whose CONCEPT_GROUP is\n"
+    "#   NOT '{parent_concept_group}'.\n"
+    "#   Suggested groups to try: {suggested_groups}.\n"
     "#\n"
-    + ANTI_REWARD_HACK_RULES
-    + REAL_DIFFICULTY_RUBRIC
-    + COMPLEXITY_AXES
-    + MUTATION_METHOD_RULE +
-    "# Choose a CONCEPT_TYPE/CONCEPT_GROUP from the whitelist that is\n"
-    "# different from the parent's domain/template.\n"
-    "# Parent program (for context — do NOT reuse its object):\n"
-    "```python\n{code}\n```\n\n"
     + CONCEPT_DECLARATION
-    + OUTPUT_FORMAT_RULE
-    + SINGLE_ANSWER_RULE +
-    "# Emit a fresh exploratory generator in a distant domain.\n"
+    + HARD_CONTRACT
 )
 
 MUTATE_CROSSOVER = (
-    "# ROLE: You are a research mathematician MERGING two problem-\n"
-    "# generation programs into a hybrid that draws reasoning\n"
-    "# depth from both parents.\n"
+    "# TASK: Merge parents A and B into a hybrid generator whose single\n"
+    "# mathematical object is the INTERSECTION of A's and B's ideas\n"
+    "# (NOT a concatenation 'compute X from A, then Y from B').\n"
     "#\n"
-    "# GOAL: A `generate(seed)` whose single mathematical OBJECT\n"
-    "# is the INTERSECTION of ideas from parent A and parent B\n"
-    "# (not a disjoint concatenation of their steps).\n"
-    "# Examples of valid intersections:\n"
-    "#   geometry ∩ probability   -> geometric probability over a\n"
-    "#                              configuration (Buffon-like).\n"
-    "#   number theory ∩ combinat.-> counting residues modulo m.\n"
-    "#   algebra ∩ recurrence     -> characteristic polynomial of\n"
-    "#                              a linear recurrence solved via\n"
-    "#                              Vieta + roots.\n"
-    "#   trig ∩ complex           -> De Moivre identities on roots\n"
-    "#                              of unity.\n"
+    "# Parent A (p={p_hat_a:.2f}, H={h_a:.2f}):\n"
+    "```python\n{code_a}\n```\n"
     "#\n"
-    "# Invalid (forbidden): 'compute X from A, then compute Y from\n"
-    "# B, then multiply'. That is concatenation, not crossover.\n"
+    "# Parent B (p={p_hat_b:.2f}, H={h_b:.2f}):\n"
+    "```python\n{code_b}\n```\n"
     "#\n"
     "{few_shot}"
-    "# Parent A (p_hat={p_hat_a:.2f}, H={h_a:.2f}):\n"
-    "```python\n{code_a}\n```\n\n"
-    "# Parent B (p_hat={p_hat_b:.2f}, H={h_b:.2f}):\n"
-    "```python\n{code_b}\n```\n\n"
-    "# TARGET METRICS: p_hat ~ 0.5, H in [2.0, 4.0] from real\n"
-    "# reasoning uncertainty — not ambiguous wording.\n"
     "#\n"
-    + ANTI_REWARD_HACK_RULES
-    + REAL_DIFFICULTY_RUBRIC
-    + COMPLEXITY_AXES
-    + MUTATION_METHOD_RULE +
-    "# Additional crossover rules:\n"
-    "# - Identify a SHARED mathematical structure (a group action,\n"
-    "#   a graph, a polynomial, a probability space, a modulus).\n"
-    "# - Build the hybrid problem AROUND that structure; every\n"
-    "#   reasoning step must use it.\n"
-    "# - If you include a CONCEPT comment, mention both domains.\n"
-    "# - Define exactly one whitelisted CONCEPT_TYPE/CONCEPT_GROUP pair\n"
-    "#   that matches the single hybrid object you generate.\n"
+    + QUALITY_BAR
+    + COMPLEXITY_AXES +
+    "# - Identify a shared structure (group, graph, polynomial,\n"
+    "#   probability space, modulus). Every step uses it.\n"
+    "# - Define exactly one whitelisted CONCEPT_TYPE / CONCEPT_GROUP\n"
+    "#   pair matching the hybrid object.\n"
     "#\n"
     + CONCEPT_DECLARATION
-    + OUTPUT_FORMAT_RULE
-    + SINGLE_ANSWER_RULE +
-    "# Emit the exploratory hybrid generator.\n"
+    + HARD_CONTRACT
 )
+
+
+# Backward-compatible re-export: external code may import SINGLE_ANSWER_RULE.
+SINGLE_ANSWER_RULE = HARD_CONTRACT
 
 
 # ---------------------------------------------------------------------------

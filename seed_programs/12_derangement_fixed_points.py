@@ -18,15 +18,16 @@ def _derangement(n):
 
 def generate(seed):
     rng = random.Random(seed)
-    n = rng.randint(7, 11)
-    fixed = rng.randint(1, 3)
-    remaining = n - fixed
 
-    answer = math.comb(n, fixed) * _derangement(remaining)
+    n = rng.randint(7, 10)
+    k = rng.randint(2, 4)
+
+    answer = sum(math.comb(n, j) * _derangement(n - j) for j in range(k, n + 1))
+
     problem = (
         f"{n} people each write their name on a card. The cards are shuffled "
-        f"and redistributed. In how many redistributions do exactly {fixed} "
-        f"people receive their own card?"
+        f"and redistributed. In how many redistributions do at least {k} people "
+        f"receive their own card?"
     )
 
     return problem, str(answer)

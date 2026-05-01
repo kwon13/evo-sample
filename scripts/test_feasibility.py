@@ -89,8 +89,80 @@ def _normalize(s: str) -> str:
 # Self-verification + Few-shot + Execution feedback
 # ---------------------------------------------------------------------------
 
+def _execute_with_error(
+    program: ProblemProgram, seed: int, timeout: float = 5.0,
+) -> tuple[Optional[ProblemInstance], Optional[str]]:
+    """Like ``program.execute`` but surfaces the real exception.
+
+    ``ProblemProgram.execute`` swallows every exception into ``None``,
+    which makes "execute returned None" failures impossible to debug.
+    This helper re-runs the same exec sandbox while keeping the
+    exception text so verify can include it in the failure reason.
+
+    Note: ``signal.SIGALRM`` only works on the main thread, so when
+    invoked from a worker thread (parallel verify) we run without a
+    hard timeout. Generated code is sandboxed enough that this is
+    acceptable in practice.
+    """
+    import importlib.util as _ilu
+    import signal as _signal
+    import threading as _threading
+
+    def _handler(signum, frame):
+        raise TimeoutError("Program execution timed out")
+
+    use_alarm = _threading.current_thread() is _threading.main_thread()
+
+    try:
+        spec = _ilu.spec_from_loader("gen_module", loader=None)
+        module = _ilu.module_from_spec(spec)
+        safe_globals = {
+            "__builtins__": __builtins__,
+            "math": __import__("math"),
+            "random": __import__("random"),
+            "fractions": __import__("fractions"),
+            "itertools": __import__("itertools"),
+            "functools": __import__("functools"),
+        }
+        try:
+            safe_globals["sympy"] = __import__("sympy")
+        except ImportError:
+            pass
+        module.__dict__.update(safe_globals)
+
+        if use_alarm:
+            old_handler = _signal.signal(_signal.SIGALRM, _handler)
+            _signal.alarm(int(timeout))
+        try:
+            exec(program.source_code, module.__dict__)
+            if not hasattr(module, "generate"):
+                return None, "module has no `generate` attribute"
+            result = module.generate(seed)
+            if result is None:
+                return None, "generate(seed) returned None"
+            if not isinstance(result, (tuple, list)):
+                return None, f"generate(seed) returned {type(result).__name__}, not tuple"
+            if len(result) != 2:
+                return None, f"generate(seed) returned tuple of len {len(result)}, expected 2"
+            problem_text, answer_text = str(result[0]), str(result[1])
+            if not problem_text.strip():
+                return None, "empty problem_text"
+            if not answer_text.strip():
+                return None, "empty answer_text"
+            return ProblemInstance(
+                problem=problem_text, answer=answer_text,
+                program_id=program.program_id, seed=seed,
+            ), None
+        finally:
+            if use_alarm:
+                _signal.alarm(0)
+                _signal.signal(_signal.SIGALRM, old_handler)
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
+
+
 def _verify_program_with_reason(
-    program: ProblemProgram, n_seeds: int = 5,
+    program: ProblemProgram, n_seeds: int = 2,
 ) -> tuple[Optional[ProblemInstance], Optional[str]]:
     """Multi-seed 실행 + SymPy 답 유효성 검증, with failure reason."""
     from sympy import sympify
@@ -109,39 +181,65 @@ def _verify_program_with_reason(
     instances = []
     problems = []
     answers = []
+    failed_seeds: list[tuple[int, str]] = []  # (seed, reason)
+    max_failures = max(1, (n_seeds + 2) // 3)  # ceil(n/3)
     for s in range(n_seeds):
-        inst = program.execute(seed=s, timeout=5.0)
+        inst, exec_err = _execute_with_error(program, seed=s, timeout=5.0)
         if inst is None:
-            return None, f"execute returned None at seed={s}"
+            failed_seeds.append(
+                (s, f"execute failed at seed={s}: {exec_err or 'unknown'}")
+            )
+            continue
         instance_reasons = lint_problem_instance(inst)
         if instance_reasons:
-            return None, (
+            failed_seeds.append((s, (
                 f"instance lint at seed={s}: "
                 + "; ".join(instance_reasons[:3])
                 + f" | problem={inst.problem[:120]!r} answer={inst.answer!r}"
-            )
+            )))
+            continue
         try:
             sympify(inst.answer.strip().replace("^", "**"))
         except Exception:
             try:
                 float(inst.answer)
             except (ValueError, TypeError):
-                return None, (
+                failed_seeds.append((s, (
                     f"answer parse failed at seed={s}: "
                     f"answer={inst.answer!r} problem={inst.problem[:120]!r}"
-                )
+                )))
+                continue
         contract_reasons = validate_concept_contract(
             concept_type, inst.problem, inst.answer,
         )
         if contract_reasons:
-            return None, (
+            failed_seeds.append((s, (
                 f"concept contract at seed={s}: "
                 + "; ".join(contract_reasons[:3])
                 + f" | problem={inst.problem[:120]!r} answer={inst.answer!r}"
-            )
+            )))
+            continue
         instances.append(inst)
         problems.append(_normalize(inst.problem))
         answers.append(_normalize(inst.answer))
+
+    failed_idx = {s for s, _ in failed_seeds}
+    if n_seeds <= 2:
+        # With only 2 seeds we require both to succeed (no diversity check
+        # is meaningful otherwise).
+        if failed_seeds:
+            summary = "; ".join(reason for _, reason in failed_seeds)
+            return None, summary
+    else:
+        if 0 in failed_idx and 1 in failed_idx:
+            first_two = "; ".join(reason for s, reason in failed_seeds if s < 2)
+            return None, f"seed 0+1 both failed: {first_two}"
+        if len(failed_seeds) > max_failures:
+            summary = "; ".join(reason for _, reason in failed_seeds[:3])
+            return None, (
+                f"too many seed failures ({len(failed_seeds)}/{n_seeds}): {summary}"
+            )
+
     if n_seeds > 1 and len(set(problems)) <= 1:
         return None, f"problem lacks seed diversity across {n_seeds} seeds"
     if n_seeds > 1 and len(set(answers)) <= 1:
@@ -149,7 +247,7 @@ def _verify_program_with_reason(
     return (instances[0] if instances else None), None
 
 
-def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> Optional[ProblemInstance]:
+def _verify_program(program: ProblemProgram, n_seeds: int = 2) -> Optional[ProblemInstance]:
     """Multi-seed 실행 + SymPy 답 유효성 검증."""
     inst, _ = _verify_program_with_reason(program, n_seeds=n_seeds)
     return inst
@@ -273,6 +371,91 @@ def _concept_log_fields(program: ProblemProgram) -> dict[str, Optional[str]]:
 _SOLVE_PROMPT = SOLVER_COMPLETION_PROMPT
 
 
+# Per-op mutation prefill: we pre-emit `import random`, the
+# CONCEPT_TYPE/GROUP top-level constants, and the `def generate(seed):`
+# header so the model continues inside the function body. This
+# guarantees a valid concept declaration (no more "missing CONCEPT_TYPE"
+# rejects) and that the output is a parseable generator. The same
+# prefill (minus the leading code fence) is prepended to the model
+# output before extraction so `extract_generator_code` sees a complete
+# program.
+_MUTATION_STOP = ["\n```\n\n", "\n```\n#", "\n# end_of_code", "\n# === END"]
+
+
+def _parent_concept_fields(parent: "ProblemProgram") -> tuple[str, str, str]:
+    """Return (concept_type, concept_group, suggested_other_groups) for
+    prompt interpolation. Falls back to 'unknown' when parent metadata
+    is missing — the lint stage may still rescue via fuzzy match."""
+    from rq_questioner.concepts import CONCEPT_GROUPS
+    ctype = (
+        parent.declared_concept_type()
+        or parent.metadata.get("concept_type")
+        or "unknown"
+    )
+    cgroup = (
+        parent.declared_concept_group()
+        or parent.metadata.get("concept_group")
+        or "unknown"
+    )
+    others = [g for g in CONCEPT_GROUPS if g != cgroup]
+    suggested = ", ".join(others[:3]) if others else "any other group"
+    return ctype, cgroup, suggested
+
+
+def _choose_prefill_concept(
+    op: str,
+    parent: "ProblemProgram",
+    parent_b: Optional["ProblemProgram"] = None,
+    rng: Optional[random.Random] = None,
+) -> tuple[str, str]:
+    """Pick a (concept_type, concept_group) pair for prefill injection.
+
+    in_depth   : parent's exact concept (preserve constraint).
+    in_breadth : random whitelisted type whose group differs from parent.
+    crossover  : random whitelisted type from the union of A's and B's groups.
+    Falls back to the first whitelisted entry when nothing valid remains.
+    """
+    from rq_questioner.concepts import CONCEPT_TYPES, CONCEPT_TYPE_TO_GROUP
+    rng = rng or random.Random()
+    p_ctype = parent.declared_concept_type() or parent.metadata.get("concept_type")
+    p_cgroup = parent.declared_concept_group() or parent.metadata.get("concept_group")
+
+    def _pair(t: str) -> tuple[str, str]:
+        return t, CONCEPT_TYPE_TO_GROUP[t]
+
+    if op == "in_depth":
+        if p_ctype in CONCEPT_TYPES:
+            return _pair(p_ctype)
+        return _pair(CONCEPT_TYPES[0])
+    if op == "in_breadth":
+        candidates = [
+            t for t in CONCEPT_TYPES
+            if CONCEPT_TYPE_TO_GROUP.get(t) != p_cgroup
+        ]
+        return _pair(rng.choice(candidates) if candidates else CONCEPT_TYPES[0])
+    # crossover
+    pb_cgroup = (
+        parent_b.declared_concept_group() or parent_b.metadata.get("concept_group")
+        if parent_b is not None else None
+    )
+    span = {g for g in (p_cgroup, pb_cgroup) if g}
+    candidates = [
+        t for t in CONCEPT_TYPES
+        if CONCEPT_TYPE_TO_GROUP.get(t) in span
+    ] or list(CONCEPT_TYPES)
+    return _pair(rng.choice(candidates))
+
+
+def _build_mutation_prefill(ctype: str, cgroup: str) -> tuple[str, str]:
+    """Return (suffix_appended_to_prompt, prefix_for_extract_recovery)."""
+    body = (
+        "import random\n\n"
+        f"CONCEPT_TYPE = \"{ctype}\"\n"
+        f"CONCEPT_GROUP = \"{cgroup}\"\n\n"
+        "def generate(seed):\n"
+    )
+    suffix = "\n```python\n" + body
+    return suffix, body
 
 
 
@@ -307,6 +490,7 @@ class VLLMRunner:
             trust_remote_code=True,
             enforce_eager=True,
             max_model_len=8192,
+            enable_prefix_caching=True,
         )
         self.tokenizer = self.llm.get_tokenizer()
         self.temperature = temperature
@@ -486,6 +670,58 @@ class VLLMRunner:
             results.append((flags, logs))
         return results
 
+    def batch_probe_and_rollout(
+        self, instances: list["ProblemInstance"], n_rollouts: int, top_k: int = 20,
+    ) -> list[tuple[Optional[float], list[bool], list[dict]]]:
+        """
+        Combined probe + expand: a single ``generate(prompts, n=G)`` call
+        that produces the entropy probe (rollout idx 0, with logprobs)
+        AND the G-1 expand rollouts. Removes the second prefill that
+        ``batch_entropy_probe`` + ``batch_rollout_extra`` would do
+        when nearly every candidate survives the H prefilter anyway.
+
+        Returns per-candidate: (h_bar, flags[G], logs[G]).
+        """
+        from vllm import SamplingParams
+        if not instances or n_rollouts <= 0:
+            return [(None, [], []) for _ in instances]
+        prompts = [_SOLVE_PROMPT.format(problem=inst.problem) for inst in instances]
+        params = SamplingParams(
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            n=n_rollouts,
+            logprobs=top_k,
+        )
+        all_outputs = self.llm.generate(prompts, params)
+        results = []
+        for out, inst in zip(all_outputs, instances):
+            flags: list[bool] = []
+            logs: list[dict] = []
+            per_h: list[float] = []
+            for i, comp in enumerate(out.outputs):
+                pred = _extract_boxed(comp.text)
+                correct = _answers_match(pred, inst.answer) if pred else False
+                h_i = self._entropy_from_logprobs(comp.logprobs)
+                span_i = self._span_max_entropy_from_completion(
+                    comp.text, getattr(comp, "token_ids", None), comp.logprobs,
+                )
+                flags.append(correct)
+                logs.append({
+                    "rollout_idx": i,
+                    "response": comp.text,
+                    "extracted": pred,
+                    "ground_truth": inst.answer,
+                    "correct": correct,
+                    "entropy_bar": h_i,
+                    "h_span_max": span_i,
+                    "probe": i == 0,
+                })
+                if h_i is not None:
+                    per_h.append(h_i)
+            h_bar = (sum(per_h) / len(per_h)) if per_h else None
+            results.append((h_bar, flags, logs))
+        return results
+
     # ---- full-G rollout (+ entropy) — kept for seed scoring ------------
 
     def rollout(
@@ -542,29 +778,29 @@ class VLLMRunner:
         from vllm import SamplingParams
         tmpl = MUTATE_DEPTH if in_depth else MUTATE_BREADTH
 
-        p_hat = getattr(parent, "p_hat", 0.5)
-        h_score = getattr(parent, "h_score", 1.0)
-        rq_score = getattr(parent, "rq_score", 0.0)
-        diag, action = score_diagnosis(p_hat, h_score)
-
-        score_feedback = SCORE_FEEDBACK.format(
-            p_hat=p_hat, h_score=h_score, rq_score=rq_score,
-            diagnosis=diag, action=action,
-        )
+        score_feedback = build_score_feedback(parent)
         few_shot = build_few_shot_examples(grid) if grid else ""
         exec_fb = build_execution_feedback(parent)
+        ctype, cgroup, suggested = _parent_concept_fields(parent)
         prompt = tmpl.format(
             code=parent.source_code, score_feedback=score_feedback,
             few_shot=few_shot, exec_feedback=exec_fb,
+            parent_concept_type=ctype, parent_concept_group=cgroup,
+            suggested_groups=suggested,
         )
+        op = "in_depth" if in_depth else "in_breadth"
+        chosen_t, chosen_g = _choose_prefill_concept(op, parent)
+        suffix, recovery = _build_mutation_prefill(chosen_t, chosen_g)
+        prompt = prompt + suffix
         params = SamplingParams(
             temperature=0.75 if in_depth else 0.95,
             top_p=0.95,
             max_tokens=4096,
             n=1,
+            stop=_MUTATION_STOP,
         )
         text = self.llm.generate([prompt], params)[0].outputs[0].text
-        return self._extract_code(text)
+        return self._extract_code(recovery + text)
 
     # ---- crossover ------------------------------------------------------
 
@@ -607,30 +843,32 @@ class VLLMRunner:
         self, tasks: list[dict], grid: Optional["MAPElitesGrid"] = None,
     ) -> list[Optional[str]]:
         """
-        Batch mutation: group tasks by operator-specific sampling
-        temperature, then issue one vLLM call per group.
+        Batch mutation: build all prompts (across all ops) and issue a
+        single ``llm.generate(prompts, params_list)`` call where each
+        prompt carries its own per-op SamplingParams.
 
-        Per-operator temperatures favour creative exploration for
-        in-breadth (where diversity is the goal), a middle heat for
-        in-depth and crossover, and keep top_p just below 1 so we
-        avoid the rare-token tail that tends to emit malformed code.
+        This collapses the previous 3 serial generate() calls (one per
+        op) into a single wave — vLLM picks up all prompts in one
+        prefill batch, so small per-op groups don't waste GPU.
         """
         from vllm import SamplingParams
 
         few_shot = build_few_shot_examples(grid) if grid else ""
 
-        # Per-operator sampling schedule.
         op_params = {
             "in_depth":  dict(temperature=0.75, top_p=0.95),
             "in_breadth": dict(temperature=0.95, top_p=0.95),
             "crossover": dict(temperature=0.80, top_p=0.95),
         }
 
-        # Build prompts tagged with their original task index so we
-        # can reassemble the output list in order after grouping.
-        tagged = []  # (orig_idx, op, prompt)
+        prompts: list[str] = []
+        params_list: list[SamplingParams] = []
+        order: list[int] = []
+        recoveries: list[str] = []
+        rng_local = random.Random()
         for i, t in enumerate(tasks):
-            if t["op"] == "crossover":
+            op = t["op"]
+            if op == "crossover":
                 pa, pb = t["parent"], t["parent_b"]
                 p = MUTATE_CROSSOVER.format(
                     code_a=pa.source_code, code_b=pb.source_code,
@@ -640,33 +878,41 @@ class VLLMRunner:
                     h_b=getattr(pb, "h_score", 1.0),
                     few_shot=few_shot,
                 )
+                chosen_t, chosen_g = _choose_prefill_concept(op, pa, pb, rng_local)
             else:
                 parent = t["parent"]
-                tmpl = MUTATE_DEPTH if t["op"] == "in_depth" else MUTATE_BREADTH
+                tmpl = MUTATE_DEPTH if op == "in_depth" else MUTATE_BREADTH
                 feedback = build_score_feedback(parent)
                 exec_fb = build_execution_feedback(parent)
+                ctype, cgroup, suggested = _parent_concept_fields(parent)
                 p = tmpl.format(
                     code=parent.source_code, score_feedback=feedback,
                     few_shot=few_shot, exec_feedback=exec_fb,
+                    parent_concept_type=ctype, parent_concept_group=cgroup,
+                    suggested_groups=suggested,
                 )
-            tagged.append((i, t["op"], p))
+                chosen_t, chosen_g = _choose_prefill_concept(op, parent, None, rng_local)
 
-        if not tagged:
+            suffix, recovery = _build_mutation_prefill(chosen_t, chosen_g)
+            p = p + suffix
+            prompts.append(p)
+            recoveries.append(recovery)
+            params_list.append(SamplingParams(
+                max_tokens=4096, n=1,
+                stop=_MUTATION_STOP,
+                **op_params[op],
+            ))
+            order.append(i)
+
+        if not prompts:
             return []
 
         results: list[Optional[str]] = [None] * len(tasks)
-        # Issue one generate() per op so each group gets its own
-        # temperature. vLLM batches internally.
-        for op in ("in_depth", "in_breadth", "crossover"):
-            group = [(idx, pr) for (idx, g_op, pr) in tagged if g_op == op]
-            if not group:
-                continue
-            params = SamplingParams(
-                max_tokens=4096, n=1, **op_params[op],
+        outs = self.llm.generate(prompts, params_list)
+        for k, (idx, out) in enumerate(zip(order, outs)):
+            results[idx] = self._extract_code(
+                recoveries[k] + out.outputs[0].text,
             )
-            outs = self.llm.generate([pr for _, pr in group], params)
-            for (idx, _), out in zip(group, outs):
-                results[idx] = self._extract_code(out.outputs[0].text)
         return results
 
 # ---------------------------------------------------------------------------
@@ -800,6 +1046,42 @@ def _mock_entropy(
 # Single evolution step
 # ---------------------------------------------------------------------------
 
+def sample_mutation_tasks(
+    grid: MAPElitesGrid,
+    candidates: int,
+    rng: random.Random,
+    in_depth_ratio: float = 0.5,
+    crossover_ratio: float = 0.2,
+) -> list[dict]:
+    """Pre-sample parents + ops for one round. Pure CPU; safe to run in a
+    background thread to overlap with GPU work from the previous round."""
+    tasks: list[dict] = []
+    for _ in range(candidates):
+        roll = rng.random()
+        if roll < crossover_ratio:
+            op = "crossover"
+        elif roll < crossover_ratio + in_depth_ratio:
+            op = "in_depth"
+        else:
+            op = "in_breadth"
+
+        if op == "crossover":
+            pa, pb = grid.sample_two_parents()
+            if pa is None or pb is None:
+                pa = grid.sample_parent()
+                if pa is None:
+                    continue
+                tasks.append({"op": "in_depth", "parent": pa})
+            else:
+                tasks.append({"op": "crossover", "parent": pa, "parent_b": pb})
+        else:
+            parent = grid.sample_parent()
+            if parent is None:
+                continue
+            tasks.append({"op": op, "parent": parent})
+    return tasks
+
+
 def evolution_step(
     grid: MAPElitesGrid,
     candidates: int,
@@ -814,6 +1096,7 @@ def evolution_step(
     verbose: bool = True,
     vllm_runner: Optional[VLLMRunner] = None,
     uncertainty_metric: str = "h",
+    prebuilt_mutations: Optional[tuple[list[dict], list[Optional[str]]]] = None,
 ) -> dict:
     """
     Evolution 1회 실행 — vLLM 사용 시 batched inference.
@@ -835,52 +1118,32 @@ def evolution_step(
     candidate_logs = []
 
     # ================================================================
-    # Phase 1: Mutation (batched if vllm_runner)
+    # Phase 1: Mutation (batched if vllm_runner; may be prefetched)
     # ================================================================
-    mutation_tasks = []   # {"op", "parent", "parent_b"(optional)}
-    for c in range(candidates):
-        roll = rng.random()
-        if roll < crossover_ratio:
-            op = "crossover"
-        elif roll < crossover_ratio + in_depth_ratio:
-            op = "in_depth"
-        else:
-            op = "in_breadth"
-
-        if op == "crossover":
-            pa, pb = grid.sample_two_parents()
-            if pa is None or pb is None:
-                pa = grid.sample_parent()
-                if pa is None:
-                    continue
-                op = "in_depth"
-                mutation_tasks.append({"op": op, "parent": pa})
-            else:
-                mutation_tasks.append({"op": "crossover", "parent": pa, "parent_b": pb})
-        else:
-            parent = grid.sample_parent()
-            if parent is None:
-                continue
-            mutation_tasks.append({"op": op, "parent": parent})
-
-    # Batch mutation
-    if vllm_runner and mutation_tasks:
-        if verbose:
-            print(f"  [batch] mutating {len(mutation_tasks)} candidates...")
-        source_codes = vllm_runner.batch_mutate(mutation_tasks, grid=grid)
+    if prebuilt_mutations is not None:
+        mutation_tasks, source_codes = prebuilt_mutations
     else:
-        source_codes = []
-        for t in mutation_tasks:
-            if t["op"] == "crossover":
-                source_codes.append(_mock_mutate(t["parent"], rng))
-            elif model:
-                source_codes.append(
-                    _llm_mutate(t["parent"], model, base_url, api_key, t["op"] == "in_depth"))
-            else:
-                source_codes.append(_mock_mutate(t["parent"], rng))
+        mutation_tasks = sample_mutation_tasks(
+            grid, candidates, rng, in_depth_ratio, crossover_ratio,
+        )
+        if vllm_runner and mutation_tasks:
+            if verbose:
+                print(f"  [batch] mutating {len(mutation_tasks)} candidates...")
+            source_codes = vllm_runner.batch_mutate(mutation_tasks, grid=grid)
+        else:
+            source_codes = []
+            for t in mutation_tasks:
+                if t["op"] == "crossover":
+                    source_codes.append(_mock_mutate(t["parent"], rng))
+                elif model:
+                    source_codes.append(
+                        _llm_mutate(t["parent"], model, base_url, api_key, t["op"] == "in_depth"))
+                else:
+                    source_codes.append(_mock_mutate(t["parent"], rng))
 
-    # Build children + execute (CPU, fast)
+    # Build children (cheap, sequential).
     children = []       # (child, inst, task, original task_idx)
+    pending: list[tuple[int, dict, str, "ProblemProgram"]] = []   # (task_idx, task, code, child)
     for task_idx, (task, code) in enumerate(zip(mutation_tasks, source_codes)):
         if code is None:
             skipped_execute += 1
@@ -920,9 +1183,32 @@ def evolution_step(
                 generation=task["parent"].generation + 1,
                 metadata={"op": task["op"]},
             )
+        pending.append((task_idx, task, code, child))
 
-        # Multi-seed + SymPy 자가 검증
-        inst, verify_reason = _verify_program_with_reason(child, n_seeds=5)
+    # Parallel multi-seed + SymPy verify (CPU-bound but each candidate
+    # is independent; thread pool gets us most of the win without
+    # process-pool pickling overhead since `program.execute` releases
+    # the GIL on most C-extension calls).
+    verify_results: dict[int, tuple[Optional["ProblemInstance"], Optional[str]]] = {}
+    if pending:
+        from concurrent.futures import ThreadPoolExecutor
+        max_workers = min(len(pending), 8)
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            fut_to_idx = {
+                ex.submit(_verify_program_with_reason, child, 2): task_idx
+                for task_idx, _, _, child in pending
+            }
+            for fut in fut_to_idx:
+                task_idx = fut_to_idx[fut]
+                try:
+                    verify_results[task_idx] = fut.result()
+                except Exception as e:
+                    verify_results[task_idx] = (None, f"verify exception: {e!r}")
+
+    # Sequential post-verify gates (concept op reject + anti-hack).
+    first_failure_dumped = False
+    for task_idx, task, code, child in pending:
+        inst, verify_reason = verify_results.get(task_idx, (None, "verify missing"))
         if inst is None:
             skipped_execute += 1
             candidate_logs.append({
@@ -941,6 +1227,15 @@ def evolution_step(
                     f"  execute failed ({task['op']}): "
                     f"{verify_reason or 'unknown verification failure'}"
                 )
+                if not first_failure_dumped:
+                    first_failure_dumped = True
+                    print(
+                        f"  ── first failure source ({task['op']}, "
+                        f"task_idx={task_idx}) ──"
+                    )
+                    for ln in (code or "<empty>").splitlines():
+                        print(f"  | {ln}")
+                    print(f"  ── end source ──")
             continue
 
         parent = task.get("parent")
@@ -1017,26 +1312,35 @@ def evolution_step(
     #   probe response는 동일 temperature에서 나왔으므로 첫 rollout으로 재사용.
     instances = [inst for _, inst, _, _ in children]
 
+    # Merged probe+expand: a single n=G generate call returns both the
+    # entropy probe (rollout idx 0, with logprobs) and the G-1 expand
+    # rollouts. Saves the second prefill pass that the split
+    # batch_entropy_probe + batch_rollout_extra would do.
+    per_child_h: list[Optional[float]] = [None] * len(children)
+    per_child_flags: list[list[bool]] = [[] for _ in children]
+    per_child_logs: list[list[dict]] = [[] for _ in children]
+
     if vllm_runner:
         if verbose:
-            print(f"  [probe] entropy for {len(instances)} candidates...")
-        probe_results = vllm_runner.batch_entropy_probe(instances)
+            print(f"  [probe+expand] {n_rollouts} rollouts × {len(instances)} candidates...")
+        merged = vllm_runner.batch_probe_and_rollout(instances, n_rollouts)
+        for ci, (h_bar, flags, logs) in enumerate(merged):
+            per_child_h[ci] = h_bar
+            per_child_flags[ci] = flags
+            per_child_logs[ci] = logs
     else:
-        probe_results = []
-        for inst in instances:
+        for ci, inst in enumerate(instances):
             h_mock = _mock_entropy(inst, rng)
-            one_flag = _mock_rollout(inst, 1, rng)[0]
-            probe_results.append((h_mock, one_flag, None))
+            flags = _mock_rollout(inst, n_rollouts, rng)
+            per_child_h[ci] = h_mock
+            per_child_flags[ci] = flags
+            per_child_logs[ci] = []
 
-    # H prefilter — retained set만 expand rollout 수행
+    # H prefilter — gate downstream scoring/insertion (GPU work already
+    # done in the merged call, but the prefilter still semantically
+    # blocks low-H candidates from competing for niches).
     retained_local_indices: list[int] = []
-    per_child_h: list[Optional[float]] = [None] * len(children)
-    per_child_probe_flag: list[Optional[bool]] = [None] * len(children)
-    per_child_probe_log: list[Optional[dict]] = [None] * len(children)
-    for ci, (h_bar, probe_flag, probe_log) in enumerate(probe_results):
-        per_child_h[ci] = h_bar
-        per_child_probe_flag[ci] = probe_flag
-        per_child_probe_log[ci] = probe_log
+    for ci, h_bar in enumerate(per_child_h):
         if h_bar is None:
             skipped_h += 1
             if verbose:
@@ -1045,36 +1349,17 @@ def evolution_step(
         if not h_prefilter(h_bar, h_threshold):
             skipped_h += 1
             if verbose:
-                print(f"  H={h_bar:.3f} < τ_H, skip rollout (amortized)")
+                print(f"  H={h_bar:.3f} < τ_H, skip insertion (post-rollout)")
             continue
         retained_local_indices.append(ci)
-
-    saved = (len(children) - len(retained_local_indices)) * max(0, n_rollouts - 1)
-    if verbose and saved:
-        print(f"  [amortize] saved ~{saved} generations via H prefilter")
-
-    # Expand: retained 후보에 대해 G-1개 추가 rollout (probe가 1개)
-    retained_extra: list[tuple[list[bool], list[dict]]] = [([], [])] * len(retained_local_indices)
-    if retained_local_indices:
-        retained_insts = [instances[ci] for ci in retained_local_indices]
-        extra_n = max(0, n_rollouts - 1)
-        if vllm_runner:
-            if verbose and extra_n:
-                print(f"  [expand] {extra_n} extra rollouts × {len(retained_insts)} retained...")
-            retained_extra = vllm_runner.batch_rollout_extra(retained_insts, extra_n)
-        else:
-            retained_extra = [
-                (_mock_rollout(inst, extra_n, rng), []) for inst in retained_insts
-            ]
 
     # ================================================================
     # Phase 3: Scoring + Grid insertion (CPU, fast)
     # ================================================================
-    extra_by_ci = {ci: retained_extra[j] for j, ci in enumerate(retained_local_indices)}
+    retained_set = set(retained_local_indices)
     for ci, (child, inst, task, task_idx) in enumerate(children):
         attempted += 1
-        if ci not in extra_by_ci:
-            # H prefilter skipped this candidate — no rollout scoring.
+        if ci not in retained_set:
             candidate_logs.append({
                 "candidate_idx": task_idx,
                 "op": task["op"],
@@ -1091,12 +1376,8 @@ def evolution_step(
             continue
 
         h_bar = per_child_h[ci]
-        probe_flag = per_child_probe_flag[ci]
-        probe_log = per_child_probe_log[ci]
-        extra_flags, extra_logs = extra_by_ci[ci]
-
-        flags = [probe_flag] + list(extra_flags)
-        rollout_logs = ([probe_log] if probe_log else []) + list(extra_logs)
+        flags = list(per_child_flags[ci])
+        rollout_logs = list(per_child_logs[ci])
         p_hat = sum(flags) / len(flags) if flags else 0.0
 
         uncertainty_score, uncertainty_scores = _select_uncertainty_score(
@@ -1816,32 +2097,82 @@ def main():
         step_skipped_execute = 0
         step_skipped_h = 0
 
-        for round_num in range(1, args.max_rounds + 1):
-            round_result = evolution_step(
-                grid=grid,
-                candidates=args.candidates,
-                n_rollouts=args.n_rollouts,
-                h_threshold=args.h_threshold,
-                rng=rng,
-                model=args.model,
-                base_url=args.base_url,
-                api_key=args.api_key,
-                in_depth_ratio=args.in_depth_ratio,
-                crossover_ratio=args.crossover_ratio,
-                verbose=verbose,
-                vllm_runner=vllm_runner,
-                uncertainty_metric=args.uncertainty_metric,
-            )
+        # Mutation prefetch: while round k runs verify+rollout+score, the
+        # next round's batch_mutate is dispatched in a background thread
+        # so vLLM continuous-batches it during the current round's
+        # rollout decode. Tasks are sampled from the grid one round
+        # behind, which is acceptable (parents stay diverse).
+        from concurrent.futures import ThreadPoolExecutor as _MutPool
+        prefetch_pool = _MutPool(max_workers=1) if vllm_runner else None
+        prefetched: Optional[tuple[list[dict], list[Optional[str]]]] = None
+        prefetch_future = None
+        prefetch_tasks: Optional[list[dict]] = None
 
-            step_attempted += round_result["attempted"]
-            step_inserted += round_result["inserted"]
-            step_skipped_execute += round_result.get("skipped_execute", 0)
-            step_skipped_h += round_result.get("skipped_h", 0)
+        try:
+            for round_num in range(1, args.max_rounds + 1):
+                # Resolve any pending prefetch from the previous round.
+                if prefetch_future is not None and prefetch_tasks is not None:
+                    try:
+                        prefetched = (prefetch_tasks, prefetch_future.result())
+                    except Exception as e:
+                        if verbose:
+                            print(f"  [prefetch] failed, falling back: {e!r}")
+                        prefetched = None
+                    prefetch_future = None
+                    prefetch_tasks = None
 
-            for log in round_result.get("candidate_logs", []):
-                log["step"] = step
-                log["round"] = round_num
-                all_candidate_logs.append(log)
+                round_result = evolution_step(
+                    grid=grid,
+                    candidates=args.candidates,
+                    n_rollouts=args.n_rollouts,
+                    h_threshold=args.h_threshold,
+                    rng=rng,
+                    model=args.model,
+                    base_url=args.base_url,
+                    api_key=args.api_key,
+                    in_depth_ratio=args.in_depth_ratio,
+                    crossover_ratio=args.crossover_ratio,
+                    verbose=verbose,
+                    vllm_runner=vllm_runner,
+                    uncertainty_metric=args.uncertainty_metric,
+                    prebuilt_mutations=prefetched,
+                )
+                prefetched = None
+
+                # Dispatch next round's mutation in the background. This
+                # call queues into vLLM and gets continuous-batched with
+                # the current round's upcoming rollout pass.
+                if (
+                    prefetch_pool is not None
+                    and round_num < args.max_rounds
+                ):
+                    next_tasks = sample_mutation_tasks(
+                        grid, args.candidates, rng,
+                        args.in_depth_ratio, args.crossover_ratio,
+                    )
+                    if next_tasks:
+                        prefetch_tasks = next_tasks
+                        prefetch_future = prefetch_pool.submit(
+                            vllm_runner.batch_mutate, next_tasks, grid,
+                        )
+
+                step_attempted += round_result["attempted"]
+                step_inserted += round_result["inserted"]
+                step_skipped_execute += round_result.get("skipped_execute", 0)
+                step_skipped_h += round_result.get("skipped_h", 0)
+
+                for log in round_result.get("candidate_logs", []):
+                    log["step"] = step
+                    log["round"] = round_num
+                    all_candidate_logs.append(log)
+        finally:
+            if prefetch_future is not None:
+                try:
+                    prefetch_future.result(timeout=1)
+                except Exception:
+                    pass
+            if prefetch_pool is not None:
+                prefetch_pool.shutdown(wait=False)
 
         total_inserted += step_inserted
         total_attempted += step_attempted

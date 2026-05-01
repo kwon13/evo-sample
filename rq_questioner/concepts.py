@@ -161,18 +161,38 @@ def concept_axis_labels(diversity_axis: str) -> list[str]:
 
 
 def concept_prompt_block() -> str:
-    type_lines = "\n".join(f"#   - {name}" for name in CONCEPT_TYPES)
-    group_lines = "\n".join(f"#   - {name}" for name in CONCEPT_GROUPS)
+    types = ", ".join(CONCEPT_TYPES)
+    groups = ", ".join(CONCEPT_GROUPS)
     return (
-        "# === CONTROLLED CONCEPT TAXONOMY ===\n"
-        "# Every generator MUST define these top-level string constants before\n"
-        "# `generate(seed)`:\n"
-        "#   CONCEPT_TYPE = '<one allowed fine template label>'\n"
-        "#   CONCEPT_GROUP = '<matching prefix/domain group>'\n"
-        "# Allowed CONCEPT_TYPE values:\n"
-        f"{type_lines}\n"
-        "# Allowed CONCEPT_GROUP values:\n"
-        f"{group_lines}\n"
-        "# CONCEPT_GROUP must exactly match the prefix/domain group of\n"
-        "# CONCEPT_TYPE. Do not invent new labels or synonyms.\n"
+        "# Required top-level constants (must use these EXACT strings):\n"
+        f"#   CONCEPT_TYPE in: {types}\n"
+        f"#   CONCEPT_GROUP in: {groups}\n"
+        "#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n"
     )
+
+
+def nearest_concept_type(
+    candidate: str | None, threshold: float = 0.6,
+) -> str | None:
+    """Best whitelisted CONCEPT_TYPE near ``candidate``, else None.
+
+    Used to rescue model outputs that invent a sensible-looking but
+    unwhitelisted label (``geometry.angle_trisector`` ->
+    ``geometry.angle_bisector``-style match). Splits on '.' so the
+    prefix-group must agree before a fuzzy suffix match is attempted.
+    """
+    import difflib
+    if not candidate:
+        return None
+    text = str(candidate).strip()
+    if "." not in text:
+        return None
+    group, _, suffix = text.partition(".")
+    if group not in CONCEPT_GROUPS:
+        return None
+    in_group = [t for t in CONCEPT_TYPES if t.startswith(group + ".")]
+    suffixes = [t.split(".", 1)[1] for t in in_group]
+    matches = difflib.get_close_matches(suffix, suffixes, n=1, cutoff=threshold)
+    if not matches:
+        return None
+    return f"{group}.{matches[0]}"
