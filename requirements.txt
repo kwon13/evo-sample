@@ -4,7 +4,6 @@ datasets==4.8.4
 sentence-transformers==5.4.1
 sympy==1.14.0
 pyarrow==23.0.1
-pandas==3.0.2
 numpy==2.2.6
 python-dotenv==1.2.2
 torchdata==0.11.0
@@ -14,3 +13,6 @@ wandb==0.26.0
 torch==2.10.0
 vllm==0.19.1
 flash-attn==2.7.4.post1
+pandas
+ray
+codetiming

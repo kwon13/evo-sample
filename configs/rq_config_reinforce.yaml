@@ -18,7 +18,7 @@ worker:
   actor:
     strategy: fsdp
     global_batch_size: 32
-    micro_batch_size_per_device_for_update: 2
+    micro_batch_size_per_device_for_update: 4
     micro_batch_size_per_device_for_experience: 2
     use_torch_compile: false
     fsdp:
@@ -26,7 +26,7 @@ worker:
       enable_cpu_offload: false
       torch_dtype: bfloat16
     model:
-      model_path: Qwen/Qwen3-4B-Base
+      model_path: /data1/yhoon113/qwen3-4b-base
       trust_remote_code: true
       enable_gradient_checkpointing: true
     optim:
@@ -91,7 +91,7 @@ rq:
   # H bins are applied to the selected uncertainty_metric. The paper default is
   # token-level entropy, matching the Fisher/gradient derivation. The supported
   # metrics are h and h_span_max.
-  h_range: [0.0, 2.0]
+  h_range: [0.0, 6.0]
   # Evolution now runs once per Solver epoch via _pre_epoch_hook() —
   # evolution_pct / evolution_freq are NOT consulted. Kept here only for
   # backward-compatible YAML parsing; safe to delete.
@@ -102,11 +102,11 @@ rq:
   # R_Q uncertainty metric:
   #   h           : mean output-token entropy H
   #   h_span_max : max entropy over output reasoning/sentence spans H_span_max
-  uncertainty_metric: h
+  uncertainty_metric: h_span_max
   instances_per_program: 16
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
-  h_threshold: 0.1
+  h_threshold: 0.01
   ucb_c: 1.0
   epsilon: 0.3
   # Non-champion but valid/scored programs are kept as evolution material.
@@ -136,7 +136,7 @@ rq:
   #                              excluded from training data (R_Q = 0 anyway).
   # reeval does NOT evict extreme-p champions; it only evicts low-H or
   # consistently exec-failing ones.
-  frontier_p_hat_range: [0.2, 0.8]
+  frontier_p_hat_range: [0.1, 0.9]
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
   # mode:

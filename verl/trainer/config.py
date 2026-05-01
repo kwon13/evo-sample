@@ -128,8 +128,13 @@ class AblationConfig:
 class RQConfig:
     seed_programs_dir: str = "./seed_programs"
     n_h_bins: int = 6
+    # MAP-Elites diversity axis. Supported: concept_group, concept_type, embedding.
+    diversity_axis: str = "concept_group"
     n_div_bins: int = 10
     h_range: list = field(default_factory=lambda: [0.0, 1.0])
+    # R_Q uncertainty metric. Supported: h (mean token entropy), h_span_max
+    # (max mean entropy over reasoning/sentence spans).
+    uncertainty_metric: str = "h"
     evolution_pct: float = 0.1
     evolution_freq: int = 50
     target_hard_champions: int = 6

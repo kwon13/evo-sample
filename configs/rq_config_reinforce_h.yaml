@@ -8,24 +8,16 @@ data:
   shuffle: true
 
 algorithm:
-  # GRPO: group-relative policy optimization. Samples n rollouts per prompt,
-  # standardizes rewards within the group, no critic required.
-  # Requires worker.rollout.n > 1 (see ray_trainer.py:251).
-  adv_estimator: grpo
+  adv_estimator: reinforce_plus_plus
   kl_penalty: low_var_kl
-  # GRPO 관행: KL term을 actor loss에 포함 + 작은 coefficient.
-  # REINFORCE++ 대비 kl_coef를 한 자릿수 낮춤 (GRPO는 ratio clipping이 없으므로
-  # KL가 policy drift의 주 안전장치).
-  kl_coef: 1.0e-3
-  use_kl_loss: true
+  kl_coef: 1.0e-2
+  use_kl_loss: false
 
 worker:
   hybrid_engine: true
   actor:
     strategy: fsdp
     global_batch_size: 32
-    # n=8 rollouts/prompt → one training step processes 32 × 8 = 256 trajectories.
-    # micro_batch_size를 1로 낮춰 GPU 메모리 여유를 확보.
     micro_batch_size_per_device_for_update: 4
     micro_batch_size_per_device_for_experience: 2
     use_torch_compile: false
@@ -34,7 +26,7 @@ worker:
       enable_cpu_offload: false
       torch_dtype: bfloat16
     model:
-      model_path: /data1/yhoon113/qwen3-4b-base
+      model_path: Qwen/Qwen3-4B-Base
       trust_remote_code: true
       enable_gradient_checkpointing: true
     optim:
@@ -58,20 +50,10 @@ worker:
     tensor_parallel_size: 1
     enable_chunked_prefill: false
     enforce_eager: false
-    # G=8 rollouts/prompt for GRPO group. 16이 더 안정적이지만 memory 2배.
-    # 본 설정은 Qwen3-4B × 2GPU 환경 기준 보수적 시작점.
-    n: 8
-    gpu_memory_utilization: 0.5
+    n: 1
+    gpu_memory_utilization: 0.6
     ignore_eos: false
     disable_log_stats: true
-    # Validation override — training n=8은 GRPO group size지만, MATH500 pass@1
-    # 측정은 prompt당 sample 1개, greedy로 해야 함.
-    # 빈 dict이면 self.sampling_params (n=8)이 그대로 쓰여 output batch가
-    # input의 8배가 되고 _validate 에서 union 시 batch size mismatch로 크래시
-    # (ray_trainer.py:306, 312-320 → protocol.py:88).
-    val_override_config:
-      n: 1
-      temperature: 0.0
 
   reward:
     reward_type: batch
@@ -82,8 +64,8 @@ trainer:
   total_epochs: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo       # 실험 이름 구분
-  default_local_dir: ./rq_output/verl_ckpt_grpo
+  experiment_name: qwen3_4b_base_rpp
+  default_local_dir: ./rq_output/verl_ckpt
   logger:
     - console
     - wandb
@@ -109,24 +91,22 @@ rq:
   # H bins are applied to the selected uncertainty_metric. The paper default is
   # token-level entropy, matching the Fisher/gradient derivation. The supported
   # metrics are h and h_span_max.
-  h_range: [0.0, 6.0]
+  h_range: [0.0, 2.0]
   # Evolution now runs once per Solver epoch via _pre_epoch_hook() —
   # evolution_pct / evolution_freq are NOT consulted. Kept here only for
   # backward-compatible YAML parsing; safe to delete.
   evolution_pct: 0.1
   candidates_per_evo: 8
   max_rounds: 8
-  # rq.num_rollouts는 R_Q scoring용 rollout 수 (evolution 내부).
-  # worker.rollout.n (GRPO group size)과 완전히 독립.
   num_rollouts: 8
   # R_Q uncertainty metric:
   #   h           : mean output-token entropy H
   #   h_span_max : max entropy over output reasoning/sentence spans H_span_max
-  uncertainty_metric: h_span_max
+  uncertainty_metric: h
   instances_per_program: 16
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
-  h_threshold: 0.01
+  h_threshold: 0.1
   ucb_c: 1.0
   epsilon: 0.3
   # Non-champion but valid/scored programs are kept as evolution material.
@@ -141,7 +121,7 @@ rq:
   # new candidates compete with them.
   #
   #   null (default, Method-aligned) — re-evaluate ALL occupied champions
-  #       (bounded by n_h_bins × n_div_bins = 100 in current grid).
+  #       (bounded by n_h_bins × n_div_bins = 60 in current grid).
   #   int > 0                         — partial budget for debugging/ablation;
   #                                     age-weighted + random sampling.
   #   0                               — disable re-evaluation (ablation only).
@@ -156,7 +136,7 @@ rq:
   #                              excluded from training data (R_Q = 0 anyway).
   # reeval does NOT evict extreme-p champions; it only evicts low-H or
   # consistently exec-failing ones.
-  frontier_p_hat_range: [0.1, 0.9]
+  frontier_p_hat_range: [0.2, 0.8]
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
   # mode:
