@@ -192,7 +192,7 @@ MUTATE_BREADTH = (
     "#   sequences              -> coordinate geometry / vectors\n"
     "#   trigonometry           -> complex numbers / roots of unity\n"
     "#   logarithms             -> inequalities (AM-GM, Jensen)\n"
-    "#   linear algebra         -> discrete calculus / telescoping\n"
+    "#   linear systems/algebra -> discrete calculus / telescoping\n"
     "#   calculus               -> inclusion-exclusion / Polya\n"
     "# (If the parent is already in the right column, pick a left-\n"
     "# column entry or invent a further domain, e.g. p-adic tools.)\n"

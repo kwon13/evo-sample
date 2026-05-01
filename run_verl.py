@@ -37,6 +37,11 @@ from verl.trainer.data_loader import create_dataloader
 from rq_questioner.program import ProblemProgram
 from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.verl_dataset import MapElitesDynamicDataset
+from rq_questioner.concepts import (
+    concept_axis_labels,
+    validate_concept_contract,
+    validate_concept_decl,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +71,22 @@ def load_seeds(seed_dir: str) -> list[ProblemProgram]:
             generation=0,
             metadata={"source_file": f.name},
         )
-        if prog.execute(seed=42):
+        inst = prog.execute(seed=42)
+        if inst:
+            concept_type = prog.declared_concept_type()
+            concept_group = prog.declared_concept_group()
+            concept_reasons = validate_concept_decl(concept_type, concept_group)
+            contract_reasons = validate_concept_contract(
+                concept_type, inst.problem, inst.answer,
+            )
+            if concept_reasons or contract_reasons:
+                print(
+                    f"  Seed FAIL: {f.name} "
+                    f"({'; '.join((concept_reasons + contract_reasons)[:3])})"
+                )
+                continue
+            prog.metadata["concept_type"] = concept_type
+            prog.metadata["concept_group"] = concept_group
             prog.root_seed_id = prog.program_id
             programs.append(prog)
             print(f"  Seed OK: {f.name}")
@@ -83,6 +103,7 @@ def init_map_elites(
     ucb_c,
     epsilon,
     candidate_reservoir_size=4,
+    diversity_axis="concept_group",
 ) -> MAPElitesGrid:
     grid = MAPElitesGrid(
         n_h_bins=n_h_bins,
@@ -91,18 +112,22 @@ def init_map_elites(
         ucb_c=ucb_c,
         epsilon=epsilon,
         candidate_reservoir_size=candidate_reservoir_size,
+        diversity_axis=diversity_axis,
     )
 
-    # Embedding 기반 D축: seed 문제 텍스트로 PCA fitting
-    seed_problems = []
-    for prog in seeds:
-        for s in range(5):
-            inst = prog.execute(seed=s)
-            if inst:
-                seed_problems.append(inst.problem)
-    if seed_problems:
-        grid.fit_diversity_axis(seed_problems)
-        print(f"  D-axis fitted with {len(seed_problems)} seed problems")
+    if diversity_axis == "embedding":
+        # Embedding 기반 D축: seed 문제 텍스트로 PCA fitting
+        seed_problems = []
+        for prog in seeds:
+            for s in range(5):
+                inst = prog.execute(seed=s)
+                if inst:
+                    seed_problems.append(inst.problem)
+        if seed_problems:
+            grid.fit_diversity_axis(seed_problems)
+            print(f"  D-axis fitted with {len(seed_problems)} seed problems")
+    else:
+        print(f"  D-axis uses controlled {diversity_axis} labels")
 
     # Seed champion 삽입
     for prog in seeds:
@@ -189,6 +214,14 @@ class RQTaskRunner:
         seed_dir = rq_cfg_get("seed_programs_dir", "./seed_programs")
         n_h_bins = rq_cfg_get("n_h_bins", 6)
         n_div_bins = rq_cfg_get("n_div_bins", 10)
+        diversity_axis = rq_cfg_get("diversity_axis", "concept_group")
+        axis_labels = concept_axis_labels(diversity_axis)
+        if axis_labels and n_div_bins != len(axis_labels):
+            print(
+                f"[Runner] overriding rq.n_div_bins={n_div_bins} to "
+                f"{len(axis_labels)} for diversity_axis={diversity_axis}"
+            )
+            n_div_bins = len(axis_labels)
         h_range = rq_cfg_get("h_range", [0.0, 5.0])
         ucb_c = rq_cfg_get("ucb_c", 1.0)
         epsilon = rq_cfg_get("epsilon", 0.3)
@@ -210,10 +243,14 @@ class RQTaskRunner:
             ucb_c,
             epsilon,
             candidate_reservoir_size=candidate_reservoir_size,
+            diversity_axis=diversity_axis,
         )
         dynamic_dataset = build_seed_dataset(seeds, instances_per_program)
         dynamic_dataset.set_tokenizer(tokenizer, max_prompt_length=config.data.max_prompt_length)
-        print(f"[Runner] MAP-Elites grid: {n_h_bins} x {n_div_bins}, dataset: {len(dynamic_dataset)} problems")
+        print(
+            f"[Runner] MAP-Elites grid: {n_h_bins} x {n_div_bins} "
+            f"({diversity_axis}), dataset: {len(dynamic_dataset)} problems"
+        )
 
         # DataLoaders
         from torchdata.stateful_dataloader import StatefulDataLoader
@@ -285,6 +322,7 @@ class RQTaskRunner:
             candidates_per_evo=rq_cfg_get("candidates_per_evo", 8),
             max_rounds=rq_cfg_get("max_rounds", 8),
             num_rollouts=rq_cfg_get("num_rollouts", 10),
+            uncertainty_metric=rq_cfg_get("uncertainty_metric", "entropy"),
             instances_per_program=instances_per_program,
             in_depth_ratio=rq_cfg_get("in_depth_ratio", 0.5),
             crossover_ratio=rq_cfg_get("crossover_ratio", 0.2),

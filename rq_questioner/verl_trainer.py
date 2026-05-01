@@ -50,6 +50,7 @@ from .code_utils import (
     lint_generator_source,
     lint_problem_instance,
 )
+from .concepts import validate_concept_contract, validate_concept_decl
 
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
@@ -93,6 +94,13 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> ProblemInstanc
     if lint_generator_source(program.source_code):
         return None
 
+    concept_type = program.declared_concept_type()
+    concept_group = program.declared_concept_group()
+    if validate_concept_decl(concept_type, concept_group):
+        return None
+    program.metadata["concept_type"] = concept_type
+    program.metadata["concept_group"] = concept_group
+
     instances = []
     problems = []
     answers = []
@@ -101,6 +109,8 @@ def _verify_program(program: ProblemProgram, n_seeds: int = 5) -> ProblemInstanc
         if inst is None:
             return None  # 하나라도 실행 실패 → 거부
         if lint_problem_instance(inst):
+            return None
+        if validate_concept_contract(concept_type, inst.problem, inst.answer):
             return None
         # SymPy로 답이 파싱 가능한지 확인
         try:
@@ -137,7 +147,7 @@ def _normalize(s: str) -> str:
     for o, c in [("{", "}"), ("[", "]"), ("(", ")")]:
         if s.startswith(o) and s.endswith(c):
             s = s[1:-1].strip()
-    return " ".join(s.rstrip(".").split())
+    return " ".join(s.rstrip(".").replace(",", "").split())
 
 
 def _sympy_equal(a: str, b: str, tol: float = 1e-4) -> bool | None:
@@ -180,6 +190,81 @@ def _answers_match(pred: str, gt: str) -> bool:
     if result is not None:
         return result
     return False
+
+
+def _answer_equiv(a: str, b: str, semantic: bool) -> bool:
+    if _normalize(a) == _normalize(b):
+        return True
+    if semantic:
+        result = _sympy_equal(a, b)
+        if result is not None:
+            return result
+    return False
+
+
+def _answer_entropy(pred_answers: list[str | None], semantic: bool = False) -> float:
+    """Entropy over extracted answer classes from multiple rollouts."""
+    if not pred_answers:
+        return 0.0
+
+    classes: list[list[str]] = []
+    for raw in pred_answers:
+        ans = raw if raw is not None else "<invalid>"
+        placed = False
+        for cls in classes:
+            if _answer_equiv(ans, cls[0], semantic=semantic):
+                cls.append(ans)
+                placed = True
+                break
+        if not placed:
+            classes.append([ans])
+
+    total = sum(len(cls) for cls in classes)
+    if total <= 0:
+        return 0.0
+    probs = [len(cls) / total for cls in classes]
+    return -sum(p * np.log(p) for p in probs if p > 0)
+
+
+def _binary_vote_entropy(flags: list[bool]) -> float:
+    if not flags:
+        return 0.0
+    p = sum(bool(f) for f in flags) / len(flags)
+    return -sum(q * np.log(q) for q in (p, 1.0 - p) if q > 0)
+
+
+def _gini_from_entropy_fallback(h_bar: float) -> float:
+    """Fallback impurity proxy when only full-vocab Shannon entropy is available."""
+    return max(0.0, 1.0 - float(np.exp(-max(0.0, h_bar))))
+
+
+def _select_uncertainty_score(
+    metric: str,
+    h_bar: float,
+    flags: list[bool],
+    pred_answers: list[str | None],
+    step_max_entropy: float | None = None,
+) -> tuple[float, dict[str, float]]:
+    vote_u = (
+        _answer_entropy(pred_answers, semantic=False)
+        if pred_answers else _binary_vote_entropy(flags)
+    )
+    semantic_u = (
+        _answer_entropy(pred_answers, semantic=True)
+        if pred_answers else _binary_vote_entropy(flags)
+    )
+    gini_u = _gini_from_entropy_fallback(h_bar)
+    step_u = h_bar if step_max_entropy is None else step_max_entropy
+    scores = {
+        "entropy": float(h_bar),
+        "gini": float(gini_u),
+        "vote_entropy": float(vote_u),
+        "semantic_entropy": float(semantic_u),
+        "step_max_entropy": float(step_u),
+    }
+    if metric not in scores:
+        raise ValueError(f"Unknown uncertainty_metric: {metric}")
+    return scores[metric], scores
 
 
 def _extract_code(text: str) -> str | None:
@@ -306,6 +391,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         candidates_per_evo: int = 8,
         max_rounds: int = 8,
         num_rollouts: int = 16,
+        uncertainty_metric: str = "entropy",
         instances_per_program: int = 3,
         in_depth_ratio: float = 0.5,
         crossover_ratio: float = 0.2,
@@ -337,6 +423,13 @@ class RQEvolveTrainer(RayPPOTrainer):
         self.candidates_per_evo = candidates_per_evo
         self.max_rounds = max_rounds
         self.num_rollouts = num_rollouts
+        allowed_uncertainty = {
+            "entropy", "gini", "vote_entropy",
+            "semantic_entropy", "step_max_entropy",
+        }
+        if uncertainty_metric not in allowed_uncertainty:
+            raise ValueError(f"Unknown uncertainty_metric: {uncertainty_metric}")
+        self.uncertainty_metric = uncertainty_metric
         self.instances_per_program = instances_per_program
         self.in_depth_ratio = in_depth_ratio
         self.crossover_ratio = crossover_ratio
@@ -546,6 +639,64 @@ class RQEvolveTrainer(RayPPOTrainer):
             "entropy_std": float(valid.std(unbiased=False).item()),
         }
 
+    def _step_max_entropy_from_response(
+        self,
+        text: str,
+        token_ids,
+        entropies: torch.Tensor,
+        response_mask: torch.Tensor,
+        index: int,
+    ) -> float | None:
+        """Max mean token entropy over explicit Step/Final spans in one response."""
+        valid_mask = response_mask[index].bool().detach().cpu().tolist()
+        token_hs_raw = entropies[index].detach().float().cpu().tolist()
+        token_hs = [h if m else None for h, m in zip(token_hs_raw, valid_mask)]
+        valid_hs = [h for h in token_hs if h is not None]
+        if not valid_hs:
+            return None
+
+        boundaries = list(re.finditer(r"(?im)^\s*(?:step\s*\d+|final)\s*:", text or ""))
+        if len(boundaries) < 2 or token_ids is None:
+            return float(sum(valid_hs) / len(valid_hs))
+
+        try:
+            ids = token_ids[index].detach().cpu().tolist()
+        except Exception:
+            try:
+                ids = token_ids[index].tolist()
+            except Exception:
+                return float(sum(valid_hs) / len(valid_hs))
+
+        token_spans = []
+        cursor = 0
+        for tok_id, h in zip(ids, token_hs):
+            if h is None:
+                token_spans.append((cursor, cursor))
+                continue
+            piece = self.tokenizer.decode([tok_id], skip_special_tokens=False)
+            if not piece:
+                token_spans.append((cursor, cursor))
+                continue
+            pos = text.find(piece, cursor)
+            if pos < 0:
+                pos = cursor
+            end = pos + len(piece)
+            token_spans.append((pos, end))
+            cursor = end
+
+        starts = [m.start() for m in boundaries] + [len(text)]
+        step_means = []
+        for start, end in zip(starts, starts[1:]):
+            hs = [
+                h for (tok_start, tok_end), h in zip(token_spans, token_hs)
+                if h is not None and tok_end > start and tok_start < end
+            ]
+            if hs:
+                step_means.append(sum(hs) / len(hs))
+        if not step_means:
+            return float(sum(valid_hs) / len(valid_hs))
+        return float(max(step_means))
+
     def _evolution_step(self) -> dict:
         """
         Fixed-budget evolution (FunSearch 스타일).
@@ -647,6 +798,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             "grid_max_rq": stats["max_rq"],
             "grid_min_rq": stats["min_rq"],
             "grid_champions": stats["num_champions"],
+            "diversity_axis": self.map_elites.diversity_axis,
+            "uncertainty_metric": self.uncertainty_metric,
             "reservoir_candidates": stats.get("num_reservoir_candidates", 0),
             "reservoir_cells": stats.get("num_reservoir_cells", 0),
             "reservoir_selections": stats.get("total_reservoir_selections", 0),
@@ -742,6 +895,15 @@ class RQEvolveTrainer(RayPPOTrainer):
                     "generation": champ.generation,
                     "program_id": champ.program_id,
                     "root_seed_id": champ.root_seed_id,
+                    "concept_type": champ.get_concept_type(),
+                    "concept_group": champ.get_concept_group(),
+                    "uncertainty_metric": (champ.metadata or {}).get(
+                        "uncertainty_metric", self.uncertainty_metric
+                    ),
+                    "uncertainty_scores": (champ.metadata or {}).get(
+                        "uncertainty_scores", {}
+                    ),
+                    "token_entropy": (champ.metadata or {}).get("token_entropy"),
                     "problem": inst.problem if inst else "",
                     "answer": inst.answer if inst else "",
                     "source_code": champ.source_code,
@@ -753,11 +915,11 @@ class RQEvolveTrainer(RayPPOTrainer):
             "timestamp": datetime.now().isoformat(),
             "metrics": evo_metrics,
             "grid": grid_snapshot,
-            # Generic D-axis labels. MAPElitesGrid now uses PCA projection on
-            # problem embeddings (fit_diversity_axis) so bins don't map to
-            # specific seeds anymore.
+            "diversity_axis": self.map_elites.diversity_axis,
+            "uncertainty_metric": self.uncertainty_metric,
             "seed_labels": {
-                str(d): f"D{d}" for d in range(self.map_elites.n_div_bins)
+                str(d): label
+                for d, label in enumerate(self.map_elites.diversity_labels())
             },
         }
 
@@ -1063,11 +1225,15 @@ class RQEvolveTrainer(RayPPOTrainer):
             return _metrics()
 
         probe_flags: list[bool] = []
+        probe_predictions: list[str | None] = []
+        probe_decoded: list[str] = []
         for ci in range(n_pairs):
             decoded = self.tokenizer.decode(
                 probe_resp_ids[ci].tolist(), skip_special_tokens=True,
             )
             pred = _extract_boxed(decoded)
+            probe_decoded.append(decoded)
+            probe_predictions.append(pred)
             probe_flags.append(_answers_match(pred, pair_answers[ci]) if pred else False)
 
         try:
@@ -1090,6 +1256,13 @@ class RQEvolveTrainer(RayPPOTrainer):
         mask_f = response_mask.float()
         h_tensor = (entropies * mask_f).sum(dim=-1) / mask_f.sum(dim=-1).clamp(min=1)
         h_per_pair: list[float] = h_tensor.cpu().tolist()
+        response_token_ids = probe_resp_ids
+        step_max_per_pair = [
+            self._step_max_entropy_from_response(
+                probe_decoded[ci], response_token_ids, entropies, response_mask, ci,
+            )
+            for ci in range(n_pairs)
+        ]
 
         # ---- 4. Counters (evicted / exec_fail_evicted already initialized) --
         # frontier_p_hat_range defines the training-data frontier band; it is
@@ -1128,6 +1301,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         # ---- 6. Expand rollout for retained champions -----------------
         extra_flags_per_ci: dict[int, list[bool]] = {ci: [] for ci in retained_indices}
+        extra_preds_per_ci: dict[int, list[str | None]] = {ci: [] for ci in retained_indices}
         extra_n = self.num_rollouts - 1
         if retained_indices and extra_n > 0:
             retained_texts = [solver_texts[ci] for ci in retained_indices]
@@ -1159,6 +1333,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                         extra_resp_ids[idx].tolist(), skip_special_tokens=True,
                     )
                     pred = _extract_boxed(decoded)
+                    extra_preds_per_ci[ci].append(pred)
                     extra_flags_per_ci[ci].append(
                         _answers_match(pred, ans) if pred else False
                     )
@@ -1172,14 +1347,25 @@ class RQEvolveTrainer(RayPPOTrainer):
             champ, inst, rq_before = pairs[ci]
             h_bar = h_per_pair[ci]
             flags = [probe_flags[ci]] + extra_flags_per_ci[ci]
+            pred_answers = [probe_predictions[ci]] + extra_preds_per_ci[ci]
             new_p_hat = sum(flags) / len(flags) if flags else 0.0
-            new_rq = new_p_hat * (1.0 - new_p_hat) * h_bar
+            uncertainty_score, uncertainty_scores = _select_uncertainty_score(
+                self.uncertainty_metric,
+                h_bar,
+                flags,
+                pred_answers,
+                step_max_per_pair[ci],
+            )
+            new_rq = new_p_hat * (1.0 - new_p_hat) * uncertainty_score
 
             champ.p_hat = new_p_hat
-            champ.h_score = h_bar
+            champ.h_score = uncertainty_score
             champ.rq_score = new_rq
             champ.fitness = new_rq
             champ.last_reeval_step = current_step
+            champ.metadata["uncertainty_metric"] = self.uncertainty_metric
+            champ.metadata["uncertainty_scores"] = uncertainty_scores
+            champ.metadata["token_entropy"] = h_bar
             champ.metadata["frontier_status"] = (
                 "too_hard" if new_p_hat <= low
                 else "too_easy" if new_p_hat >= high
@@ -1189,7 +1375,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 extreme_p_kept += 1
 
             moved = self.map_elites.rebin_champion(
-                program=champ, new_h_value=h_bar, problem_text=inst.problem,
+                program=champ, new_h_value=uncertainty_score, problem_text=inst.problem,
             )
             if moved:
                 bin_shifted += 1
@@ -1355,6 +1541,40 @@ class RQEvolveTrainer(RayPPOTrainer):
                     **self._event_text_fields("source_code", source_code, limit=12000),
                 })
                 continue
+            parent_type = parent.get_concept_type() if parent is not None else None
+            parent_group = parent.get_concept_group() if parent is not None else None
+            child_type = child.get_concept_type()
+            child_group = child.get_concept_group()
+            concept_op_reason = None
+            if op == "in_depth" and parent_type and child_type != parent_type:
+                concept_op_reason = (
+                    f"in_depth must preserve CONCEPT_TYPE "
+                    f"({parent_type} -> {child_type})"
+                )
+            elif op == "in_breadth" and parent_group and child_group == parent_group:
+                concept_op_reason = (
+                    f"in_breadth must change CONCEPT_GROUP "
+                    f"(stayed {child_group})"
+                )
+            if concept_op_reason:
+                self._record_evolution_event({
+                    "event": "candidate_failed",
+                    "round": round_num,
+                    "candidate_index": i,
+                    "op": op,
+                    "parent_id": parent.program_id,
+                    "parent_b_id": parent_b.program_id if parent_b is not None else None,
+                    "child_id": child.program_id,
+                    "status": "concept_operator_reject",
+                    "failure_reason": concept_op_reason,
+                    "concept_type": child_type,
+                    "concept_group": child_group,
+                    "problem": inst.problem,
+                    "answer": inst.answer,
+                    **self._event_text_fields("mutation_output", code_text, limit=8000),
+                    **self._event_text_fields("source_code", source_code, limit=12000),
+                })
+                continue
             self._record_evolution_event({
                 "event": "candidate_verified",
                 "round": round_num,
@@ -1364,6 +1584,8 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "parent_b_id": parent_b.program_id if parent_b is not None else None,
                 "child_id": child.program_id,
                 "generation": child.generation,
+                "concept_type": child.get_concept_type(),
+                "concept_group": child.get_concept_group(),
                 "problem": inst.problem,
                 "answer": inst.answer,
                 **self._event_text_fields("mutation_output", code_text, limit=8000),
@@ -1483,6 +1705,12 @@ class RQEvolveTrainer(RayPPOTrainer):
             self._entropy_event_fields(entropies, response_mask, ci)
             for ci in range(n_children)
         ]
+        step_max_per_child = [
+            self._step_max_entropy_from_response(
+                probe_decoded[ci], probe_resp_ids, entropies, response_mask, ci,
+            )
+            for ci in range(n_children)
+        ]
 
         # ---- (b) H prefilter: retained set only proceeds to expand -----
         retained_indices: list[int] = []
@@ -1493,7 +1721,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 skipped_h += 1
                 child, inst, op, code_text, source_code = children[ci]
                 target_h = self.map_elites.h_to_bin(h_bar)
-                target_d = self.map_elites.problem_to_div_bin(inst.problem)
+                target_d = self.map_elites.program_to_div_bin(child, inst.problem)
                 self._record_evolution_event({
                     "event": "candidate_scored",
                     "round": round_num,
@@ -1503,8 +1731,12 @@ class RQEvolveTrainer(RayPPOTrainer):
                     "parent_id": child.parent_id,
                     "status": "h_prefilter_skip",
                     "h_bar": h_bar,
+                    "token_entropy": h_bar,
+                    "uncertainty_metric": self.uncertainty_metric,
                     "h_bin": target_h,
                     "d_bin": target_d,
+                    "concept_type": child.get_concept_type(),
+                    "concept_group": child.get_concept_group(),
                     "probe_prediction": probe_predictions[ci],
                     "probe_correct": probe_flags[ci],
                     **self._event_text_fields("probe_response", probe_decoded[ci]),
@@ -1529,6 +1761,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         # ---- (c) Expand rollout: G-1 more per retained candidate -------
         extra_flags_per_ci: dict[int, list[bool]] = {ci: [] for ci in retained_indices}
+        extra_preds_per_ci: dict[int, list[str | None]] = {ci: [] for ci in retained_indices}
         extra_n = self.num_rollouts - 1
         if retained_indices and extra_n > 0:
             retained_texts = [solver_texts[ci] for ci in retained_indices]
@@ -1572,6 +1805,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                         extra_resp_ids[idx].tolist(), skip_special_tokens=True,
                     )
                     pred = _extract_boxed(decoded)
+                    extra_preds_per_ci[ci].append(pred)
                     extra_flags_per_ci[ci].append(
                         _answers_match(pred, ans) if pred else False
                     )
@@ -1590,11 +1824,19 @@ class RQEvolveTrainer(RayPPOTrainer):
             child, inst, op, code_text, source_code = children[ci]
             h_bar = h_per_child[ci]
             flags = [probe_flags[ci]] + extra_flags_per_ci[ci]
+            pred_answers = [probe_predictions[ci]] + extra_preds_per_ci[ci]
             p_hat = sum(flags) / len(flags) if flags else 0.0
+            uncertainty_score, uncertainty_scores = _select_uncertainty_score(
+                self.uncertainty_metric,
+                h_bar,
+                flags,
+                pred_answers,
+                step_max_per_child[ci],
+            )
 
-            rq_result = compute_rq_full(flags, h_bar)
-            target_h = self.map_elites.h_to_bin(h_bar)
-            target_d = self.map_elites.problem_to_div_bin(inst.problem)
+            rq_result = compute_rq_full(flags, uncertainty_score)
+            target_h = self.map_elites.h_to_bin(uncertainty_score)
+            target_d = self.map_elites.program_to_div_bin(child, inst.problem)
             target_niche = self.map_elites.grid.get((target_h, target_d))
             previous_program_id = (
                 target_niche.champion.program_id
@@ -1607,9 +1849,12 @@ class RQEvolveTrainer(RayPPOTrainer):
                 else None
             )
             child.p_hat = p_hat
-            child.h_score = h_bar
+            child.h_score = uncertainty_score
             child.rq_score = rq_result.rq_score
             child.fitness = rq_result.rq_score
+            child.metadata["uncertainty_metric"] = self.uncertainty_metric
+            child.metadata["uncertainty_scores"] = uncertainty_scores
+            child.metadata["token_entropy"] = h_bar
             child.metadata["frontier_status"] = (
                 "too_hard" if p_hat <= f_low
                 else "too_easy" if p_hat >= f_high
@@ -1617,7 +1862,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
 
             was_inserted = self.map_elites.try_insert(
-                program=child, h_value=h_bar,
+                program=child, h_value=uncertainty_score,
                 problem_text=inst.problem, rq_score=rq_result.rq_score,
             )
             self._record_evolution_event({
@@ -1636,11 +1881,16 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "duplicate_of": child.metadata.get("duplicate_of"),
                 "archive_status": child.metadata.get("archive_status"),
                 "frontier_status": child.metadata["frontier_status"],
-                "h_bar": h_bar,
+                "h_bar": uncertainty_score,
+                "token_entropy": h_bar,
+                "uncertainty_metric": self.uncertainty_metric,
+                "uncertainty_scores": uncertainty_scores,
                 "p_hat": p_hat,
                 "rq_score": rq_result.rq_score,
                 "h_bin": target_h,
                 "d_bin": target_d,
+                "concept_type": child.get_concept_type(),
+                "concept_group": child.get_concept_group(),
                 "probe_prediction": probe_predictions[ci],
                 "probe_correct": probe_flags[ci],
                 **self._event_text_fields("probe_response", probe_decoded[ci]),
@@ -1659,7 +1909,8 @@ class RQEvolveTrainer(RayPPOTrainer):
                 logger.info(
                     f"[Evolution] Inserted ({op}, "
                     f"{child.metadata['frontier_status']}): p={p_hat:.3f} "
-                    f"H={h_bar:.3f} R_Q={rq_result.rq_score:.4f}"
+                    f"U[{self.uncertainty_metric}]={uncertainty_score:.3f} "
+                    f"R_Q={rq_result.rq_score:.4f}"
                 )
 
         return attempted, inserted

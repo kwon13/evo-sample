@@ -28,7 +28,7 @@ class MAPElitesGrid:
     MAP-Elites grid: H bins (entropy/difficulty) x D bins (diversity).
 
     Primary D-axis modes:
-      - concept_group: 7 controlled mathematical domains declared by
+      - concept_group: 6 controlled mathematical domains declared by
         top-level program constants.
       - concept_type: 15 controlled fine-grained skill/template labels.
 
