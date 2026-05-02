@@ -1,0 +1,882 @@
+{
+  "global_step": 14,
+  "timestamp": "2026-05-02T08:41:33.777616",
+  "training_selection_mode": "h_priority_d_uniform",
+  "training_budget": 960,
+  "instances_per_program": 16,
+  "strict_anti_reuse": true,
+  "frontier_p_hat_range": [
+    0.1,
+    0.9
+  ],
+  "dataset_size": 96,
+  "archive_champions": 6,
+  "frontier_champions": 6,
+  "duplicate_signature_skipped_visits": 0,
+  "problems": [
+    {
+      "problem": "Given positive integers a = 1 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0606601717798212",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 32
+    },
+    {
+      "problem": "A geometric sequence has the first term 7 and a common ratio 5. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "217",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 0
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral with sides 4, 4, 1, 3. What is the product of the lengths of its diagonals? Also, determine the area of the quadrilateral.",
+      "answer": "16",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 0
+    },
+    {
+      "problem": "In a group of 8 people, how many ways can a committee of size 8 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "1",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 16
+    },
+    {
+      "problem": "Given positive real numbers a = 7 and b = 7, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 0
+    },
+    {
+      "problem": "Compute the Legendre symbol (q/p) where q = 19 and p = 19. Also, determine the sign of the Legendre symbol.",
+      "answer": "0",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 0
+    },
+    {
+      "problem": "A geometric sequence has the first term 3 and a common ratio 2. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "93",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 1
+    },
+    {
+      "problem": "Given positive integers a = 5 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.1067971810589328",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 33
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral in three dimensions with sides 2, 5, 1, 3. What is the product of the lengths of its diagonals? Also, determine the area of the quadrilateral.",
+      "answer": "11",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 1
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 5 and p = 7. Also, determine the sign of the Legendre symbol.",
+      "answer": "6",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 1
+    },
+    {
+      "problem": "In a group of 9 people, how many ways can a committee of size 5 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "126",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 17
+    },
+    {
+      "problem": "Given positive real numbers a = 3 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.18673220792786",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 1
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral in three dimensions with sides 1, 1, 1, 3. What is the product of the lengths of its diagonals? Also, determine the area of the quadrilateral.",
+      "answer": "4",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 2
+    },
+    {
+      "problem": "Given positive real numbers a = 1 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0606601717798212",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 2
+    },
+    {
+      "problem": "In a group of 5 people, how many ways can a committee of size 1 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "5",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 18
+    },
+    {
+      "problem": "Compute the Legendre symbol (q/p) where q = 5 and p = 3. Also, determine the sign of the Legendre symbol.",
+      "answer": "2",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 2
+    },
+    {
+      "problem": "A geometric sequence has the first term 1 and a common ratio 2. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "7",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 2
+    },
+    {
+      "problem": "Given positive integers a = 5 and b = 3, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0327955589886444",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 34
+    },
+    {
+      "problem": "Given positive integers a = 5 and b = 3, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0327955589886444",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 35
+    },
+    {
+      "problem": "A geometric sequence has the first term 4 and a common ratio 3. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "484",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 3
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral with sides 2, 5, 5, 2. What is the product of the lengths of its diagonals? Also, determine the area of the quadrilateral.",
+      "answer": "29",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 3
+    },
+    {
+      "problem": "In a group of 3 people, how many ways can a committee of size 3 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "1",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 19
+    },
+    {
+      "problem": "Compute the Legendre symbol (q/p) where q = 7 and p = 11.",
+      "answer": "10",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 3
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.1067971810589328",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 3
+    },
+    {
+      "problem": "A geometric sequence has the first term 4 and a common ratio 4. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "84",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 4
+    },
+    {
+      "problem": "Given positive integers a = 3 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.1547005383792517",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 36
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0062305898749053",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 4
+    },
+    {
+      "problem": "Compute the Legendre symbol (q/p) where q = 13 and p = 11. Also, determine the sign of the Legendre symbol.",
+      "answer": "10",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 4
+    },
+    {
+      "problem": "In a group of 5 people, how many ways can a committee of size 3 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "10",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 20
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 2, 3, 1, 4. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "11",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 4
+    },
+    {
+      "problem": "Compute the Legendre symbol (q/p) where q = 17 and p = 13. Also, determine the sign of the Legendre symbol.",
+      "answer": "1",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 5
+    },
+    {
+      "problem": "A geometric sequence has the first term 10 and a common ratio 4. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "3410",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 5
+    },
+    {
+      "problem": "In a group of 5 people, how many ways can a committee of size 4 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "5",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 21
+    },
+    {
+      "problem": "Given positive integers a = 5 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.3416407864998738",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 37
+    },
+    {
+      "problem": "Given positive real numbers a = 10 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0606601717798212",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 5
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral in three dimensions with sides 5, 3, 3, 5. What is the product of the lengths of its diagonals? Also, determine the area of the quadrilateral.",
+      "answer": "34",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 5
+    },
+    {
+      "problem": "A geometric sequence has the first term 10 and a common ratio 2. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "630",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 6
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 23 and p = 5. Also, determine the sign of the Legendre symbol.",
+      "answer": "4",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 6
+    },
+    {
+      "problem": "In a group of 5 people, how many ways can a committee of size 2 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "10",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 22
+    },
+    {
+      "problem": "Given positive real numbers a = 10 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.3416407864998738",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 6
+    },
+    {
+      "problem": "Given positive integers a = 4 and b = 4, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 38
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 5, 1, 4, 3. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "19",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 6
+    },
+    {
+      "problem": "Given positive real numbers a = 6 and b = 3, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0606601717798214",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 7
+    },
+    {
+      "problem": "A geometric sequence has the first term 6 and a common ratio 3. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "2184",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 7
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 3, 2, 4, 1. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "11",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 7
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 7 and p = 17. Also, determine the sign of the Legendre symbol.",
+      "answer": "16",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 7
+    },
+    {
+      "problem": "Given positive integers a = 2 and b = 3, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0206207261596576",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 39
+    },
+    {
+      "problem": "In a group of 7 people, how many ways can a committee of size 7 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "1",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 23
+    },
+    {
+      "problem": "A geometric sequence has the first term 4 and a common ratio 4. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "5460",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 8
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 2, 3, 4, 2. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "16",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 8
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 6, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0206207261596576",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 8
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 17 and p = 11. Also, determine the sign of the Legendre symbol.",
+      "answer": "10",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 8
+    },
+    {
+      "problem": "In a group of 9 people, how many ways can a committee of size 3 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "84",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 24
+    },
+    {
+      "problem": "Given positive integers a = 4 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0062305898749053",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 40
+    },
+    {
+      "problem": "A geometric sequence has the first term 8 and a common ratio 4. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "2728",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 9
+    },
+    {
+      "problem": "In a group of 9 people, how many ways can a committee of size 1 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "9",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 25
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 17 and p = 23. Also, determine the sign of the Legendre symbol.",
+      "answer": "22",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 9
+    },
+    {
+      "problem": "Given positive real numbers a = 8 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0062305898749053",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 9
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 4, 5, 3, 3. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "27",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 9
+    },
+    {
+      "problem": "Given positive integers a = 4 and b = 3, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0103629710818451",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 41
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 5, 1, 4, 4. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "24",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 10
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 19 and p = 3. Also, determine the sign of the Legendre symbol.",
+      "answer": "1",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 10
+    },
+    {
+      "problem": "Given positive real numbers a = 10 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.7392527130926085",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 10
+    },
+    {
+      "problem": "In a group of 6 people, how many ways can a committee of size 6 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "1",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 26
+    },
+    {
+      "problem": "Given positive integers a = 1 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 42
+    },
+    {
+      "problem": "A geometric sequence has the first term 10 and a common ratio 2. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "630",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 10
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 23 and p = 23. Also, determine the sign of the Legendre symbol.",
+      "answer": "0",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 11
+    },
+    {
+      "problem": "Given positive real numbers a = 8 and b = 9, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0017346066809425",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 11
+    },
+    {
+      "problem": "A geometric sequence has the first term 8 and a common ratio 5. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "31248",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 11
+    },
+    {
+      "problem": "In a group of 10 people, how many ways can a committee of size 5 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "252",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 27
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 4, 5, 4, 4. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "36",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 11
+    },
+    {
+      "problem": "Given positive integers a = 1 and b = 3, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.1547005383792517",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 43
+    },
+    {
+      "problem": "A geometric sequence has the first term 8 and a common ratio 4. Calculate the sum of the first 7 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "43688",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 12
+    },
+    {
+      "problem": "Given positive real numbers a = 8 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0277402395547233",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 12
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral in three dimensions with sides 4, 3, 5, 3. What is the product of the lengths of its diagonals? Also, determine the area of the quadrilateral.",
+      "answer": "27",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 12
+    },
+    {
+      "problem": "In a group of 4 people, how many ways can a committee of size 2 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "6",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 28
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 13 and p = 23. Also, determine the sign of the Legendre symbol.",
+      "answer": "1",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 12
+    },
+    {
+      "problem": "Given positive integers a = 4 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0062305898749053",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 44
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 3, 3, 2, 2. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "12",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 13
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 13 and p = 13. Also, determine the sign of the Legendre symbol.",
+      "answer": "0",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 13
+    },
+    {
+      "problem": "In a group of 4 people, how many ways can a committee of size 3 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "4",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 29
+    },
+    {
+      "problem": "A geometric sequence has the first term 5 and a common ratio 4. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "425",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 13
+    },
+    {
+      "problem": "Given positive real numbers a = 5 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 13
+    },
+    {
+      "problem": "Given positive integers a = 3 and b = 4, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0103629710818451",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 45
+    },
+    {
+      "problem": "Compute the Legendre symbol (q/p) where q = 11 and p = 5.",
+      "answer": "1",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 14
+    },
+    {
+      "problem": "In a group of 7 people, how many ways can a committee of size 5 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "21",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 30
+    },
+    {
+      "problem": "A geometric sequence has the first term 2 and a common ratio 3. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "242",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 14
+    },
+    {
+      "problem": "Given positive integers a = 1 and b = 4, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.25",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 46
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral with sides 1, 5, 5, 2. What is the product of the lengths of its diagonals? Also, determine the area of the quadrilateral.",
+      "answer": "27",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 14
+    },
+    {
+      "problem": "Given positive real numbers a = 2 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.3416407864998738",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 14
+    },
+    {
+      "problem": "In a group of 3 people, how many ways can a committee of size 2 be formed? However, there is a slight ambiguity in the problem statement. Consider whether the committee should be formed with or without a specific person. Which interpretation is correct, and why?",
+      "answer": "3",
+      "program_id": "05d7344930a7",
+      "rq_score": 0.029668167233467102,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 31
+    },
+    {
+      "problem": "Given positive integers a = 3 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.1547005383792517",
+      "program_id": "d396feae0ca8",
+      "rq_score": 0.0183546612970531,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 47
+    },
+    {
+      "problem": "Consider a cyclic quadrilateral inscribed in a circle with sides 2, 1, 5, 1. What is the product of the lengths of its diagonals? Also, determine the radius of the circumscribed circle.",
+      "answer": "7",
+      "program_id": "280841ba0295",
+      "rq_score": 0.02108061220496893,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 15
+    },
+    {
+      "problem": "A geometric sequence has the first term 4 and a common ratio 2. Calculate the sum of the first 7 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "508",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.056773167103528976,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 15
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.25",
+      "program_id": "9a3e6cc45bab",
+      "rq_score": 0.10555348824709654,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 15
+    },
+    {
+      "problem": "Consider the Legendre symbol in a higher dimension:\nCompute the Legendre symbol (q/p) where q = 3 and p = 11. Also, determine the sign of the Legendre symbol.",
+      "answer": "1",
+      "program_id": "ed9039701b3d",
+      "rq_score": 0.05162467248737812,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 15
+    }
+  ]
+}

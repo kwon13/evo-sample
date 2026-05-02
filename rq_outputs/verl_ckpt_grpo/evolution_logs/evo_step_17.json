@@ -1,0 +1,688 @@
+{
+  "global_step": 17,
+  "timestamp": "2026-05-02T09:13:28.201630",
+  "metrics": {
+    "attempted": 55,
+    "inserted": 11,
+    "accept_rate": 0.2,
+    "rounds": 8,
+    "grid_coverage": 0.1,
+    "grid_mean_rq": 0.04549633711576462,
+    "grid_max_rq": 0.07559290528297424,
+    "grid_min_rq": 0.0,
+    "grid_champions": 6,
+    "diversity_axis": "concept_group",
+    "uncertainty_metric": "h",
+    "reservoir_candidates": 33,
+    "reservoir_cells": 11,
+    "reservoir_selections": 308,
+    "hard_champions": 0,
+    "total_niches": 60,
+    "total_insertions": 72,
+    "total_replacements": 57,
+    "total_reservoir_insertions": 234,
+    "total_duplicate_rejections": 24,
+    "champion_p_hat_mean": 0.45,
+    "champion_p_hat_std": 0.1,
+    "champion_h_mean": 0.23812959492206573,
+    "champion_h_std": 0.09880850362033652,
+    "archive_frontier_champions": 5,
+    "archive_too_hard_champions": 1,
+    "archive_too_easy_champions": 0,
+    "archive_zero_rq_champions": 1,
+    "dataset_non_frontier_skipped_visits": 18,
+    "dataset_duplicate_signature_skipped_visits": 0,
+    "reeval_count": 5,
+    "reeval_evicted": 1,
+    "reeval_low_h_evicted": 1,
+    "reeval_exec_fail_evicted": 0,
+    "reeval_extreme_p_kept": 3,
+    "reeval_bin_shifted": 0,
+    "reeval_rq_delta_mean": -0.02843117592856288,
+    "reeval_rq_delta_min": -0.10555348824709654,
+    "reeval_rq_delta_max": 0.017278745770454407,
+    "reeval_targets": 6,
+    "reeval_n_champions": 6,
+    "reeval_mode": 2,
+    "dataset_size": 79,
+    "event_log_file": "/data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo/evolution_logs/events/events_evo_7_step_17.jsonl"
+  },
+  "grid": [
+    {
+      "h_bin": 0,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.038878572173416615,
+      "reservoir_program_ids": [
+        "73700c8a7d9d",
+        "ed9039701b3d",
+        "fee0f84ae2fd",
+        "df2491239b2b"
+      ],
+      "rq_score": 0.03990072011947632,
+      "p_hat": 0.5,
+      "h_score": 0.15960288047790527,
+      "generation": 5,
+      "program_id": "f104e57b9d75",
+      "root_seed_id": "",
+      "concept_type": "number_theory.crt_count",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.15960288047790527,
+        "h_span_max": 0.3797246813774109
+      },
+      "token_entropy": 0.15960288047790527,
+      "problem": "Find the number of solutions to the congruence equation 10x ≡ 9 (mod 16).",
+      "answer": "0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.crt_count\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate two co-prime integers a and b\n    a = rng.randint(2, 10)\n    b = rng.randint(2, 10)\n    while math.gcd(a, b) != 1:\n        a = rng.randint(2, 10)\n        b = rng.randint(2, 10)\n\n    # Generate a random modulus n\n    n = rng.randint(10, 20)\n\n    # Compute the number of solutions to the system of congruences\n    solutions = 0\n\n    # Check for each x in the range [0, n-1]\n    for x in range(n):\n        if (a * x) % n == b:\n            solutions += 1\n\n    answer = str(solutions)\n    problem = (\n        f\"Find the number of solutions to the congruence equation \"\n        f\"{a}x ≡ {b} (mod {n}).\"\n    )\n\n    return problem, answer"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.060608319472521544,
+      "reservoir_program_ids": [
+        "923a7a50257c",
+        "638964d0c094",
+        "c50348cf07ce",
+        "05d7344930a7"
+      ],
+      "rq_score": 0.0525764524936676,
+      "p_hat": 0.5,
+      "h_score": 0.2103058099746704,
+      "generation": 11,
+      "program_id": "139168b9ce9c",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.derangement_fixed_points",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.2103058099746704,
+        "h_span_max": 0.4400358200073242
+      },
+      "token_entropy": 0.2103058099746704,
+      "problem": "Consider the Stirling number of the first kind S(n, k), which counts the number of ways to arrange n objects into k cycles. Relate this to the number of derangements with exactly 7 fixed points in a set of 8 objects. (Hint: Explore the connection between derangements and permutations with cycles.)",
+      "answer": "0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.derangement_fixed_points\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate two distinct integers n and k\n    n = rng.randint(2, 10)\n    k = rng.randint(1, n-1)\n    while k == n or k == 0:\n        n = rng.randint(2, 10)\n        k = rng.randint(1, n-1)\n\n    # Generate the number of derangements (permutations with no fixed points)\n    derangements = 0\n    for i in range(n):\n        sign = (-1) ** i\n        derangements += sign * math.comb(n, i) * math.factorial(n-i)\n    derangements %= n\n\n    # Calculate the number of derangements with exactly k fixed points\n    answer = 0\n    for i in range(k+1):\n        answer += math.comb(n, i) * derangements\n\n    # Add a dimension lift: consider the arrangement in three dimensions\n    if rng.choice([True, False]):\n        problem = (\n            f\"In a three-dimensional grid of size {n}x{n}x{n}, how many ways can you arrange the objects \"\n            f\"such that exactly {k} of them remain in their original positions, and no two selected \"\n            f\"objects are adjacent in any of the x, y, or z directions? (Hint: Consider the problem as \"\n            f\"a combinatorial selection with constraints in three dimensions.)\"\n        )\n\n    # Add a hidden identity: relate to the Stirling number of the first kind\n    if rng.choice([True, False]):\n        problem = (\n            f\"Consider the Stirling number of the first kind S(n, k), which counts the number of ways to arrange n objects into k cycles. \"\n            f\"Relate this to the number of derangements with exactly {k} fixed points in a set of {n} objects. \"\n            f\"(Hint: Explore the connection between derangements and permutations with cycles.)\"\n        )\n\n    # Add a real ambiguity: consider multiple plausible techniques\n    if rng.choice([True, False]):\n        problem = (\n            f\"In a set of {n} distinct objects, how many ways can you arrange them such that exactly {k} of them remain in their original positions? \"\n            f\"(Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)\"\n        )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.05335596948862076,
+      "reservoir_program_ids": [
+        "e63bac541be3",
+        "586201bd2779",
+        "c8934360c993",
+        "1e4509983c77"
+      ],
+      "rq_score": 0.07405191287398338,
+      "p_hat": 0.25,
+      "h_score": 0.3949435353279114,
+      "generation": 11,
+      "program_id": "1e4509983c77",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.3949435353279114,
+        "h_span_max": 0.4991455986386254
+      },
+      "token_entropy": 0.3949435353279114,
+      "problem": "A geometric sequence has the first term 7 and a common ratio 5. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "217",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate random terms for a geometric sequence\n    a = rng.randint(1, 10)\n    r = rng.randint(2, 5)\n    n = rng.randint(3, 7)\n\n    # Calculate the sum of the first n terms of a geometric sequence\n    sum_terms = a * (r**n - 1) // (r - 1)\n\n    # Introduce an ambiguity by asking the solver to consider two different interpretations of the problem.\n    # The solver must reason through the ambiguity to select the correct answer.\n    problem = (\n        f\"A geometric sequence has the first term {a} and a common ratio {r}. \"\n        f\"Calculate the sum of the first {n} terms of the sequence. \"\n        f\"There is a slight ambiguity in the problem statement. \"\n        f\"Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). \"\n        f\"Which interpretation is correct, and why?\"\n    )\n\n    # Provide two possible answers to guide the solver\n    answer1 = str(sum_terms)\n    answer2 = str(a * (r**n + 1) // (r + 1))\n\n    # The solver should be able to reason through the ambiguity and select the correct answer\n    # based on the context of the problem.\n    answer = answer1  # The correct interpretation is (a(r^n - 1)/(r - 1))\n\n    return problem, answer"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.057936825323849916,
+      "reservoir_program_ids": [
+        "d163c6127c22",
+        "6781de9e34ed",
+        "d303a3fd1e28",
+        "8337f884d69f"
+      ],
+      "rq_score": 0.07559290528297424,
+      "p_hat": 0.5,
+      "h_score": 0.302371621131897,
+      "generation": 15,
+      "program_id": "6781de9e34ed",
+      "root_seed_id": "",
+      "concept_type": "linear_algebra.linear_system_sum",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.302371621131897,
+        "h_span_max": 0.8719798640200966
+      },
+      "token_entropy": 0.302371621131897,
+      "problem": "Consider the linear system:\nx + y = 4\nx - y = 4\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "4",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"linear_algebra.linear_system_sum\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate two random coefficients for the linear system\n    a = rng.randint(1, 5)\n    b = rng.randint(1, 5)\n\n    # Given the linear system:\n    #   x + y = a\n    #   x - y = b\n    # The sum of the solutions (x + y) is equal to a.\n\n    # Add a case analysis branch: consider the sign of the coefficients\n    if rng.choice([True, False]):\n        problem = (\n            f\"Consider the linear system:\\n\"\n            f\"x + y = {a}\\n\"\n            f\"x - y = {b}\\n\"\n            f\"What is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.\"\n        )\n    else:\n        problem = (\n            f\"Consider the linear system:\\n\"\n            f\"x + y = {a}\\n\"\n            f\"x - y = {b}\\n\"\n            f\"What is the sum of the solutions (x + y)?\"\n        )\n\n    # Add a dimension lift: consider the system in a higher dimension\n    if rng.choice([True, False]):\n        problem = (\n            f\"Consider the linear system in three dimensions:\\n\"\n            f\"x + y + z = {a}\\n\"\n            f\"x - y - z = {b}\\n\"\n            f\"What is the sum of the solutions (x + y + z)? Also, determine the sign of the coefficients.\"\n        )\n\n    # Add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n    if rng.choice([True, False]):\n        problem = (\n            f\"Consider the linear system:\\n\"\n            f\"x + y = {a}\\n\"\n            f\"x - y = {b}\\n\"\n            f\"What is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.\"\n        )\n\n    return problem, str(a)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.05194110609591007,
+      "reservoir_program_ids": [
+        "5c59905f2c40",
+        "caeb740153ef",
+        "4a2303d807bc",
+        "48da2350a060"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 0.08724401891231537,
+      "generation": 7,
+      "program_id": "280841ba0295",
+      "root_seed_id": "",
+      "concept_type": "geometry.ptolemy_cyclic_quadrilateral",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.08724401891231537,
+        "h_span_max": 0.5293051401774088
+      },
+      "token_entropy": 0.08724401891231537,
+      "problem": "Consider a cyclic quadrilateral with sides 4, 4, 1, 3. What is the product of the lengths of its diagonals? Also, determine the area of the quadrilateral.",
+      "answer": "16",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.ptolemy_cyclic_quadrilateral\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Reduce numeric ranges for easier solvers, but preserve structure\n    a = rng.randint(1, 5)\n    b = rng.randint(1, 5)\n    c = rng.randint(1, 5)\n    d = rng.randint(1, 5)\n\n    # Given a cyclic quadrilateral with sides a, b, c, d, the product of the diagonals is equal to the sum of the products of opposite sides (Ptolemy's Theorem).\n    # Calculate the product of the diagonals using Ptolemy's Theorem.\n    product_of_diagonals = a * d + b * c\n\n    # Add a dimension lift: consider the quadrilateral in a higher dimension\n    if rng.choice([True, False]):\n        problem = (\n            f\"Consider a cyclic quadrilateral in three dimensions with sides {a}, {b}, {c}, {d}. \"\n            f\"What is the product of the lengths of its diagonals? \"\n            f\"Also, determine the area of the quadrilateral.\"\n        )\n    else:\n        problem = (\n            f\"Consider a cyclic quadrilateral with sides {a}, {b}, {c}, {d}. \"\n            f\"What is the product of the lengths of its diagonals? \"\n            f\"Also, determine the area of the quadrilateral.\"\n        )\n\n    # Add a structural constraint: consider the quadrilateral to be inscribed in a circle\n    if rng.choice([True, False]):\n        problem = (\n            f\"Consider a cyclic quadrilateral inscribed in a circle with sides {a}, {b}, {c}, {d}. \"\n            f\"What is the product of the lengths of its diagonals? \"\n            f\"Also, determine the radius of the circumscribed circle.\"\n        )\n\n    return problem, str(product_of_diagonals)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.03890655655413866,
+      "reservoir_program_ids": [
+        "e58028182539",
+        "2fe4e42caf31",
+        "af1358242025",
+        "f4bde97051f8"
+      ],
+      "rq_score": 0.03085603192448616,
+      "p_hat": 0.5,
+      "h_score": 0.12342412769794464,
+      "generation": 15,
+      "program_id": "e58028182539",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.12342412769794464,
+        "h_span_max": 0.21661293029785156
+      },
+      "token_entropy": 0.12342412769794464,
+      "problem": "Given positive real numbers a = 7 and b = 7, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Define the domain parameters\n    a = rng.randint(1, 10)  # First term of the geometric sequence\n    b = rng.randint(1, 10)  # Second term of the geometric sequence\n\n    # Calculate the arithmetic mean and geometric mean\n    am = (a + b) / 2\n    gm = (a * b) ** 0.5\n\n    # Add a case analysis branch\n    if random.random() < 0.5:\n        problem = (\n            f\"Given positive real numbers a = {a} and b = {b}, what is the ratio of the arithmetic mean to the geometric mean of a and b? \"\n            f\"Additionally, explain why the ratio equals 1 when a = b.\"\n        )\n    else:\n        problem = (\n            f\"Given positive real numbers a = {a} and b = {b}, what is the ratio of the arithmetic mean to the geometric mean of a and b? \"\n            f\"Explain why the ratio is greater than or equal to 1 when a ≠ b.\"\n        )\n\n    # Calculate the ratio\n    ratio = am / gm\n\n    return problem, str(ratio)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "12565c8946de",
+        "277bc8069e7d",
+        "9a6388caa970"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "2bd0f6feba52"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "99233322b32e"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "06c2d0ee3c83"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "670ee0e92d3e",
+        "178ba1830cfc",
+        "80dcd511d34e"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    }
+  ],
+  "diversity_axis": "concept_group",
+  "uncertainty_metric": "h",
+  "seed_labels": {
+    "0": "number_theory",
+    "1": "combinatorics",
+    "2": "sequence",
+    "3": "algebra",
+    "4": "geometry",
+    "5": "inequality"
+  }
+}

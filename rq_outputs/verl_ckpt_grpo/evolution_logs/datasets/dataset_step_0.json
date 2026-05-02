@@ -1,0 +1,882 @@
+{
+  "global_step": 0,
+  "timestamp": "2026-05-02T06:06:52.688927",
+  "training_selection_mode": "h_priority_d_uniform",
+  "training_budget": 960,
+  "instances_per_program": 16,
+  "strict_anti_reuse": true,
+  "frontier_p_hat_range": [
+    0.1,
+    0.9
+  ],
+  "dataset_size": 96,
+  "archive_champions": 6,
+  "frontier_champions": 6,
+  "duplicate_signature_skipped_visits": 0,
+  "problems": [
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (10, 8), and C = (7, 6). Find its area.",
+      "answer": "2",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 0
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 15. What is the maximum value of (a + 2)(b + 2)(c + 2)?",
+      "answer": "343",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 0
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card?",
+      "answer": "630",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 0
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 8x + 16 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.5",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 0
+    },
+    {
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 13. What is the sum of the first 9 terms of this arithmetic sequence?",
+      "answer": "2268",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 0
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=17 and p=131. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 0
+    },
+    {
+      "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 1 people receive their own card?",
+      "answer": "264",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 1
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of (a + 3)(b + 3)(c + 3)?",
+      "answer": "216",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 1
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (4, 10), and C = (2, 6). Find its area.",
+      "answer": "2",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 1
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=29 and p=107. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 1
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 7x + 10 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.7",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 1
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 8. What is the sum of the first 8 terms of this arithmetic sequence?",
+      "answer": "1736",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 1
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=3 and p=101. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 2
+    },
+    {
+      "problem": "5 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 1 people receive their own card?",
+      "answer": "45",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 2
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (2, 2), and C = (2, 7). Find its area.",
+      "answer": "5",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 2
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 6. What is the maximum value of (a + 1)(b + 1)(c + 1)?",
+      "answer": "27",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 2
+    },
+    {
+      "problem": "A geometric sequence has first term 2 and common ratio 2. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 16. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "420",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 2
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 2x + 1 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "2.0",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 2
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=29 and p=109. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 3
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 7x + 10 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.7",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 3
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 20. What is the sum of the first 10 terms of this arithmetic sequence?",
+      "answer": "2790",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 3
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (5, 10), and C = (9, 4). Find its area.",
+      "answer": "35",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 3
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of (a + 3)(b + 3)(c + 3)?",
+      "answer": "216",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 3
+    },
+    {
+      "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card?",
+      "answer": "135",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 3
+    },
+    {
+      "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card?",
+      "answer": "40",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 4
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=11 and p=109. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 4
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of (a + 2)(b + 2)(c + 2)?",
+      "answer": "125",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 4
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 5x + 6 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.8333333333333334",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 4
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (5, 5), and C = (2, 8). Find its area.",
+      "answer": "15",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 4
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 17. What is the sum of the first 8 terms of this arithmetic sequence?",
+      "answer": "1436",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 4
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=11 and p=149. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 5
+    },
+    {
+      "problem": "A geometric sequence has first term 4 and common ratio 3. Let S be the sum of the first 8 terms. An arithmetic sequence has first term S and common difference 5. What is the sum of the first 8 terms of this arithmetic sequence?",
+      "answer": "105100",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 5
+    },
+    {
+      "problem": "7 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card?",
+      "answer": "315",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 5
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 8x + 15 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.5333333333333333",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 5
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 18. What is the maximum value of (a + 2)(b + 2)(c + 2)?",
+      "answer": "512",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 5
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (5, 1), and C = (3, 3). Find its area.",
+      "answer": "6",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 5
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=3 and p=149. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 6
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 18. What is the maximum value of (a + 1)(b + 1)(c + 1)?",
+      "answer": "343",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 6
+    },
+    {
+      "problem": "5 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card?",
+      "answer": "0",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 6
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 6x + 5 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "1.2",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 6
+    },
+    {
+      "problem": "A geometric sequence has first term 2 and common ratio 3. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 6. What is the sum of the first 5 terms of this arithmetic sequence?",
+      "answer": "3700",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 6
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (11, 2), and C = (8, 6). Find its area.",
+      "answer": "25",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 6
+    },
+    {
+      "problem": "A geometric sequence has first term 4 and common ratio 2. Let S be the sum of the first 7 terms. An arithmetic sequence has first term S and common difference 6. What is the sum of the first 5 terms of this arithmetic sequence?",
+      "answer": "2600",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 7
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=5 and p=127. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 7
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 5x + 6 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.8333333333333334",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 7
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (11, 1), and C = (9, 5). Find its area.",
+      "answer": "23",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 7
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 12. What is the maximum value of (a + 1)(b + 1)(c + 1)?",
+      "answer": "125",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 7
+    },
+    {
+      "problem": "7 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card?",
+      "answer": "924",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 7
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (5, 6), and C = (7, 4). Find its area.",
+      "answer": "11",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 8
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of (a + 2)(b + 2)(c + 2)?",
+      "answer": "125",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 8
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 5x + 6 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.8333333333333334",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 8
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=13 and p=109. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 8
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 3. Let S be the sum of the first 7 terms. An arithmetic sequence has first term S and common difference 9. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "19809",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 8
+    },
+    {
+      "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card?",
+      "answer": "40",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 8
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 9x + 20 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.45",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 9
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=29 and p=137. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 9
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (9, 10), and C = (6, 6). Find its area.",
+      "answer": "3",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 9
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card?",
+      "answer": "2464",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 9
+    },
+    {
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 9. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "11055",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 9
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 15. What is the maximum value of (a + 3)(b + 3)(c + 3)?",
+      "answer": "512",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 9
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 18. What is the maximum value of (a + 1)(b + 1)(c + 1)?",
+      "answer": "343",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 10
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (11, 1), and C = (7, 9). Find its area.",
+      "answer": "46",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 10
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=2 and p=149. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 10
+    },
+    {
+      "problem": "A geometric sequence has first term 2 and common ratio 3. Let S be the sum of the first 7 terms. An arithmetic sequence has first term S and common difference 5. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "13191",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 10
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 6x + 5 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "1.2",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 10
+    },
+    {
+      "problem": "5 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card?",
+      "answer": "0",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 10
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (10, 8), and C = (11, 4). Find its area.",
+      "answer": "24",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 11
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 15. What is the maximum value of (a + 3)(b + 3)(c + 3)?",
+      "answer": "512",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 11
+    },
+    {
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 7 terms. An arithmetic sequence has first term S and common difference 11. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "32955",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 11
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=23 and p=137. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 11
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 9x + 20 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.45",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 11
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card?",
+      "answer": "630",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 11
+    },
+    {
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 8 terms. An arithmetic sequence has first term S and common difference 16. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "98640",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 12
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=11 and p=137. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 12
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 7x + 12 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.5833333333333334",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 12
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card?",
+      "answer": "2464",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 12
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (12, 6), and C = (3, 8). Find its area.",
+      "answer": "39",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 12
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 15. What is the maximum value of (a + 2)(b + 2)(c + 2)?",
+      "answer": "343",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 12
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 6x + 9 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "0.6666666666666666",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 13
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=11 and p=113. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 13
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 12. What is the maximum value of (a + 2)(b + 2)(c + 2)?",
+      "answer": "216",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 13
+    },
+    {
+      "problem": "A geometric sequence has first term 4 and common ratio 3. Let S be the sum of the first 5 terms. An arithmetic sequence has first term S and common difference 12. What is the sum of the first 10 terms of this arithmetic sequence?",
+      "answer": "5380",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 13
+    },
+    {
+      "problem": "7 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 3 people receive their own card?",
+      "answer": "315",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 13
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (12, 4), and C = (11, 4). Find its area.",
+      "answer": "2",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 13
+    },
+    {
+      "problem": "A geometric sequence has first term 2 and common ratio 2. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 13. What is the sum of the first 7 terms of this arithmetic sequence?",
+      "answer": "1155",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 14
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 6x + 5 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "1.2",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 14
+    },
+    {
+      "problem": "5 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 2 people receive their own card?",
+      "answer": "20",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 14
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=29 and p=103. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 14
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 6. What is the maximum value of (a + 3)(b + 3)(c + 3)?",
+      "answer": "125",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 14
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (3, 10), and C = (12, 10). Find its area.",
+      "answer": "45",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 14
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (4, 4), and C = (1, 2). Find its area.",
+      "answer": "2",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.05388116114772856,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 15
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 8 terms. An arithmetic sequence has first term S and common difference 6. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "4680",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.029213709756731987,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 15
+    },
+    {
+      "problem": "Consider the quadratic equation x^2 - 3x + 2 = 0. What is the sum of the reciprocals of its roots?",
+      "answer": "1.5",
+      "program_id": "aa3b17db3808",
+      "rq_score": 0.033302802592515945,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 15
+    },
+    {
+      "problem": "6 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 1 people receive their own card?",
+      "answer": "264",
+      "program_id": "a72ad4e94ac0",
+      "rq_score": 0.03751691314391792,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 15
+    },
+    {
+      "problem": "Let a, b, c be positive real numbers with a + b + c = 9. What is the maximum value of (a + 1)(b + 1)(c + 1)?",
+      "answer": "64",
+      "program_id": "af1358242025",
+      "rq_score": 0.04618900269269943,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 15
+    },
+    {
+      "problem": "Calculate the Legendre symbol (a/p) where a=2 and p=109. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p.",
+      "answer": "-1",
+      "program_id": "a742c2811d99",
+      "rq_score": 0.06534450687468052,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 15
+    }
+  ]
+}

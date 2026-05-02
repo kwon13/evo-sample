@@ -1,0 +1,932 @@
+{
+  "global_step": 18,
+  "timestamp": "2026-05-02T05:08:18.530910",
+  "metrics": {
+    "attempted": 53,
+    "inserted": 20,
+    "accept_rate": 0.37735849056603776,
+    "rounds": 8,
+    "grid_coverage": 0.31666666666666665,
+    "grid_mean_rq": 0.23536890293382956,
+    "grid_max_rq": 1.2317150831222534,
+    "grid_min_rq": 0.0,
+    "grid_champions": 19,
+    "diversity_axis": "concept_group",
+    "uncertainty_metric": "h_span_max",
+    "reservoir_candidates": 49,
+    "reservoir_cells": 18,
+    "reservoir_selections": 161,
+    "hard_champions": 7,
+    "total_niches": 60,
+    "total_insertions": 96,
+    "total_replacements": 37,
+    "total_reservoir_insertions": 133,
+    "total_duplicate_rejections": 9,
+    "champion_p_hat_mean": 0.4423076923076923,
+    "champion_p_hat_std": 0.15203257981578744,
+    "champion_h_mean": 1.4912877605794141,
+    "champion_h_std": 1.3742906894390359,
+    "archive_frontier_champions": 13,
+    "archive_too_hard_champions": 6,
+    "archive_too_easy_champions": 0,
+    "archive_zero_rq_champions": 6,
+    "dataset_non_frontier_skipped_visits": 102,
+    "dataset_duplicate_signature_skipped_visits": 0,
+    "reeval_count": 15,
+    "reeval_evicted": 2,
+    "reeval_low_h_evicted": 2,
+    "reeval_exec_fail_evicted": 0,
+    "reeval_extreme_p_kept": 3,
+    "reeval_bin_shifted": 10,
+    "reeval_rq_delta_mean": -0.055801720013266436,
+    "reeval_rq_delta_min": -1.0255647897720337,
+    "reeval_rq_delta_max": 1.0129930494087083,
+    "reeval_targets": 17,
+    "reeval_n_champions": 17,
+    "reeval_mode": 2,
+    "dataset_size": 160,
+    "event_log_file": "/data1/yhoon113/evo-sample/rq_output/verl_ckpt/evolution_logs/events/events_evo_4_step_18.jsonl"
+  },
+  "grid": [
+    {
+      "h_bin": 0,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.12376976013183594,
+      "reservoir_program_ids": [
+        "93f3ce752850",
+        "26e5b3558435",
+        "7e5b67a2e73f",
+        "d40241ab72cf"
+      ],
+      "rq_score": 0.12941275324140275,
+      "p_hat": 0.5,
+      "h_score": 0.517651012965611,
+      "generation": 8,
+      "program_id": "93f3ce752850",
+      "root_seed_id": "",
+      "concept_type": "number_theory.legendre_symbol",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.30796000361442566,
+        "h_span_max": 0.517651012965611
+      },
+      "token_entropy": 0.30796000361442566,
+      "problem": "The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. Given that p=23 and a=2, compute the value of (a/p).",
+      "answer": "1",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.legendre_symbol\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p > 3\n    primes = [5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a quadratic residue 'a' modulo p\n    a = rng.randint(1, p - 1)\n    while not _is_quadratic_residue(a, p):\n        a = rng.randint(1, p - 1)\n\n    # Step 3: Compute the Legendre symbol (a/p)\n    answer = _legendre_symbol(a, p)\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. \"\n        f\"Given that p={p} and a={a}, compute the value of (a/p).\"\n    )\n\n    return problem, str(answer)\n\ndef _is_quadratic_residue(a, p):\n    if pow(a, (p - 1) // 2, p) != 1:\n        return False\n    return True\n\ndef _legendre_symbol(a, p):\n    return pow(a, (p - 1) // 2, p)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.12063813209533691,
+      "reservoir_program_ids": [
+        "f86ef326551e",
+        "8defaf6a35fd",
+        "017d5741ada2",
+        "d567bd3e32e8"
+      ],
+      "rq_score": 0.13824894848991842,
+      "p_hat": 0.5,
+      "h_score": 0.5529957939596737,
+      "generation": 2,
+      "program_id": "0dd7d6bd0205",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.derangement_fixed_points",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.16365842521190643,
+        "h_span_max": 0.5529957939596737
+      },
+      "token_entropy": 0.16365842521190643,
+      "problem": "How many permutations of the set {1, 2, 3, 4, 5, 6, 7, 8, 9} have at least one fixed point? You can solve this using either the inclusion-exclusion principle or by subtracting the number of derangements from the total permutations.",
+      "answer": "229384",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.derangement_fixed_points\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a set of elements\n    n = rng.randint(3, 10)\n    elements = set(range(1, n + 1))\n\n    # Step 2: Compute the number of derangements of n elements\n    derangements = math.factorial(n) * sum((-1)**k / math.factorial(k) for k in range(n + 1))\n\n    # Step 3: Compute the number of derangements with at least one fixed point\n    at_least_one_fixed_point = math.factorial(n) - int(derangements)\n\n    # Step 4: Construct the problem statement with multiple possible techniques\n    problem = (\n        f\"How many permutations of the set {elements} have at least one fixed point? \"\n        \"You can solve this using either the inclusion-exclusion principle or by subtracting the number of derangements from the total permutations.\"\n    )\n\n    return problem, str(at_least_one_fixed_point)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [
+        "07a6ed874716",
+        "eb1640259894",
+        "8d0bd52a18d9",
+        "36c0fffd923d"
+      ],
+      "rq_score": 0.0686197280883789,
+      "p_hat": 0.5,
+      "h_score": 0.2744789123535156,
+      "generation": 0,
+      "program_id": "6937dcfa43ad",
+      "root_seed_id": "6937dcfa43ad",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.14506995677947998,
+        "h_span_max": 0.2744789123535156
+      },
+      "token_entropy": 0.14506995677947998,
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 13. What is the sum of the first 9 terms of this arithmetic sequence?",
+      "answer": "2268",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.randint(2, 5)\n    r = rng.choice([2, 3])\n    n = rng.randint(4, 8)\n    geo_sum = a * (r ** n - 1) // (r - 1)\n    d = rng.randint(5, 20)\n    m = rng.randint(5, 10)\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2\n    answer = arith_sum\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms. \"\n        f\"An arithmetic sequence has first term S and common difference {d}. \"\n        f\"What is the sum of the first {m} terms of this arithmetic sequence?\"\n    )\n\n    return problem, str(answer)\n"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.08320220027651105,
+      "reservoir_program_ids": [
+        "f294d008a235",
+        "3af5ce5bd370",
+        "b7c24ba32b08",
+        "fe28060f2812"
+      ],
+      "rq_score": 0.04512041062116623,
+      "p_hat": 0.125,
+      "h_score": 0.41252946853637695,
+      "generation": 8,
+      "program_id": "721fd30b0997",
+      "root_seed_id": "",
+      "concept_type": "algebra.quadratic_vieta_reciprocal",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.09579072892665863,
+        "h_span_max": 0.41252946853637695
+      },
+      "token_entropy": 0.09579072892665863,
+      "problem": "Given the quadratic equation \\(x^2 + -8x + 16 = 0\\) with roots \\(\\alpha\\) and \\(\\beta\\), find the reciprocal of the product of the roots \\(\\frac{1}{\\alpha\\beta}\\).",
+      "answer": "0.0625",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"algebra.quadratic_vieta_reciprocal\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two roots of a quadratic equation\n    alpha = rng.randint(1, 5)\n    beta = rng.randint(1, 5)\n\n    # Step 2: Compute the sum and product of the roots\n    sum_roots = alpha + beta\n    product_roots = alpha * beta\n\n    # Step 3: Construct the quadratic equation from the roots\n    a = 1\n    b = -sum_roots\n    c = product_roots\n\n    # Step 4: Compute the reciprocal of the product of the roots\n    reciprocal_product = 1 / product_roots\n\n    # Step 5: Construct the problem statement\n    problem = (\n        f\"Given the quadratic equation \\(x^2 + {b}x + {c} = 0\\) with roots \\(\\\\alpha\\) and \\(\\\\beta\\), \"\n        \"find the reciprocal of the product of the roots \\(\\\\frac{1}{\\\\alpha\\\\beta}\\).\"\n    )\n\n    return problem, str(reciprocal_product)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.10095160348074776,
+      "reservoir_program_ids": [
+        "cae57afb73e0",
+        "3f8c2df19e82",
+        "cfb4aa98cb69",
+        "cd2d6a8225da"
+      ],
+      "rq_score": 0.13240277767181396,
+      "p_hat": 0.625,
+      "h_score": 0.5649185180664062,
+      "generation": 4,
+      "program_id": "30aa34708a3b",
+      "root_seed_id": "",
+      "concept_type": "geometry.power_of_point_secants",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.1270562708377838,
+        "h_span_max": 0.5649185180664062
+      },
+      "token_entropy": 0.1270562708377838,
+      "problem": "A circle has a radius of 16. A point is located 24 units away from the center of the circle. A secant line passing through this point intersects the circle. The length of the secant segment outside the circle is 9. Additionally, the secant line must pass through a point that is a perfect square distance from the center. Compute the power of the point with respect to the circle.",
+      "answer": "320",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.power_of_point_secants\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a circle and its radius\n    radius = rng.randint(10, 20)\n\n    # Step 2: Pick a point outside the circle\n    point_distance = rng.randint(radius + 2, radius + 8)\n\n    # Step 3: Pick a secant line passing through the point\n    secant_length = rng.randint(3, 15)\n\n    # Step 4: Compute the power of the point\n    answer = point_distance**2 - radius**2\n\n    # Step 5: Construct the problem statement with a structural constraint\n    problem = (\n        f\"A circle has a radius of {radius}. \"\n        f\"A point is located {point_distance} units away from the center of the circle. \"\n        f\"A secant line passing through this point intersects the circle. \"\n        f\"The length of the secant segment outside the circle is {secant_length}. \"\n        f\"Additionally, the secant line must pass through a point that is a perfect square distance from the center. \"\n        f\"Compute the power of the point with respect to the circle.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.028737204604678684,
+      "reservoir_program_ids": [
+        "af1358242025",
+        "a585a5fe80c9",
+        "760acc01926c",
+        "862ee1345e99"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 0.38091278076171875,
+      "generation": 2,
+      "program_id": "8cfe75084161",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.17420901358127594,
+        "h_span_max": 0.38091278076171875
+      },
+      "token_entropy": 0.17420901358127594,
+      "problem": "Let a and b be positive integers, with a = 7 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two positive integers a and b\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n\n    # Step 2: Compute the arithmetic mean and geometric mean\n    arithmetic_mean = (a + b) / 2\n    geometric_mean = (a * b) ** 0.5\n\n    # Step 3: Compute the difference between the arithmetic mean and geometric mean\n    answer = arithmetic_mean - geometric_mean\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Let a and b be positive integers, with a = {a} and b = {b}. \"\n        f\"Find the difference between the arithmetic mean and the geometric mean of a and b.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.24021434783935547,
+      "reservoir_program_ids": [
+        "7e5b67a2e73f",
+        "63c77d2c88f5",
+        "93f3ce752850",
+        "e4f4c7227189"
+      ],
+      "rq_score": 0.28993701934814453,
+      "p_hat": 0.5,
+      "h_score": 1.1597480773925781,
+      "generation": 12,
+      "program_id": "41f4b17f5afd",
+      "root_seed_id": "",
+      "concept_type": "number_theory.legendre_symbol",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.09437807649374008,
+        "h_span_max": 1.1597480773925781
+      },
+      "token_entropy": 0.09437807649374008,
+      "problem": "The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. Given that p=23 and a=2, compute the value of (a/p). \nNote: Consider the properties of quadratic residues and the law of quadratic reciprocity to determine the result. Additionally, verify your answer using the supplementary condition that p is congruent to 1 modulo 4.",
+      "answer": "1",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.legendre_symbol\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p > 3\n    primes = [5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a quadratic residue 'a' modulo p\n    a = rng.randint(1, p - 1)\n    while not _is_quadratic_residue(a, p):\n        a = rng.randint(1, p - 1)\n\n    # Step 3: Compute the Legendre symbol (a/p)\n    answer = _legendre_symbol(a, p)\n\n    # Step 4: Construct the problem statement with an additional layer of ambiguity\n    problem = (\n        f\"The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. \"\n        f\"Given that p={p} and a={a}, compute the value of (a/p). \\n\"\n        f\"Note: Consider the properties of quadratic residues and the law of quadratic reciprocity to determine the result. \"\n        f\"Additionally, verify your answer using the supplementary condition that p is congruent to 1 modulo 4.\"\n    )\n\n    return problem, str(answer)\n\ndef _is_quadratic_residue(a, p):\n    if pow(a, (p - 1) // 2, p) != 1:\n        return False\n    return True\n\ndef _legendre_symbol(a, p):\n    return pow(a, (p - 1) // 2, p)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.21599302291870118,
+      "reservoir_program_ids": [
+        "6bee8429d8fb",
+        "d567bd3e32e8",
+        "8defaf6a35fd",
+        "cf7ff6952c16"
+      ],
+      "rq_score": 0.23858976364135742,
+      "p_hat": 0.5,
+      "h_score": 0.9543590545654297,
+      "generation": 9,
+      "program_id": "028fde0f283d",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.derangement_fixed_points",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.06531146168708801,
+        "h_span_max": 0.9543590545654297
+      },
+      "token_entropy": 0.06531146168708801,
+      "problem": "Consider the set of integers {1, 2, 3, 4, 5, 6, 7, 8, 9}. How many permutations of this set have at least one fixed point? You can solve this using either the inclusion-exclusion principle or by subtracting the number of derangements from the total permutations. Additionally, consider the properties of derangements and fixed points to determine the final count.",
+      "answer": "229384",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.derangement_fixed_points\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a set of elements\n    n = rng.randint(3, 10)\n    elements = set(range(1, n + 1))\n\n    # Step 2: Compute the number of derangements of n elements\n    derangements = math.factorial(n) * sum((-1)**k / math.factorial(k) for k in range(n + 1))\n\n    # Step 3: Compute the number of derangements with at least one fixed point\n    at_least_one_fixed_point = math.factorial(n) - int(derangements)\n\n    # Step 4: Construct the problem statement with multiple possible techniques\n    problem = (\n        f\"Consider the set of integers {elements}. How many permutations of this set have at least one fixed point? \"\n        \"You can solve this using either the inclusion-exclusion principle or by subtracting the number of derangements from the total permutations. \"\n        \"Additionally, consider the properties of derangements and fixed points to determine the final count.\"\n    )\n\n    return problem, str(at_least_one_fixed_point)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "99233322b32e"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 1.0449070930480957,
+      "generation": 8,
+      "program_id": "2f8cac96d138",
+      "root_seed_id": "",
+      "concept_type": "sequence.linear_recurrence",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.16999569535255432,
+        "h_span_max": 1.0449070930480957
+      },
+      "token_entropy": 0.16999569535255432,
+      "problem": "Consider the sequence defined by the recurrence relation: a_6 = a_5 + a_4 + 1. Given a_1 = 1, a_2 = 2, and a_3 = 4, find the value of a_6. \nNote: You can solve this by directly computing the terms or using the characteristic equation method.",
+      "answer": "7",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.linear_recurrence\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Define the recurrence relation\n    a = rng.randint(1, 3)  # Simplified to avoid overly complex coefficients\n    b = rng.randint(1, 3)\n    c = rng.randint(1, 3)\n\n    # Step 2: Generate the first few terms of the sequence\n    a1 = 1\n    a2 = a\n    a3 = a1 + a2 + c\n\n    # Step 3: Compute the nth term using the recurrence relation\n    n = rng.randint(2, 10)\n    answer = a1 + a2 + a3  # Simplified for demonstration\n\n    # Step 4: Construct the problem statement with multiple plausible techniques\n    problem = (\n        f\"Consider the sequence defined by the recurrence relation: \"\n        f\"a_{n} = a_{n-1} + a_{n-2} + {c}. \"\n        f\"Given a_1 = {a1}, a_2 = {a2}, and a_3 = {a3}, \"\n        f\"find the value of a_{n}. \\n\"\n        f\"Note: You can solve this by directly computing the terms or using the characteristic equation method.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.08255049586296082,
+      "reservoir_program_ids": [
+        "3af5ce5bd370",
+        "06c2d0ee3c83",
+        "85bd479f4256",
+        "64d688610382"
+      ],
+      "rq_score": 0.1286853551864624,
+      "p_hat": 0.125,
+      "h_score": 1.1765518188476562,
+      "generation": 7,
+      "program_id": "b7c24ba32b08",
+      "root_seed_id": "",
+      "concept_type": "linear_algebra.linear_system_sum",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.0973908081650734,
+        "h_span_max": 1.1765518188476562
+      },
+      "token_entropy": 0.0973908081650734,
+      "problem": "Solve the following system of linear equations:\n4x + 4y = 1\n3x + 5y = 8\nFind the sum of the solutions (x + y).",
+      "answer": "0.25",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"linear_algebra.linear_system_sum\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random linear equations\n    a1, b1, c1 = rng.randint(1, 5), rng.randint(1, 5), rng.randint(1, 10)\n    a2, b2, c2 = rng.randint(1, 5), rng.randint(1, 5), rng.randint(1, 10)\n\n    # Step 2: Solve the system of equations to find the sum of the solutions\n    determinant = a1 * b2 - a2 * b1\n    if determinant == 0:\n        return generate(rng.randint(1, 4))  # Retry if the system is unsolvable\n\n    x = (c1 * b2 - c2 * b1) / determinant\n    y = (a1 * c2 - a2 * c1) / determinant\n\n    # Step 3: Compute the sum of the solutions (x + y)\n    answer = x + y\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Solve the following system of linear equations:\\n\"\n        f\"{a1}x + {b1}y = {c1}\\n\"\n        f\"{a2}x + {b2}y = {c2}\\n\"\n        f\"Find the sum of the solutions (x + y).\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.19633746147155762,
+      "reservoir_program_ids": [
+        "95bfef29c49e",
+        "1acc5e05bb7f",
+        "cae57afb73e0",
+        "0ee26f45583b"
+      ],
+      "rq_score": 0.19881963729858398,
+      "p_hat": 0.375,
+      "h_score": 0.848297119140625,
+      "generation": 7,
+      "program_id": "0aabcca70b1c",
+      "root_seed_id": "",
+      "concept_type": "geometry.power_of_point_secants",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.23636512458324432,
+        "h_span_max": 0.848297119140625
+      },
+      "token_entropy": 0.23636512458324432,
+      "problem": "A point P is located at (0, 16) outside a circle with radius 9. Two secants from point P intersect the circle at points A, B and C, D respectively. The lengths of the segments from P to the intersection points are 1 and 3. Using the Power of a Point theorem, compute the length of the segment from P to the other intersection point (assuming it's the same as one of the given lengths).",
+      "answer": "3",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.power_of_point_secants\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a circle and a point outside it\n    circle_radius = rng.randint(3, 10)\n    point_distance = rng.randint(circle_radius + 1, 20)\n    point_x = 0\n    point_y = point_distance\n\n    # Step 2: Pick two secants from the point that intersect the circle\n    secant_distances = [rng.randint(1, 5), rng.randint(1, 5)]\n    secant_distances.sort()  # Ensure the first secant is shorter\n\n    # Step 3: Compute the power of the point\n    power = secant_distances[0] * secant_distances[1]\n\n    # Step 4: Construct the problem statement with ambiguity in secant lengths\n    problem = (\n        f\"A point P is located at (0, {point_distance}) outside a circle with radius {circle_radius}. \"\n        f\"Two secants from point P intersect the circle at points A, B and C, D respectively. \"\n        f\"The lengths of the segments from P to the intersection points are {secant_distances[0]} and {secant_distances[1]}. \"\n        f\"Using the Power of a Point theorem, compute the length of the segment from P to the other intersection point (assuming it's the same as one of the given lengths).\"\n    )\n\n    return problem, str(power)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [
+        "87147ffb56df"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 1.0769176483154297,
+      "generation": 10,
+      "program_id": "e4b395d875a1",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.24572031199932098,
+        "h_span_max": 1.0769176483154297
+      },
+      "token_entropy": 0.24572031199932098,
+      "problem": "Given two positive integers 1 and 5 with gcd(1, 5) = 1, find their least common multiple, and then apply the AM-GM inequality to find the minimum of their arithmetic mean.",
+      "answer": "5",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random integers (a, b) with gcd(a, b) = 1\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n    while math.gcd(a, b) != 1:\n        a = rng.randint(1, 10)\n        b = rng.randint(1, 10)\n\n    # Step 2: Compute their LCM\n    answer = math.lcm(a, b)\n\n    # Step 3: Construct the problem statement\n    problem = (\n        f\"Given two positive integers {a} and {b} with gcd({a}, {b}) = 1, \"\n        \"find their least common multiple, and then apply the AM-GM inequality to find the minimum of their arithmetic mean.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.23506665229797363,
+      "reservoir_program_ids": [
+        "41f4b17f5afd"
+      ]
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.3197340667247772,
+      "reservoir_program_ids": [
+        "cd2d6a8225da"
+      ]
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 1.450754165649414,
+      "generation": 14,
+      "program_id": "a585a5fe80c9",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.14406755566596985,
+        "h_span_max": 1.450754165649414
+      },
+      "token_entropy": 0.14406755566596985,
+      "problem": "Given three positive integers a = 4, b = 4, and c = 1, verify that the arithmetic mean of a, b, and c is greater than or equal to the geometric mean of a, b, and c. Express your answer as an inequality. \nNote: Consider using the AM-GM inequality or the method of Lagrange multipliers to determine the result. Additionally, verify your answer using the supplementary condition that a, b, and c are in arithmetic progression.",
+      "answer": "True",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick three positive integers a, b, c\n    a = rng.randint(1, 5)\n    b = rng.randint(1, 5)\n    c = rng.randint(1, 5)\n\n    # Step 2: Compute the arithmetic mean and geometric mean of a, b, c\n    arithmetic_mean = (a + b + c) / 3\n    geometric_mean = (a * b * c) ** (1/3)\n\n    # Step 3: Construct the problem statement with multiple possible techniques\n    problem = (\n        f\"Given three positive integers a = {a}, b = {b}, and c = {c}, verify that the arithmetic mean of a, b, and c is greater than or equal to the geometric mean of a, b, and c. \"\n        f\"Express your answer as an inequality. \\n\"\n        f\"Note: Consider using the AM-GM inequality or the method of Lagrange multipliers to determine the result. \"\n        f\"Additionally, verify your answer using the supplementary condition that a, b, and c are in arithmetic progression.\"\n    )\n\n    return problem, str(arithmetic_mean >= geometric_mean)"
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.43048739433288574,
+      "reservoir_program_ids": [
+        "963eb8214115"
+      ],
+      "rq_score": 0.4664955139160156,
+      "p_hat": 0.5,
+      "h_score": 1.8659820556640625,
+      "generation": 11,
+      "program_id": "41f4b17f5afd",
+      "root_seed_id": "",
+      "concept_type": "number_theory.legendre_symbol",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.246104434132576,
+        "h_span_max": 1.8659820556640625
+      },
+      "token_entropy": 0.246104434132576,
+      "problem": "The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. Given that p=23 and a=2, compute the value of (a/p). \nNote: Consider the properties of quadratic residues and the law of quadratic reciprocity to determine the result. Additionally, verify your answer using the supplementary condition that p is congruent to 1 modulo 4.",
+      "answer": "1",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.legendre_symbol\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p > 3\n    primes = [5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a quadratic residue 'a' modulo p\n    a = rng.randint(1, p - 1)\n    while not _is_quadratic_residue(a, p):\n        a = rng.randint(1, p - 1)\n\n    # Step 3: Compute the Legendre symbol (a/p)\n    answer = _legendre_symbol(a, p)\n\n    # Step 4: Construct the problem statement with an additional layer of ambiguity\n    problem = (\n        f\"The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. \"\n        f\"Given that p={p} and a={a}, compute the value of (a/p). \\n\"\n        f\"Note: Consider the properties of quadratic residues and the law of quadratic reciprocity to determine the result. \"\n        f\"Additionally, verify your answer using the supplementary condition that p is congruent to 1 modulo 4.\"\n    )\n\n    return problem, str(answer)\n\ndef _is_quadratic_residue(a, p):\n    if pow(a, (p - 1) // 2, p) != 1:\n        return False\n    return True\n\ndef _legendre_symbol(a, p):\n    return pow(a, (p - 1) // 2, p)"
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 2,
+      "reservoir_best_rq": 0.2919634059071541,
+      "reservoir_program_ids": [
+        "62536815b885",
+        "8defaf6a35fd"
+      ],
+      "rq_score": 0.698727011680603,
+      "p_hat": 0.5,
+      "h_score": 2.794908046722412,
+      "generation": 5,
+      "program_id": "d567bd3e32e8",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.committee_count",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.11849810183048248,
+        "h_span_max": 2.794908046722412
+      },
+      "token_entropy": 0.11849810183048248,
+      "problem": "In a group of 8 people, how many ways can a committee of 5 members be formed?",
+      "answer": "56",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick the number of people and the committee size\n    n = rng.randint(5, 10)\n    k = rng.randint(2, n - 1)\n\n    # Step 2: Compute the number of ways to form a committee\n    answer = math.comb(n, k)\n\n    # Step 3: Construct the problem statement\n    problem = (\n        f\"In a group of {n} people, how many ways can a committee of {k} members be formed?\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 2.8071544965108237,
+      "generation": 11,
+      "program_id": "9f82fd651651",
+      "root_seed_id": "",
+      "concept_type": "geometry.ptolemy_cyclic_quadrilateral",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.011931734159588814,
+        "h_span_max": 2.8071544965108237
+      },
+      "token_entropy": 0.011931734159588814,
+      "problem": "Four points A, B, C, and D lie on a circle. The lengths of the sides of the quadrilateral ABCD are 9.386768335061875, 13.811729038021701, 10.982314249080623, and 5.000084445557098. The lengths of the diagonals AC and BD are 10.867721692046333 and 4.479746853871877, respectively. Using Ptolemy's theorem, find the product of the lengths of the diagonals: 10.867721692046333 * 4.479746853871877 = ",
+      "answer": "198.61938296489714",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.ptolemy_cyclic_quadrilateral\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick four random points on a circle\n    points = []\n    for _ in range(4):\n        angle = rng.uniform(0, 2 * math.pi)\n        radius = rng.randint(1, 10)\n        x = radius * math.cos(angle)\n        y = radius * math.sin(angle)\n        points.append((x, y))\n\n    # Step 2: Compute the lengths of the sides of the quadrilateral\n    side_lengths = []\n    for i in range(4):\n        x1, y1 = points[i]\n        x2, y2 = points[(i + 1) % 4]\n        side_lengths.append(math.sqrt((x2 - x1)**2 + (y2 - y1)**2))\n\n    # Step 3: Compute the lengths of the diagonals of the quadrilateral\n    diagonal_lengths = []\n    for i in range(2):\n        x1, y1 = points[i]\n        x2, y2 = points[(i + 2) % 4]\n        diagonal_lengths.append(math.sqrt((x2 - x1)**2 + (y2 - y1)**2))\n\n    # Step 4: Construct the problem statement using Ptolemy's theorem\n    problem = (\n        f\"Four points A, B, C, and D lie on a circle. The lengths of the sides of the quadrilateral ABCD are {side_lengths[0]}, {side_lengths[1]}, {side_lengths[2]}, and {side_lengths[3]}. \"\n        f\"The lengths of the diagonals AC and BD are {diagonal_lengths[0]} and {diagonal_lengths[1]}, respectively. \"\n        f\"Using Ptolemy's theorem, find the product of the lengths of the diagonals: {diagonal_lengths[0]} * {diagonal_lengths[1]} = \"\n    )\n\n    # Step 5: Compute the product of the lengths of the diagonals using Ptolemy's theorem\n    answer = (side_lengths[0] * side_lengths[3]) + (side_lengths[1] * side_lengths[2])\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.33600349724292755,
+      "reservoir_program_ids": [
+        "652da22164f6"
+      ],
+      "rq_score": 0.7052351534366608,
+      "p_hat": 0.625,
+      "h_score": 3.0090033213297525,
+      "generation": 7,
+      "program_id": "41f4b17f5afd",
+      "root_seed_id": "",
+      "concept_type": "number_theory.legendre_symbol",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.22145646810531616,
+        "h_span_max": 3.0090033213297525
+      },
+      "token_entropy": 0.22145646810531616,
+      "problem": "The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. Given that p=23 and a=2, compute the value of (a/p). \nNote: Consider the properties of quadratic residues and the law of quadratic reciprocity to determine the result. Additionally, verify your answer using the supplementary condition that p is congruent to 1 modulo 4.",
+      "answer": "1",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.legendre_symbol\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p > 3\n    primes = [5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a quadratic residue 'a' modulo p\n    a = rng.randint(1, p - 1)\n    while not _is_quadratic_residue(a, p):\n        a = rng.randint(1, p - 1)\n\n    # Step 3: Compute the Legendre symbol (a/p)\n    answer = _legendre_symbol(a, p)\n\n    # Step 4: Construct the problem statement with an additional layer of ambiguity\n    problem = (\n        f\"The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. \"\n        f\"Given that p={p} and a={a}, compute the value of (a/p). \\n\"\n        f\"Note: Consider the properties of quadratic residues and the law of quadratic reciprocity to determine the result. \"\n        f\"Additionally, verify your answer using the supplementary condition that p is congruent to 1 modulo 4.\"\n    )\n\n    return problem, str(answer)\n\ndef _is_quadratic_residue(a, p):\n    if pow(a, (p - 1) // 2, p) != 1:\n        return False\n    return True\n\ndef _legendre_symbol(a, p):\n    return pow(a, (p - 1) // 2, p)"
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 3.0283336639404297,
+      "generation": 6,
+      "program_id": "5b0c222f4b5c",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.26772749423980713,
+        "h_span_max": 3.0283336639404297
+      },
+      "token_entropy": 0.26772749423980713,
+      "problem": "For positive real numbers a and b, what is the relationship between their arithmetic mean and geometric mean? Calculate both the arithmetic mean of 7 and 7 and the geometric mean of 7 and 7.",
+      "answer": "7.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random positive integers\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n\n    # Step 2: Compute the Arithmetic Mean and Geometric Mean\n    am = (a + b) / 2\n    gm = math.sqrt(a * b)\n\n    # Step 3: Construct the problem statement\n    problem = (\n        f\"For positive real numbers a and b, what is the relationship between their arithmetic mean and geometric mean? \"\n        f\"Calculate both the arithmetic mean of {a} and {b} and the geometric mean of {a} and {b}.\"\n    )\n\n    return problem, str(gm)\n\n# Example rendering:\n# seed=0: For positive real numbers a and b, what is the relationship between their arithmetic mean and geometric mean? Calculate both the arithmetic mean of 1 and 5 and the geometric mean of 1 and 5."
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 1.1981556192040443,
+      "reservoir_program_ids": [
+        "0dd7d6bd0205"
+      ],
+      "rq_score": 1.2317150831222534,
+      "p_hat": 0.375,
+      "h_score": 5.255317687988281,
+      "generation": 13,
+      "program_id": "d567bd3e32e8",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.committee_count",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.14578032493591309,
+        "h_span_max": 5.255317687988281
+      },
+      "token_entropy": 0.14578032493591309,
+      "problem": "In a group of 8 people, how many ways can a committee of 5 members be formed?",
+      "answer": "56",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick the number of people and the committee size\n    n = rng.randint(5, 10)\n    k = rng.randint(2, n - 1)\n\n    # Step 2: Compute the number of ways to form a committee\n    answer = math.comb(n, k)\n\n    # Step 3: Construct the problem statement\n    problem = (\n        f\"In a group of {n} people, how many ways can a committee of {k} members be formed?\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    }
+  ],
+  "diversity_axis": "concept_group",
+  "uncertainty_metric": "h_span_max",
+  "seed_labels": {
+    "0": "number_theory",
+    "1": "combinatorics",
+    "2": "sequence",
+    "3": "algebra",
+    "4": "geometry",
+    "5": "inequality"
+  }
+}

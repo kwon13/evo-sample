@@ -1,0 +1,1026 @@
+{
+  "global_step": 19,
+  "timestamp": "2026-05-02T09:37:27.177888",
+  "training_selection_mode": "h_priority_d_uniform",
+  "training_budget": 960,
+  "instances_per_program": 16,
+  "strict_anti_reuse": true,
+  "frontier_p_hat_range": [
+    0.1,
+    0.9
+  ],
+  "dataset_size": 112,
+  "archive_champions": 7,
+  "frontier_champions": 7,
+  "duplicate_signature_skipped_visits": 0,
+  "problems": [
+    {
+      "problem": "Consider the linear system:\nx + y = 4\nx - y = 4\nWhat is the sum of the solutions (x + y)?",
+      "answer": "4",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 0
+    },
+    {
+      "problem": "A geometric sequence has the first term 2 and a common ratio 3. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "80",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 32
+    },
+    {
+      "problem": "Consider a set of 8 distinct objects. In how many ways can you arrange these objects such that exactly 7 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 0
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 4\nx - y = 4\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "4",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 0
+    },
+    {
+      "problem": "Given positive real numbers a = 6 and b = 8, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0103629710818451",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 16
+    },
+    {
+      "problem": "Given points A = (7, 7), B = (1, 5), C = (9, 8), and D = (9, 8), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 0
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=53 and p=97. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 0
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "2",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 1
+    },
+    {
+      "problem": "Given points A = (3, 10), B = (2, 5), C = (2, 8), and D = (2, 8), find the distance between the lines defined by AB and CD. Additionally, explain why this distance is zero when the lines are parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 1
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=36 and p=41. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 1
+    },
+    {
+      "problem": "In a two-dimensional grid of size 4x4, how many ways can you arrange the objects such that exactly 3 of them remain in their original positions, and no two selected objects are adjacent in either the x or y direction? (Hint: Consider the problem as a combinatorial selection with constraints.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 1
+    },
+    {
+      "problem": "A geometric sequence has the first term 10 and a common ratio 3. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "400",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 33
+    },
+    {
+      "problem": "Given positive real numbers a = 9 and b = 7, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0079052613579391",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 17
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "2",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 1
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 1\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "1",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 2
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 1\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "1",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 2
+    },
+    {
+      "problem": "Given positive real numbers a = 3 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0206207261596576",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 18
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=2 and p=29. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "-1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 2
+    },
+    {
+      "problem": "Given points A = (1, 2), B = (2, 6), C = (3, 5), and D = (3, 5), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 2
+    },
+    {
+      "problem": "A geometric sequence has the first term 9 and a common ratio 4. Calculate the sum of the first 7 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "49149",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 34
+    },
+    {
+      "problem": "In a two-dimensional grid of size 2x2, how many ways can you arrange the objects such that exactly 1 of them remain in their original positions, and no two selected objects are adjacent in either the x or y direction? (Hint: Consider the problem as a combinatorial selection with constraints.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 2
+    },
+    {
+      "problem": "Consider the linear system:\nz + x = 2\nz - x = 5\nWhat is the sum of the solutions (z + x)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "2",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 3
+    },
+    {
+      "problem": "Consider a set of 5 distinct objects. In how many ways can you arrange these objects such that exactly 2 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 3
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "2",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 3
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=37 and p=43. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "-1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 3
+    },
+    {
+      "problem": "Given positive real numbers a = 1 and b = 9, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.6666666666666667",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 19
+    },
+    {
+      "problem": "A geometric sequence has the first term 9 and a common ratio 4. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "765",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 35
+    },
+    {
+      "problem": "Given points A = (4, 10), B = (9, 3), C = (6, 10), and D = (6, 10), find the distance between the lines defined by AB and CD. Additionally, explain why this distance is zero when the lines are parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 3
+    },
+    {
+      "problem": "Consider the linear system:\nx + z = 2\nx - z = 3\nWhat is the sum of the solutions (x + z)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "2",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 4
+    },
+    {
+      "problem": "In a two-dimensional grid of size 5x5, how many ways can you arrange the objects such that exactly 3 of them remain in their original positions, and no two selected objects are adjacent in either the x or y direction? (Hint: Consider the problem as a combinatorial selection with constraints.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 4
+    },
+    {
+      "problem": "Given points A = (4, 5), B = (2, 7), C = (8, 3), and D = (8, 3), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 4
+    },
+    {
+      "problem": "Given positive real numbers a = 3 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0327955589886444",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 20
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 3\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "2",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 4
+    },
+    {
+      "problem": "A geometric sequence has the first term 6 and a common ratio 2. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "42",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 36
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=19 and p=43. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "-1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 4
+    },
+    {
+      "problem": "Consider the linear system:\nz + y = 5\nz - y = 3\nWhat is the sum of the solutions (z + y)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "5",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 5
+    },
+    {
+      "problem": "Consider the linear system in three dimensions:\nx + y + z = 5\nx - y - z = 3\nWhat is the sum of the solutions (x + y + z)? Also, determine the sign of the coefficients.",
+      "answer": "5",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 5
+    },
+    {
+      "problem": "In a two-dimensional grid of size 6x6, how many ways can you arrange the objects such that exactly 3 of them remain in their original positions, and no two selected objects are adjacent in either the x or y direction? (Hint: Consider the problem as a combinatorial selection with constraints.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 5
+    },
+    {
+      "problem": "Given positive real numbers a = 3 and b = 7, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.091089451179962",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 21
+    },
+    {
+      "problem": "Given points A = (10, 5), B = (6, 9), C = (1, 8), and D = (1, 8), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 5
+    },
+    {
+      "problem": "A geometric sequence has the first term 10 and a common ratio 2. Calculate the sum of the first 7 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "1270",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 37
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=32 and p=113. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 5
+    },
+    {
+      "problem": "Consider the linear system in three dimensions:\ny + y + z = 5\ny - y - v = 1\nWhat is the sum of the solutions (y + y + v)? Also, determine the sign of the coefficients.",
+      "answer": "5",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 6
+    },
+    {
+      "problem": "Consider a set of 3 distinct objects. In how many ways can you arrange these objects such that exactly 2 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 6
+    },
+    {
+      "problem": "A geometric sequence has the first term 7 and a common ratio 5. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "217",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 38
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=146 and p=149. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "-1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 6
+    },
+    {
+      "problem": "Given points A = (10, 2), B = (8, 5), C = (1, 1), and D = (1, 1), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 6
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 5\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "5",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 6
+    },
+    {
+      "problem": "Given positive real numbers a = 3 and b = 4, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0103629710818451",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 22
+    },
+    {
+      "problem": "Consider the linear system:\ny + z = 3\ny - z = 2\nWhat is the sum of the solutions (y + z)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "3",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 7
+    },
+    {
+      "problem": "Consider a set of 7 distinct objects. In how many ways can you arrange these objects such that exactly 2 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 7
+    },
+    {
+      "problem": "Given points A = (6, 3), B = (7, 1), C = (2, 9), and D = (2, 9), find the distance between the lines defined by AB and CD. Additionally, explain why this distance is zero when the lines are parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 7
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=19 and p=89. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "-1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 7
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 3\nx - y = 2\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "3",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 7
+    },
+    {
+      "problem": "Given positive real numbers a = 5 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.1067971810589328",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 23
+    },
+    {
+      "problem": "A geometric sequence has the first term 4 and a common ratio 4. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "5460",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 39
+    },
+    {
+      "problem": "Consider the linear system:\ny + x = 2\ny - x = 3\nWhat is the sum of the solutions (y + x)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "2",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 8
+    },
+    {
+      "problem": "Given points A = (4, 6), B = (7, 3), C = (4, 1), and D = (4, 1), find the distance between the lines defined by AB and CD. Additionally, explain why this distance is zero when the lines are parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 8
+    },
+    {
+      "problem": "A geometric sequence has the first term 8 and a common ratio 2. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "120",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 40
+    },
+    {
+      "problem": "Given positive real numbers a = 7 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0159443179342347",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 24
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=23 and p=43. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 8
+    },
+    {
+      "problem": "Consider a set of 5 distinct objects. In how many ways can you arrange these objects such that exactly 3 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 8
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 3\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "2",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 8
+    },
+    {
+      "problem": "Consider the linear system:\ny + y = 4\ny - y = 5\nWhat is the sum of the solutions (y + y)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "4",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 9
+    },
+    {
+      "problem": "A geometric sequence has the first term 7 and a common ratio 4. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "595",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 41
+    },
+    {
+      "problem": "Given positive real numbers a = 7 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.5118578920369088",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 25
+    },
+    {
+      "problem": "Consider a set of 9 distinct objects. In how many ways can you arrange these objects such that exactly 6 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 9
+    },
+    {
+      "problem": "Given points A = (8, 10), B = (6, 5), C = (3, 3), and D = (3, 3), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 9
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=78 and p=101. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 9
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 4\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "4",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 9
+    },
+    {
+      "problem": "Consider the linear system:\ny + y = 5\ny - y = 1\nWhat is the sum of the solutions (y + y)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "5",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 10
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=4 and p=113. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 10
+    },
+    {
+      "problem": "Consider a set of 2 distinct objects. In how many ways can you arrange these objects such that exactly 1 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 10
+    },
+    {
+      "problem": "Given points A = (10, 1), B = (7, 8), C = (10, 1), and D = (10, 1), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 10
+    },
+    {
+      "problem": "A geometric sequence has the first term 2 and a common ratio 2. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "62",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 42
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 4, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 26
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 5\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "5",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 10
+    },
+    {
+      "problem": "Consider the linear system:\ny + y = 4\ny - y = 5\nWhat is the sum of the solutions (y + y)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "4",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 11
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 4\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "4",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 11
+    },
+    {
+      "problem": "Consider a set of 9 distinct objects. In how many ways can you arrange these objects such that exactly 8 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 11
+    },
+    {
+      "problem": "Given positive real numbers a = 8 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0277402395547233",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 27
+    },
+    {
+      "problem": "A geometric sequence has the first term 1 and a common ratio 4. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "85",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 43
+    },
+    {
+      "problem": "Given points A = (8, 9), B = (8, 8), C = (9, 10), and D = (9, 10), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 11
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=71 and p=101. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 11
+    },
+    {
+      "problem": "Consider the linear system in three dimensions:\nz + z + w = 4\nz - z - z = 3\nWhat is the sum of the solutions (z + z + w)? Also, determine the sign of the coefficients.",
+      "answer": "4",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 12
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=34 and p=101. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "-1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 12
+    },
+    {
+      "problem": "Given positive real numbers a = 2 and b = 3, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0206207261596576",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 28
+    },
+    {
+      "problem": "Consider a set of 9 distinct objects. In how many ways can you arrange these objects such that exactly 5 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 12
+    },
+    {
+      "problem": "A geometric sequence has the first term 7 and a common ratio 2. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "105",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 44
+    },
+    {
+      "problem": "Consider the linear system in three dimensions:\nx + y + z = 4\nx - y - z = 3\nWhat is the sum of the solutions (x + y + z)? Also, determine the sign of the coefficients.",
+      "answer": "4",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 12
+    },
+    {
+      "problem": "Given points A = (8, 5), B = (9, 6), C = (3, 7), and D = (3, 7), find the distance between the lines defined by AB and CD. Additionally, explain why this distance is zero when the lines are parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 12
+    },
+    {
+      "problem": "Consider the linear system:\nz + z = 3\nz - z = 3\nWhat is the sum of the solutions (z + z)? Also, determine the sign of the coefficients. Hint: Consider using the method of elimination or substitution.",
+      "answer": "3",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 13
+    },
+    {
+      "problem": "In a two-dimensional grid of size 6x6, how many ways can you arrange the objects such that exactly 3 of them remain in their original positions, and no two selected objects are adjacent in either the x or y direction? (Hint: Consider the problem as a combinatorial selection with constraints.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 13
+    },
+    {
+      "problem": "A geometric sequence has the first term 5 and a common ratio 5. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "19530",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 45
+    },
+    {
+      "problem": "Given positive real numbers a = 9 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.2963624321753373",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 29
+    },
+    {
+      "problem": "Given points A = (5, 5), B = (3, 4), C = (3, 4), and D = (3, 4), find the distance between the lines defined by AB and CD. Additionally, explain why this distance is zero when the lines are parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 13
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=37 and p=73. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 13
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 3\nx - y = 3\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "3",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 13
+    },
+    {
+      "problem": "Consider the linear system:\nz + z = 1\nz - z = 5\nWhat is the sum of the solutions (z + z)? Also, determine the sign of the coefficients.",
+      "answer": "1",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 14
+    },
+    {
+      "problem": "A geometric sequence has the first term 2 and a common ratio 5. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "62",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 46
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=19 and p=31. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "1",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 14
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 1\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "1",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 14
+    },
+    {
+      "problem": "Given points A = (2, 10), B = (9, 4), C = (5, 5), and D = (5, 5), find the distance between the lines defined by AB and CD. Additionally, explain why this distance is zero when the lines are parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 14
+    },
+    {
+      "problem": "Given positive real numbers a = 9 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0434983894999017",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 30
+    },
+    {
+      "problem": "Consider a set of 3 distinct objects. In how many ways can you arrange these objects such that exactly 1 of them remain in their original positions (fixed points)? (Hint: Use the principle of inclusion-exclusion and derangements.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 14
+    },
+    {
+      "problem": "Consider the linear system:\nz + z = 2\nz - z = 1\nWhat is the sum of the solutions (z + z)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "2",
+      "program_id": "719c31bc9554",
+      "rq_score": 0.1437128260731697,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 15
+    },
+    {
+      "problem": "Given positive real numbers a = 1 and b = 8, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.590990257669732",
+      "program_id": "e58028182539",
+      "rq_score": 0.10445409268140793,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 31
+    },
+    {
+      "problem": "In a two-dimensional grid of size 5x5, how many ways can you arrange the objects such that exactly 1 of them remain in their original positions, and no two selected objects are adjacent in either the x or y direction? (Hint: Consider the problem as a combinatorial selection with constraints.)",
+      "answer": "0",
+      "program_id": "923a7a50257c",
+      "rq_score": 0.061038415879011154,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 15
+    },
+    {
+      "problem": "A geometric sequence has the first term 6 and a common ratio 2. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "378",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.06031133234500885,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 47
+    },
+    {
+      "problem": "Given points A = (4, 1), B = (9, 1), C = (3, 4), and D = (3, 4), find the distance between the lines defined by AB and CD. Explain why the distance is non-zero when the lines are not parallel or coincident.",
+      "answer": "0",
+      "program_id": "812d59ffafc8",
+      "rq_score": 0.04122762009501457,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 15
+    },
+    {
+      "problem": "Determine the Legendre symbol (a/p) where a=0 and p=43. The Legendre symbol is defined as 1 if a is a quadratic residue modulo p, -1 if it's a non-residue, and 0 if a is divisible by p. Additionally, verify if a is a perfect square modulo p, and if so, find its square root. Consider the case where p is an odd prime and a is not divisible by p. Also, explore the implications if a is a quadratic residue modulo p and p is a prime of the form 4k+1.",
+      "answer": "0",
+      "program_id": "73700c8a7d9d",
+      "rq_score": 0.02430705353617668,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 15
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients. Hint: Think about the geometric series sum formula.",
+      "answer": "2",
+      "program_id": "fb4fc17dc180",
+      "rq_score": 0.08028966374695301,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 15
+    }
+  ]
+}

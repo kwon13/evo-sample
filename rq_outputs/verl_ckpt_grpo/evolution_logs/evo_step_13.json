@@ -1,0 +1,857 @@
+{
+  "global_step": 13,
+  "timestamp": "2026-05-02T01:49:59.311327",
+  "metrics": {
+    "attempted": 53,
+    "inserted": 10,
+    "accept_rate": 0.18867924528301888,
+    "rounds": 8,
+    "grid_coverage": 0.25,
+    "grid_mean_rq": 0.15079366081487813,
+    "grid_max_rq": 0.44839560985565186,
+    "grid_min_rq": 0.0,
+    "grid_champions": 15,
+    "diversity_axis": "concept_group",
+    "uncertainty_metric": "h_span_max",
+    "reservoir_candidates": 47,
+    "reservoir_cells": 13,
+    "reservoir_selections": 182,
+    "hard_champions": 3,
+    "total_niches": 60,
+    "total_insertions": 76,
+    "total_replacements": 25,
+    "total_reservoir_insertions": 117,
+    "total_duplicate_rejections": 42,
+    "champion_p_hat_mean": 0.4423076923076923,
+    "champion_p_hat_std": 0.18091238194448828,
+    "champion_h_mean": 0.9945788724789307,
+    "champion_h_std": 0.9915914635502259,
+    "archive_frontier_champions": 13,
+    "archive_too_hard_champions": 2,
+    "archive_too_easy_champions": 0,
+    "archive_zero_rq_champions": 2,
+    "dataset_non_frontier_skipped_visits": 34,
+    "dataset_duplicate_signature_skipped_visits": 0,
+    "reeval_count": 14,
+    "reeval_evicted": 0,
+    "reeval_low_h_evicted": 0,
+    "reeval_exec_fail_evicted": 0,
+    "reeval_extreme_p_kept": 3,
+    "reeval_bin_shifted": 9,
+    "reeval_rq_delta_mean": -0.003517967017127231,
+    "reeval_rq_delta_min": -0.2183727759581346,
+    "reeval_rq_delta_max": 0.3471851944923401,
+    "reeval_targets": 14,
+    "reeval_n_champions": 14,
+    "reeval_mode": 2,
+    "dataset_size": 208,
+    "event_log_file": "/data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo/evolution_logs/events/events_evo_4_step_13.jsonl"
+  },
+  "grid": [
+    {
+      "h_bin": 0,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.09669091701507569,
+      "reservoir_program_ids": [
+        "e54df8ac7f11",
+        "5a3ecf7e2f38",
+        "832dbd8238df",
+        "c4a958185e94"
+      ],
+      "rq_score": 0.12351008561941294,
+      "p_hat": 0.375,
+      "h_score": 0.5269763653094952,
+      "generation": 2,
+      "program_id": "1f6774f09eb3",
+      "root_seed_id": "",
+      "concept_type": "number_theory.legendre_symbol",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.1518910676240921,
+        "h_span_max": 0.5269763653094952
+      },
+      "token_entropy": 0.1518910676240921,
+      "problem": "Determine the Legendre symbol (a/p) for a = 27 and p = 47. Use the properties of the Legendre symbol and Euler's criterion. Consider the quadratic reciprocity law for additional insight.",
+      "answer": "1",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.legendre_symbol\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    \"\"\"\n    Compute the Legendre symbol (a/p) for a given a and p, where p is an odd prime.\n    The problem requires the solver to apply the properties of the Legendre symbol,\n    including the quadratic reciprocity law and the Euler's criterion.\n    \"\"\"\n    rng = random.Random(seed)\n\n    p = rng.choice([37, 41, 43, 47])  # Odd prime\n    a = rng.randint(1, p - 1)  # Integer less than p\n\n    # Compute the Legendre symbol using Euler's criterion\n    legendre_symbol = ((a ** ((p - 1) // 2)) % p) * ((a ** ((p - 1) // 2)) % p)\n\n    # Optionally, introduce a hidden identity or a structural constraint\n    # For example, if a is a quadratic residue modulo p, the Legendre symbol is 1\n    # If a is a non-quadratic residue modulo p, the Legendre symbol is -1\n    # If a is 0, the Legendre symbol is 0\n\n    problem = (\n        f\"Determine the Legendre symbol (a/p) for a = {a} and p = {p}. \"\n        f\"Use the properties of the Legendre symbol and Euler's criterion. \"\n        f\"Consider the quadratic reciprocity law for additional insight.\"\n    )\n\n    return problem, str(legendre_symbol)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.60   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 2.00   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0050 (higher is better)\n#\n# DIAGNOSIS: slightly too easy (p=0.60); LOW entropy (H=2.00 — solver over-confident)\n# ACTION:    introduce one non-trivial structural constraint (axis 4) or a hidden identity (axis 6); add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: Determine the Legendre symbol (a/37) for a = 10 and p = 37.\n# seed=0 answer : -1\n# seed=1 problem: Determine the Legendre symbol (a/41) for a = 15 and p = 41.\n# seed=1 answer : 1\n# solver pass rate: 60% (TOO EASY)\n# solver entropy  : 2.00\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.292, p=0.75, H=1.56):\n# seed=0 problem: Determine the Legendre symbol (a/43) for a = 20 and p = 43.\n# seed=0 answer : 1\n\n# Example 2 (R_Q=0.448, p=0.88, H=4.10):\n# seed=1 problem: Determine the Legendre symbol (a/47) for a = 30 and p = 47.\n# seed=1 answer : -1\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Add one substantial reasoning move; optionally a second axis.\n# - Keep CONCEPT_TYPE = 'number_theory.legendre_symbol' and\n#   CONCEPT_GROUP = 'number_theory' EXACTLY.\n# - If the parent has a banned pattern, remove it.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.11322392658753828,
+      "reservoir_program_ids": [
+        "20b272356534",
+        "e0795949625b",
+        "fd56ab6ce592",
+        "2a11ce35c1a6"
+      ],
+      "rq_score": 0.05735894729351175,
+      "p_hat": 0.625,
+      "h_score": 0.2447315084523168,
+      "generation": 12,
+      "program_id": "2e4c4b523e24",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.committee_count",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.06340716034173965,
+        "h_span_max": 0.2447315084523168
+      },
+      "token_entropy": 0.06340716034173965,
+      "problem": "How many ways can you form a committee of size 8 from a group of 16 people, ensuring that the committee size is at most half the total number of people?",
+      "answer": "12870",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n    \n    # Increased range for n and k to add more complexity\n    n = rng.randint(10, 20)  # Total number of people\n    k = rng.randint(1, n)    # Size of the committee\n    \n    # Add a constraint on the committee size relative to n\n    if k > n // 2:\n        k = n // 2\n\n    # Calculate the number of combinations using the formula C(n, k) = n! / (k! * (n-k)!)\n    from math import comb\n    answer = comb(n, k)\n\n    problem = (f\"How many ways can you form a committee of size {k} from a group of {n} people, ensuring that the committee size is at most half the total number of people?\")\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.50   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 2.00   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0936 (higher is better)\n#\n# DIAGNOSIS: good learnability band (p=0.50); GOOD entropy (H=2.00 — solver confident but not overconfident)\n# ACTION:    preserve difficulty; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: How many ways can you form a committee of size 3 from a group of 7 people?\n# seed=0 answer : 35\n# seed=1 problem: How many ways can you form a committee of size 4 from a group of 10 people?\n# seed=1 answer : 210\n# solver pass rate: 50% (GOOD BAND)\n# solver entropy  : 2.00\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.924, p=0.62, H=3.94):\n# seed=2 problem: How many ways can you form a committee of size 5 from a group of 12 people?\n# seed=2 answer : 792\n# Example 2 (R_Q=0.85, p=0.58, H=3.8):\n# seed=3 problem: How many ways can you form a committee of size 6 from a group of 15 people?\n# seed=3 answer : 5005\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Pick CONCEPT_TYPE from the whitelist whose CONCEPT_GROUP is\n#   NOT 'number_theory'.\n#   Suggested groups to try: combinatorics, sequence, algebra.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.10487651824951172,
+      "reservoir_program_ids": [
+        "28fe55456ab5",
+        "a06b8c586d1a",
+        "6937dcfa43ad",
+        "68da74049219"
+      ],
+      "rq_score": 0.12255656719207765,
+      "p_hat": 0.625,
+      "h_score": 0.5229080200195313,
+      "generation": 4,
+      "program_id": "6a76f5abe5f0",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.06279408931732178,
+        "h_span_max": 0.5229080200195313
+      },
+      "token_entropy": 0.06279408931732178,
+      "problem": "A geometric sequence has first term 4 and common ratio 3. Let S be the sum of the first 4 terms of this geometric sequence. An arithmetic sequence has first term S and common difference 13. Calculate the sum of the first 9 terms of this arithmetic sequence.",
+      "answer": "1908",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    \"\"\"\n    Compute the sum of the first m terms of an arithmetic sequence derived from a geometric sequence.\n    The problem requires the solver to apply the formula for the sum of a geometric series and then the sum of an arithmetic series.\n    \"\"\"\n    rng = random.Random(seed)\n\n    a = rng.randint(1, 5)  # First term of the geometric sequence\n    r = rng.choice([2, 3])  # Common ratio of the geometric sequence\n    n = rng.randint(4, 8)  # Number of terms in the geometric sequence\n    geo_sum = a * (r ** n - 1) // (r - 1)  # Sum of the geometric sequence\n    d = rng.randint(5, 20)  # Common difference of the arithmetic sequence\n    m = rng.randint(5, 10)  # Number of terms in the arithmetic sequence\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2  # Sum of the arithmetic sequence\n    answer = arith_sum\n\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms of this geometric sequence. \"\n        f\"An arithmetic sequence has first term S and common difference {d}. \"\n        f\"Calculate the sum of the first {m} terms of this arithmetic sequence.\"\n    )\n\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.25   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 0.37   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0701 (higher is better)\n#\n# DIAGNOSIS: slightly too hard (p=0.25); LOW entropy (H=0.37 — solver over-confident)\n# ACTION:    reduce numeric ranges but preserve structure; consider a case-analysis split (axis 2) so the solver can commit; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: A geometric sequence has first term 2 and common ratio 3. Let S be the sum of the first 4 terms of this geometric sequence. An arithmetic sequence has first term S and common difference 8. Calculate the sum of the first 5 terms of this arithmetic sequence.\n# seed=0 answer : 300\n# seed=1 problem: A geometric sequence has first term 5 and common ratio 2. Let S be the sum of the first 8 terms of this geometric sequence. An arithmetic sequence has first term S and common difference 13. Calculate the sum of the first 6 terms of this arithmetic sequence.\n# seed=1 answer : 2400\n# solver pass rate: 25% (GOOD BAND)\n# solver entropy  : 0.37\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.448, p=0.88, H=4.10):\n# seed=2 problem: A geometric sequence has first term 7 and common ratio 2. Let S be the sum of the first 4 terms of this geometric sequence. An arithmetic sequence has first term S and common difference 10. Calculate the sum of the first 6 terms of this arithmetic sequence.\n# seed=2 answer : 1680\n# Example 2 (R_Q=0.85, p=0.58, H=3.8):\n# seed=3 problem: A geometric sequence has first term 3 and common ratio 3. Let S be the sum of the first 8 terms of this geometric sequence. An arithmetic sequence has first term S and common difference 5. Calculate the sum of the first 7 terms of this arithmetic sequence.\n# seed=3 answer : 1120\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Pick CONCEPT_TYPE from the whitelist whose CONCEPT_GROUP is\n#   NOT 'number_theory'.\n#   Suggested groups to try: combinatorics, sequence, algebra.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.12677462100982667,
+      "reservoir_program_ids": [
+        "8852c4084037",
+        "c00403febc8e",
+        "fe28060f2812"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 0.5017254239036923,
+      "generation": 3,
+      "program_id": "7c9f2c1eac2b",
+      "root_seed_id": "",
+      "concept_type": "linear_algebra.linear_system_sum",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.2030676305294037,
+        "h_span_max": 0.5017254239036923
+      },
+      "token_entropy": 0.2030676305294037,
+      "problem": "Let a_n be a sequence defined by the recurrence relation a_n = 2 * a_8, with initial terms a_0 = 7 and a_1 = 7. Calculate the sum of the first 9 terms of this sequence.",
+      "answer": "1792",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"linear_algebra.linear_system_sum\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    \"\"\"\n    Compute the sum of the first n terms of a linear recurrence.\n    The problem requires the solver to apply the formula for the sum of a linear recurrence.\n    \"\"\"\n    rng = random.Random(seed)\n\n    a = rng.randint(1, 10)  # First term\n    b = rng.randint(1, 10)  # Second term\n    r = rng.randint(2, 10)  # Common ratio\n    n = rng.randint(5, 15)  # Number of terms\n\n    # Define the recurrence relation: a_n = r * a_{n-1}\n    def recurse(k):\n        if k == 0:\n            return a\n        elif k == 1:\n            return b\n        else:\n            return r * recurse(k - 1)\n\n    # Compute the sum of the first n terms\n    arith_sum = sum(recurse(k) for k in range(n))\n    answer = arith_sum\n\n    problem = (\n        f\"Let a_n be a sequence defined by the recurrence relation a_n = {r} * a_{n-1}, with initial terms a_0 = {a} and a_1 = {b}. \"\n        f\"Calculate the sum of the first {n} terms of this sequence.\"\n    )\n\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.00   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 0.00   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0000 (higher is better)\n#\n# DIAGNOSIS: far TOO HARD (solver wins only 0%); LOW entropy (H=0.00 — solver over-confident)\n# ACTION:    simplify one reasoning stage, clarify the mathematical OBJECT, keep the others — total depth should stay >= 3; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: Let a_n be a sequence defined by the recurrence relation a_n = 3 * a_{n-1}, with initial terms a_0 = 2 and a_1 = 5. Calculate the sum of the first 10 terms of this sequence.\n# seed=0 answer : 59048\n# seed=1 problem: Let a_n be a sequence defined by the recurrence relation a_n = 4 * a_{n-1}, with initial terms a_0 = 3 and a_1 = 7. Calculate the sum of the first 8 terms of this sequence.\n# seed=1 answer : 32768\n# solver pass rate: 0% (TOO HARD)\n# solver entropy  : 0.00\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES ===\n# (no reward-hack-free champions yet — design from the\n# rubric alone; do NOT imitate the parent's shape)\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Pick CONCEPT_TYPE from the whitelist whose CONCEPT_GROUP is\n#   NOT 'number_theory'.\n#   Suggested groups to try: combinatorics, sequence, algebra.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.0691802186124465,
+      "reservoir_program_ids": [
+        "917b72c8532d",
+        "0cb83ca0b8a5",
+        "e2f2402b413a",
+        "c08d864dfa03"
+      ],
+      "rq_score": 0.08657802234996448,
+      "p_hat": 0.375,
+      "h_score": 0.36939956202651514,
+      "generation": 0,
+      "program_id": "3f8c2df19e82",
+      "root_seed_id": "3f8c2df19e82",
+      "concept_type": "geometry.trig_area",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.13704493641853333,
+        "h_span_max": 0.36939956202651514
+      },
+      "token_entropy": 0.13704493641853333,
+      "problem": "Triangle ABC has A = (0, 0), B = (10, 8), and C = (7, 6). Find its area.",
+      "answer": "2",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.trig_area\"\nCONCEPT_GROUP = \"geometry\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    while True:\n        x1 = rng.randint(2, 12)\n        y1 = rng.randint(1, 10)\n        x2 = rng.randint(1, 12)\n        y2 = rng.randint(2, 10)\n\n        twice_area = abs(x1 * y2 - x2 * y1)\n        if twice_area > 0 and twice_area % 2 == 0:\n            break\n\n    area = twice_area // 2\n\n    problem = (\n        f\"Triangle ABC has A = (0, 0), B = ({x1}, {y1}), \"\n        f\"and C = ({x2}, {y2}). Find its area.\"\n    )\n\n    return problem, str(area)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.07150577008724213,
+      "reservoir_program_ids": [
+        "af1358242025",
+        "83fa113574b0",
+        "48757a4a5cbf",
+        "c4d0b7a91e81"
+      ],
+      "rq_score": 0.07212443011147636,
+      "p_hat": 0.375,
+      "h_score": 0.3077309018089658,
+      "generation": 7,
+      "program_id": "cd0bbc587b18",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.13260400295257568,
+        "h_span_max": 0.3077309018089658
+      },
+      "token_entropy": 0.13260400295257568,
+      "problem": "Find the maximum value of the function f(x, y) = x^2 + y^2 subject to the constraint x + y = 14, where x and y are positive real numbers.",
+      "answer": "98",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    \"\"\"\n    Find the maximum value of a function subject to a constraint using the Arithmetic Mean-Geometric Mean (AM-GM) inequality.\n    The problem requires the solver to apply the AM-GM inequality to find the maximum value of a given function under a specific constraint.\n    \"\"\"\n    rng = random.Random(seed)\n\n    # Define the function and the constraint\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n    c = rng.randint(1, 10)\n    d = rng.randint(1, 10)\n    e = rng.randint(1, 10)\n\n    # Define the function to maximize\n    # Example: f(x, y) = x^2 + y^2 under the constraint x + y = k\n    k = a + b\n    x = a\n    y = k - x\n\n    # Apply the AM-GM inequality\n    # (x^2 + y^2) / 2 >= sqrt(x^2 * y^2)\n    # x^2 + y^2 >= 2 * sqrt(x^2 * y^2)\n    # x^2 + y^2 >= 2 * |x| * |y|\n    # Since x and y are positive, we can simplify to:\n    # x^2 + y^2 >= 2 * x * y\n    # x^2 + y^2 >= 2 * a * (k - a)\n    # x^2 + y^2 >= 2 * a * (a + b - a)\n    # x^2 + y^2 >= 2 * a * b\n    # Therefore, the maximum value of x^2 + y^2 is 2 * a * b\n\n    answer = 2 * a * b\n\n    problem = (\n        f\"Find the maximum value of the function f(x, y) = x^2 + y^2 subject to the constraint x + y = {k}, where x and y are positive real numbers.\"\n    )\n\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.12   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 0.78   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0855 (higher is better)\n#\n# DIAGNOSIS: far TOO HARD (solver wins only 12%); LOW entropy (H=0.78 — solver over-confident)\n# ACTION:    simplify one reasoning stage, clarify the mathematical OBJECT, keep the others — total depth should stay >= 3; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: Find the maximum value of the function f(x, y) = x^2 + y^2 subject to the constraint x + y = 17, where x and y are positive real numbers.\n# seed=0 answer : 280\n# seed=1 problem: Find the maximum value of the function f(x, y) = x^2 + y^2 subject to the constraint x + y = 22, where x and y are positive real numbers.\n# seed=1 answer : 144\n# solver pass rate: 12% (TOO HARD)\n# solver entropy  : 0.78\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.448, p=0.88, H=4.10):\n# seed=2 problem: Find the maximum value of the function f(x, y) = x^2 + y^2 subject to the constraint x + y = 5, where x and y are positive real numbers.\n# seed=2 answer : 25\n# Example 2 (R_Q=0.85, p=0.58, H=3.8):\n# seed=3 problem: Find the maximum value of the function f(x, y) = x^2 + y^2 subject to the constraint x + y = 7, where x and y are positive real numbers.\n# seed=3 answer : 49\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Identify a shared structure (group, graph, polynomial,\n#   probability space, modulus). Every step uses it.\n# - Define exactly one whitelisted CONCEPT_TYPE / CONCEPT_GROUP\n#   pair matching the hybrid object.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.1653438091278076,
+      "reservoir_program_ids": [
+        "0ad1edd15cb6",
+        "837f0db1b8d4",
+        "d0e85eaa07b5",
+        "12565c8946de"
+      ],
+      "rq_score": 0.16172289848327637,
+      "p_hat": 0.375,
+      "h_score": 0.6900177001953125,
+      "generation": 13,
+      "program_id": "0ad1edd15cb6",
+      "root_seed_id": "",
+      "concept_type": "number_theory.crt_count",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.17721933126449585,
+        "h_span_max": 0.6900177001953125
+      },
+      "token_entropy": 0.17721933126449585,
+      "problem": "Find the smallest positive integer x such that:x ≡ 1 (mod 11) and x ≡ 3 (mod 7). Use the Chinese Remainder Theorem to solve the system. The solution x also satisfies the hidden identity: x is the smallest positive integer in the solution set.",
+      "answer": "45",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.crt_count\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    \"\"\"\n    Compute the CRT count problem with a deeper reasoning process, including multiple steps and a hidden identity.\n    \"\"\"\n    rng = random.Random(seed)\n\n    # Choose two distinct prime numbers p1 and p2\n    p1 = rng.choice([3, 5, 7, 11, 13])\n    p2 = rng.choice([2, 3, 5, 7, 11])\n    while p2 == p1:\n        p2 = rng.choice([2, 3, 5, 7, 11])\n\n    # Choose two integers x1 and x2 such that 1 <= x1 < p1 and 1 <= x2 < p2\n    x1 = rng.randint(1, p1 - 1)\n    x2 = rng.randint(1, p2 - 1)\n\n    # Solve the system of congruences using the Chinese Remainder Theorem\n    # x ≡ x1 (mod p1)\n    # x ≡ x2 (mod p2)\n    # Using the formula: x = x1 * M1 * y1 + x2 * M2 * y2 (mod M)\n    # Where M = p1 * p2, M1 = p2, M2 = p1\n    # y1 is the modular inverse of M1 modulo p1\n    # y2 is the modular inverse of M2 modulo p2\n\n    M = p1 * p2\n    M1 = p2\n    M2 = p1\n\n    y1 = pow(M1, -1, p1)\n    y2 = pow(M2, -1, p2)\n\n    x = (x1 * M1 * y1 + x2 * M2 * y2) % M\n\n    # Hidden identity: The solution x is also the smallest positive integer that satisfies the system of congruences\n    # This adds a layer of reasoning, as the solver must recognize that the computed x is the smallest solution\n\n    problem = (\n        f\"Find the smallest positive integer x such that:\"\n        f\"x ≡ {x1} (mod {p1}) and x ≡ {x2} (mod {p2}). \" \n        f\"Use the Chinese Remainder Theorem to solve the system. \"\n        f\"The solution x also satisfies the hidden identity: x is the smallest positive integer in the solution set.\"\n    )\n    return problem, str(x)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.50   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 2.00   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0936 (higher is better)\n#\n# DIAGNOSIS: good learnability band (p=0.50); GOOD entropy (H=2.00 — solver confident but not overconfident)\n# ACTION:    preserve difficulty; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: Find the smallest positive integer x such that:\n# x ≡ 2 (mod 3) and x ≡ 1 (mod 5). Use the Chinese Remainder Theorem to solve the system.\n# seed=0 answer : 11\n# seed=1 problem: Find the smallest positive integer x such that:\n# x ≡ 3 (mod 5) and x ≡ 4 (mod 7). Use the Chinese Remainder Theorem to solve the system.\n# seed=1 answer : 33\n# solver pass rate: 50% (GOOD BAND)\n# solver entropy  : 2.00\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.924, p=0.62, H=3.94):\n# seed=2 problem: Find the smallest positive integer x such that:\n# x ≡ 4 (mod 7) and x ≡ 6 (mod 11). Use the Chinese Remainder Theorem to solve the system.\n# seed=2 answer : 77\n# Example 2 (R_Q=0.85, p=0.58, H=3.8):\n# seed=3 problem: Find the smallest positive integer x such that:\n# x ≡ 5 (mod 11) and x ≡ 7 (mod 13). Use the Chinese Remainder Theorem to solve the system.\n# seed=3 answer : 183\n# === END EXAMPLES ==="
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.1851506531238556,
+      "reservoir_program_ids": [
+        "2a11ce35c1a6",
+        "c05e227f4751",
+        "2bd0f6feba52"
+      ],
+      "rq_score": 0.18240952491760254,
+      "p_hat": 0.375,
+      "h_score": 0.7782806396484375,
+      "generation": 11,
+      "program_id": "2a11ce35c1a6",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.committee_count",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.07718265801668167,
+        "h_span_max": 0.7782806396484375
+      },
+      "token_entropy": 0.07718265801668167,
+      "problem": "How many ways can you form a committee of size 7 from a group of 11 people?",
+      "answer": "330",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    \"\"\"\n    Count the number of ways to form a committee of size k from a group of n people.\n    The problem requires the solver to apply combinatorial principles to determine the number of possible committees.\n    \"\"\"\n    rng = random.Random(seed)\n    n = rng.randint(5, 15)  # Total number of people\n    k = rng.randint(1, n)  # Size of the committee\n\n    # Calculate the number of combinations using the formula C(n, k) = n! / (k! * (n-k)!)\n    from math import comb\n    answer = comb(n, k)\n\n    problem = (f\"How many ways can you form a committee of size {k} from a group of {n} people?\")\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.50   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 2.00   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0936 (higher is better)\n#\n# DIAGNOSIS: good learnability band (p=0.50); GOOD entropy (H=2.00 — solver confident but not overconfident)\n# ACTION:    preserve difficulty; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: How many ways can you form a committee of size 3 from a group of 7 people?\n# seed=0 answer : 35\n# seed=1 problem: How many ways can you form a committee of size 4 from a group of 10 people?\n# seed=1 answer : 210\n# solver pass rate: 50% (GOOD BAND)\n# solver entropy  : 2.00\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.924, p=0.62, H=3.94):\n# seed=2 problem: How many ways can you form a committee of size 5 from a group of 12 people?\n# seed=2 answer : 792\n# Example 2 (R_Q=0.85, p=0.58, H=3.8):\n# seed=3 problem: How many ways can you form a committee of size 6 from a group of 15 people?\n# seed=3 answer : 5005\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Pick CONCEPT_TYPE from the whitelist whose CONCEPT_GROUP is\n#   NOT 'number_theory'.\n#   Suggested groups to try: combinatorics, sequence, algebra.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.17888577779134116,
+      "reservoir_program_ids": [
+        "68da74049219",
+        "28fe55456ab5",
+        "3a165b104312",
+        "99233322b32e"
+      ],
+      "rq_score": 0.22689307819713245,
+      "p_hat": 0.5,
+      "h_score": 0.9075723127885298,
+      "generation": 6,
+      "program_id": "1c170ed49842",
+      "root_seed_id": "",
+      "concept_type": "sequence.linear_recurrence",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.06581482291221619,
+        "h_span_max": 0.9075723127885298
+      },
+      "token_entropy": 0.06581482291221619,
+      "problem": "Find the 7-th term of the sequence defined by the recurrence relation a_n = 1 * a_6 + 5 * a_5 + 9 * a_4 + 8 * a_3 with initial terms a_1 = 7, a_2 = 12, a_3 = 56, and a_4 = 187.",
+      "answer": "7452",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.linear_recurrence\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    \"\"\"\n    Find the nth term of a linear recurrence sequence, but instead of the standard Fibonacci-like recurrence, use a more complex recurrence relation.\n    The problem requires the solver to apply the properties of linear recurrence relations to find the nth term of a given sequence, but with a more complex recurrence relation that includes additional terms.\n    \"\"\"\n    rng = random.Random(seed)\n    n = rng.randint(1, 10)  # Position of the term to find\n    a = rng.randint(1, 10)  # Initial term\n    b = rng.randint(1, 10)  # Coefficient for the term a_{n-1}\n    c = rng.randint(1, 10)  # Coefficient for the term a_{n-2}\n    d = rng.randint(1, 10)  # Coefficient for the term a_{n-3}\n    e = rng.randint(1, 10)  # Coefficient for the term a_{n-4}\n\n    # Calculate the nth term using the recurrence relation: a_n = b * a_{n-1} + c * a_{n-2} + d * a_{n-3} + e * a_{n-4}\n    if n == 1:\n        answer = a\n    elif n == 2:\n        answer = b * a + c\n    elif n == 3:\n        answer = b * (b * a + c) + c * a + d\n    elif n == 4:\n        answer = b * (b * (b * a + c) + c * a + d) + c * (b * a + c) + d * a + e\n    else:\n        a_1 = a\n        a_2 = b * a + c\n        a_3 = b * (b * a + c) + c * a + d\n        a_4 = b * (b * (b * a + c) + c * a + d) + c * (b * a + c) + d * a + e\n        for i in range(5, n+1):\n            a_1, a_2, a_3, a_4 = a_2, a_3, a_4, b * a_4 + c * a_3 + d * a_2 + e * a_1\n        answer = a_4\n\n    problem = (\n        f\"Find the {n}-th term of the sequence defined by the recurrence relation a_n = {b} * a_{n-1} + {c} * a_{n-2} + {d} * a_{n-3} + {e} * a_{n-4} with initial terms a_1 = {a}, a_2 = {b * a + c}, a_3 = {b * (b * a + c) + c * a + d}, and a_4 = {b * (b * (b * a + c) + c * a + d) + c * (b * a + c) + d * a + e}.\"\n    )\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.12   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 0.78   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0855 (higher is better)\n#\n# DIAGNOSIS: far TOO HARD (solver wins only 12%); LOW entropy (H=0.78 — solver over-confident)\n# ACTION:    simplify one reasoning stage, clarify the mathematical OBJECT, keep the others — total depth should stay >= 3; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: Find the 7-th term of the sequence defined by the recurrence relation a_n = 1 * a_6 + 5 * a_5 with initial terms a_1 = 7 and a_2 = 12.\n# seed=0 answer : 2587\n# seed=1 problem: Find the 3-th term of the sequence defined by the recurrence relation a_n = 2 * a_2 + 5 * a_1 with initial terms a_1 = 10 and a_2 = 25.\n# seed=1 answer : 100\n# solver pass rate: 12% (TOO HARD)\n# solver entropy  : 0.78\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.448, p=0.88, H=4.10):\n# seed=2 problem: Find the 7-th term of the sequence defined by the recurrence relation a_n = 4 * a_{n-1} + 5 * a_{n-2} with initial terms a_1 = 2 and a_2 = 9.\n# seed=2 answer : 128\n# Example 2 (R_Q=0.85, p=0.58, H=3.8):\n# seed=3 problem: Find the 6-th term of the sequence defined by the recurrence relation a_n = 5 * a_{n-1} + 6 * a_{n-2} with initial terms a_1 = 3 and a_2 = 12.\n# seed=3 answer : 342\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Identify a shared structure (group, graph, polynomial,\n#   probability space, modulus). Every step uses it.\n# - Define exactly one whitelisted CONCEPT_TYPE / CONCEPT_GROUP\n#   pair matching the hybrid object.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.07991979672358587,
+      "reservoir_program_ids": [
+        "fa5c7d95930b",
+        "06c2d0ee3c83",
+        "6b6f45535ff5",
+        "9a08e78b531a"
+      ],
+      "rq_score": 0.13369739055633545,
+      "p_hat": 0.25,
+      "h_score": 0.7130527496337891,
+      "generation": 4,
+      "program_id": "041022c5dc35",
+      "root_seed_id": "",
+      "concept_type": "algebra.quadratic_vieta_reciprocal",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.03972051665186882,
+        "h_span_max": 0.7130527496337891
+      },
+      "token_entropy": 0.03972051665186882,
+      "problem": "Consider the quadratic equation 4x^2 + 7x + 1 = 0 with real roots r1 and r2. Let u = 1/r1 and v = 1/r2. Find the sum of u and v, i.e., u + v. Additionally, verify that u + v = -7.0 satisfies the hidden identity where the sum of the roots is 3.",
+      "answer": "-7.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"algebra.quadratic_vieta_reciprocal\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    \"\"\"\n    Compute the reciprocal sum of roots of a quadratic equation with a twist involving a hidden identity.\n    The problem requires the solver to use Vieta's formulas and algebraic manipulation to find the sum of the reciprocals of the roots, incorporating a hidden identity that adds complexity.\n    \"\"\"\n    rng = random.Random(seed)\n    a = rng.randint(1, 5)  # Coefficient of x^2\n    b = rng.randint(1, 10)  # Coefficient of x\n    c = rng.randint(1, 10)  # Constant term\n    discriminant = b**2 - 4*a*c\n    if discriminant < 0:\n        # Ensure the quadratic has real roots\n        b = rng.randint(1, 10)\n        discriminant = b**2 - 4*a*c\n    r1 = (-b + discriminant**0.5) / (2*a)\n    r2 = (-b - discriminant**0.5) / (2*a)\n    u = 1 / r1\n    v = 1 / r2\n    answer = u + v\n\n    # Add a hidden identity for additional complexity\n    hidden_identity = rng.randint(1, 5)\n    problem = (\n        f\"Consider the quadratic equation {a}x^2 + {b}x + {c} = 0 with real roots r1 and r2. \"\n        f\"Let u = 1/r1 and v = 1/r2. \"\n        f\"Find the sum of u and v, i.e., u + v. \"\n        f\"Additionally, verify that u + v = {answer} satisfies the hidden identity where the sum of the roots is {hidden_identity}.\"\n    )\n    return problem, str(answer)\n\n# Example execution trace:\n# seed=0 problem: Consider the quadratic equation 2x^2 + 6x + -7 = 0 with real roots r1 and r2. Let u = 1/r1 and v = 1/r2. Find the sum of u and v, i.e., u + v. Additionally, verify that u + v = 0.8571428571428572 satisfies the hidden identity where the sum of the roots is 3.\n# seed=0 answer : 0.8571428571428572\n# seed=1 problem: Consider the quadratic equation 3x^2 + -8x + 7 = 0 with real roots r1 and r2. Let u = 1/r1 and v = 1/r2. Find the sum of u and v, i.e., u + v. Additionally, verify that u + v = 1.1428571428571428 satisfies the hidden identity where the sum of the roots is 2.\n# seed=1 answer : 1.1428571428571428\n# solver pass rate: 0% (TOO HARD)\n# solver entropy  : 0.76"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "670ee0e92d3e",
+        "178ba1830cfc",
+        "80dcd511d34e",
+        "b8ca33d523c7"
+      ],
+      "rq_score": 0.20353496074676514,
+      "p_hat": 0.375,
+      "h_score": 0.8684158325195312,
+      "generation": 12,
+      "program_id": "168a18d02b2b",
+      "root_seed_id": "",
+      "concept_type": "geometry.power_of_point_secants",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.11820638179779053,
+        "h_span_max": 0.8684158325195312
+      },
+      "token_entropy": 0.11820638179779053,
+      "problem": "A circle has a radius of 11 units. A point P is placed at a distance of 26 units from the center of the circle. Two secants from P intersect the circle at points A and B, and C and D. Find the power of point P with respect to the circle, which is given by the formula: PA * PB = PC * PD = x^2 - r^2.",
+      "answer": "555",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.power_of_point_secants\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    \"\"\"\n    Find the power of a point with respect to a circle using secants.\n    The problem requires the solver to apply the power of a point theorem to find the power of a given point with respect to a circle.\n    \"\"\"\n    rng = random.Random(seed)\n    r = rng.randint(5, 15)  # Radius of the circle\n    x = rng.randint(20, 30)  # Distance from the center to the point\n    y = rng.randint(10, 20)  # Length of the secant segment\n\n    # Calculate the power of the point using the formula: Power = x^2 - r^2\n    answer = x**2 - r**2\n\n    problem = (f\"A circle has a radius of {r} units. A point P is placed at a distance of {x} units from the center of the circle. \"\n               f\"Two secants from P intersect the circle at points A and B, and C and D. Find the power of point P with respect to the circle, which is given by the formula: PA * PB = PC * PD = x^2 - r^2.\")\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.38   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 0.30   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0692 (higher is better)\n#\n# DIAGNOSIS: good learnability band (p=0.38); LOW entropy (H=0.30 — solver over-confident)\n# ACTION:    preserve difficulty; push axis 5 (dimension lift) or 6 (hidden identity) to raise reasoning depth and diversity; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: A circle has a radius of 8 units. A point P is placed at a distance of 16 units from the center of the circle. Two secants from P intersect the circle at points\n# seed=0 answer : 192\n# seed=1 problem: A circle has a radius of 6 units. A point P is placed at a distance of 19 units from the center of the circle. Two secants from P intersect the circle at points\n# seed=1 answer : 325\n# solver pass rate: 38% (GOOD BAND)\n# solver entropy  : 0.30\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.924, p=0.62, H=3.94):\n# seed=2 problem: A circle has a radius of 9 units. A point P is placed at a distance of 14 units from the center of the circle. Two secants from P intersect the circle at points A and B, and C and D. Find the power of point P with respect to the circle, which is given by the formula: PA * PB = PC * PD = x^2 - r^2.\n# seed=2 answer : 175\n# Example 2 (R_Q=0.85, p=0.58, H=3.8):\n# seed=3 problem: A circle has a radius of 10 units. A point P is placed at a distance of 17 units from the center of the circle. Two secants from P intersect the circle at points A and B, and C and D. Find the power of point P with respect to the circle, which is given by the formula: PA * PB = PC * PD = x^2 - r^2.\n# seed=3 answer : 261\n# === END EXAMPLES ==="
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.1892942190170288,
+      "reservoir_program_ids": [
+        "841ca523c4d8",
+        "72eeed26efce",
+        "c90e1594e311",
+        "bcebb441ef75"
+      ],
+      "rq_score": 0.22372606065538195,
+      "p_hat": 0.5,
+      "h_score": 0.8949042426215278,
+      "generation": 9,
+      "program_id": "4093647edf3e",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.1724168360233307,
+        "h_span_max": 0.8949042426215278
+      },
+      "token_entropy": 0.1724168360233307,
+      "problem": "Let a₁, a₂, ..., a_4 be positive real numbers such that a₁ + a₂ + ... + a_4 = 22. Find the maximum value of the arithmetic mean (a₁ + a₂ + ... + a_4) / 4 using the Cauchy-Schwarz inequality. In addition, consider the theorem that the sum of squares is minimized when all numbers are equal.",
+      "answer": "5.5",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    \"\"\"\n    Compute the AM-GM inequality for a given set of positive numbers.\n    The problem requires the solver to apply the AM-GM inequality to find the maximum value of the arithmetic mean.\n    Additionally, the problem will involve a hidden identity or theorem chaining to increase the reasoning depth and diversity.\n    \"\"\"\n    rng = random.Random(seed)\n    n = rng.randint(3, 5)  # Number of positive numbers\n    numbers = [rng.randint(1, 10) for _ in range(n)]\n    answer = sum(numbers) / n  # Arithmetic mean\n\n    # Add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n    if rng.choice([True, False]):\n        # Technique uncertainty: apply AM-GM inequality directly\n        problem = (\n            f\"Let a₁, a₂, ..., a_{n} be positive real numbers such that a₁ + a₂ + ... + a_{n} = {sum(numbers)}. \"\n            f\"Find the maximum value of the arithmetic mean (a₁ + a₂ + ... + a_{n}) / {n} using the AM-GM inequality. \"\n            f\"In addition, consider the theorem that the product of the numbers is maximized when all numbers are equal.\"\n        )\n    else:\n        # Technique uncertainty: apply Cauchy-Schwarz inequality directly\n        problem = (\n            f\"Let a₁, a₂, ..., a_{n} be positive real numbers such that a₁ + a₂ + ... + a_{n} = {sum(numbers)}. \"\n            f\"Find the maximum value of the arithmetic mean (a₁ + a₂ + ... + a_{n}) / {n} using the Cauchy-Schwarz inequality. \"\n            f\"In addition, consider the theorem that the sum of squares is minimized when all numbers are equal.\"\n        )\n\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.38   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 0.15   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0355 (higher is better)\n#\n# DIAGNOSIS: good learnability band (p=0.38); LOW entropy (H=0.15 — solver over-confident)\n# ACTION:    preserve difficulty; push axis 5 (dimension lift) or 6 (hidden identity) to raise reasoning depth and diversity; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: Let a₁, a₂, ..., a_5 be positive real numbers such that a₁ + a₂ + ... + a_5 = 30. Find the maximum value of the arithmetic mean (a₁ + a₂ + ... + a_5) / 5 using the AM-GM inequality. In addition, consider the theorem that the product of the numbers is maximized when all numbers are equal.\n# seed=0 answer : 6.0\n# seed=1 problem: Let a₁, a₂, ..., a_3 be positive real numbers such that a₁ + a₂ + ... + a_3 = 17. Find the maximum value of the arithmetic mean (a₁ + a₂ + ... + a_3) / 3 using the Cauchy-Schwarz inequality. In addition, consider the theorem that the sum of squares is minimized when all numbers are equal.\n# seed=1 answer : 5.666666666666667\n# solver pass rate: 38% (GOOD BAND)\n# solver entropy  : 0.15\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES (well-posed champions) ===\n#\n# Example 1 (R_Q=0.448, p=0.88, H=4.10):"
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.09853771924972533,
+      "reservoir_program_ids": [
+        "d0e85eaa07b5"
+      ]
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.21939733624458313,
+      "p_hat": 0.125,
+      "h_score": 2.005918502807617,
+      "generation": 3,
+      "program_id": "9760e12e6bb6",
+      "root_seed_id": "",
+      "concept_type": "number_theory.kth_root_mod_prime",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.3108259439468384,
+        "h_span_max": 2.005918502807617
+      },
+      "token_entropy": 0.3108259439468384,
+      "problem": "Let p = 113, g = 59 be a primitive root modulo p. Let a be the least positive residue of g^39 modulo p, so a = 101. Find the number of residue classes x modulo 113 such that x^4 ≡ a (mod 113).",
+      "answer": "0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.kth_root_mod_prime\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    \"\"\"\n    Given a prime number p, find the count of k-th roots of a modulo p. \n    The problem involves finding the number of solutions to the equation x^k ≡ a (mod p).\n    \"\"\"\n    # Define the range of primes and primitive roots\n    primes = [29, 31, 41, 43, 73, 89, 97, 101, 109, 113, 127, 137, 149]\n    primitive_roots = [5, 6, 7, 11, 19, 29, 31, 37, 41, 43, 47, 53, 59]\n\n    # Choose a prime and a primitive root\n    p = random.choice(primes)\n    g = random.choice(primitive_roots)\n\n    # Calculate the exponent e and the value of a\n    e = random.randint(1, p - 2)\n    a = pow(g, e, p)\n\n    # Calculate the number of solutions\n    k = random.choice([2, 3, 4, 5, 6, 8, 10, 12])\n    divisor = math.gcd(k, p - 1)\n    answer = divisor if e % divisor == 0 else 0\n\n    # Construct the problem text\n    problem = (\n        f\"Let p = {p}, g = {g} be a primitive root modulo p. \"\n        f\"Let a be the least positive residue of g^{e} modulo p, \"\n        f\"so a = {a}. Find the number of residue classes x modulo {p} \"\n        f\"such that x^{k} ≡ a (mod {p}).\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 3.1911559104919434,
+      "generation": 14,
+      "program_id": "0cb83ca0b8a5",
+      "root_seed_id": "",
+      "concept_type": "geometry.power_of_point_secants",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.04598906636238098,
+        "h_span_max": 3.1911559104919434
+      },
+      "token_entropy": 0.04598906636238098,
+      "problem": "A circle has a chord AB. Two secant lines intersect the circle at points A and B, and at points C and D, respectively. If AC = 25 and BD = 49, what is the length of chord AB?",
+      "answer": "70.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.power_of_point_secants\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    \"\"\"\n    Calculate the length of a chord in a circle given the lengths of two secant segments.\n    The problem requires the solver to apply the Power of a Point theorem to find the length of the chord.\n    \"\"\"\n    rng = random.Random(seed)\n\n    # Generate two random lengths for the secant segments\n    secant1 = rng.randint(1, 50)\n    secant2 = rng.randint(1, 50)\n\n    # Generate the length of the chord using the Power of a Point theorem\n    chord_length = 2 * (secant1 * secant2) ** 0.5\n    answer = chord_length\n\n    problem = (\n        f\"A circle has a chord AB. Two secant lines intersect the circle at points A and B, and at points C and D, respectively. \"\n        f\"If AC = {secant1} and BD = {secant2}, what is the length of chord AB?\"\n    )\n\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.00   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 0.00   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0100 (higher is better)\n#\n# DIAGNOSIS: far TOO HARD (solver wins only 0%); LOW entropy (H=0.00 — solver over-confident)\n# ACTION:    simplify one reasoning stage, clarify the mathematical OBJECT, keep the others — total depth should stay >= 3; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: A circle has a chord AB. Two secant lines intersect the circle at points A and B, and at points C and D, respectively. If AC = 12 and BD = 16, what is the length of chord AB?\n# seed=0 answer : 11.313708498984761\n# seed=1 problem: A circle has a chord AB. Two secant lines intersect the circle at points A and B, and at points C and D, respectively. If AC = 20 and BD = 25, what is the length of chord AB?\n# seed=1 answer : 10.0\n# solver pass rate: 0% (TOO HARD)\n# solver entropy  : 0.00\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES ===\n# (no reward-hack-free champions yet — design from the\n# rubric alone; do NOT imitate the parent's shape)\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Identify a shared structure (group, graph, polynomial,\n#   probability space, modulus). Every step uses it.\n# - Define exactly one whitelisted CONCEPT_TYPE / CONCEPT_GROUP\n#   pair matching the hybrid object.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.44839560985565186,
+      "p_hat": 0.875,
+      "h_score": 4.099617004394531,
+      "generation": 5,
+      "program_id": "68da74049219",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.15948644280433655,
+        "h_span_max": 4.099617004394531
+      },
+      "token_entropy": 0.15948644280433655,
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms of this geometric sequence. An arithmetic sequence has first term S and common difference 13. Calculate the sum of the first 9 terms of this arithmetic sequence.",
+      "answer": "2268",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    \"\"\"\n    Compute the sum of the first m terms of an arithmetic sequence derived from a geometric sequence.\n    The problem requires the solver to apply the formula for the sum of a geometric series and then the sum of an arithmetic series.\n    \"\"\"\n    rng = random.Random(seed)\n\n    a = rng.randint(2, 5)  # First term of the geometric sequence\n    r = rng.choice([2, 3])  # Common ratio of the geometric sequence\n    n = rng.randint(4, 8)  # Number of terms in the geometric sequence\n    geo_sum = a * (r ** n - 1) // (r - 1)  # Sum of the geometric sequence\n    d = rng.randint(5, 20)  # Common difference of the arithmetic sequence\n    m = rng.randint(5, 10)  # Number of terms in the arithmetic sequence\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2  # Sum of the arithmetic sequence\n    answer = arith_sum\n\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms of this geometric sequence. \"\n        f\"An arithmetic sequence has first term S and common difference {d}. \"\n        f\"Calculate the sum of the first {m} terms of this arithmetic sequence.\"\n    )\n\n    return problem, str(answer)\n\n# === PARENT PERFORMANCE ===\n# pass_rate  p_hat = 0.00   (ideal 0.50 — solver wins ~half)\n# entropy    H     = 0.00   (ideal 2.0 - 4.0; too high often\n#                                     means solver is confused, not thinking)\n# R_Q              = 0.0100 (higher is better)\n#\n# DIAGNOSIS: far TOO HARD (solver wins only 0%); LOW entropy (H=0.00 — solver over-confident)\n# ACTION:    simplify one reasoning stage, clarify the mathematical OBJECT, keep the others — total depth should stay >= 3; add a real ambiguity: multiple plausible techniques, non-obvious sign, or theorem-selection branch\n# === PARENT EXECUTION TRACE ===\n# seed=0 problem: A geometric sequence has first term 2 and common ratio 3. Let S be the sum of the first 4 terms of this geometric sequence. An arithmetic sequence has first term S and common difference 8. Calculate the sum of the first 5 terms of this arithmetic sequence.\n# seed=0 answer : 300\n# seed=1 problem: A geometric sequence has first term 5 and common ratio 2. Let S be the sum of the first 8 terms of this geometric sequence. An arithmetic sequence has first term S and common difference 13. Calculate the sum of the first 6 terms of this arithmetic sequence.\n# seed=1 answer : 2400\n# solver pass rate: 0% (TOO HARD)\n# solver entropy  : 0.00\n# === END PARENT TRACE ===\n# === HIGH-QUALITY EXAMPLES ===\n# (no reward-hack-free champions yet — design from the\n# rubric alone; do NOT imitate the parent's shape)\n# === END EXAMPLES ===\n#\n# === QUALITY BAR ===\n# Target p~0.5, H in 2-4. One coherent mathematical object,\n# >=3 named-technique reasoning stages. Difficulty must come from\n# technique uncertainty, not ambiguous wording.\n# === AXES (pick 1, optionally 1 more) ===\n# 1. Parametric lifting (solve aux equation for a constant)\n# 2. Case analysis (parity / congruence / sign branch)\n# 3. Theorem chaining (Vieta->Newton, CRT->modular inverse)\n# 4. Structural constraint (integrality, coprimality, monotone)\n# 5. Dimension lift (scalar->vector, Z->Z[i], 2D->3D)\n# 6. Hidden identity (Catalan/Stirling/binomial via bijection)\n# - Pick CONCEPT_TYPE from the whitelist whose CONCEPT_GROUP is\n#   NOT 'number_theory'.\n#   Suggested groups to try: combinatorics, sequence, algebra.\n#\n# Required top-level constants (must use these EXACT strings):\n#   CONCEPT_TYPE in: number_theory.gcd_lcm_sync, number_theory.crt_count, combinatorics.committee_count, sequence.geometric_to_arithmetic_sum, algebra.quadratic_vieta_reciprocal, geometry.trig_area, geometry.line_intersection_distance, sequence.linear_recurrence, linear_algebra.linear_system_sum, inequality.am_gm_product, number_theory.kth_root_mod_prime, combinatorics.derangement_fixed_points, geometry.ptolemy_cyclic_quadrilateral, geometry.power_of_point_secants, number_theory.legendre_symbol\n#   CONCEPT_GROUP in: number_theory, combinatorics, sequence, algebra, geometry, inequality\n#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n# === HARD CONTRACT ===\n# - `generate(seed)` returns `(problem_text: str, answer: str)`.\n# - `answer` is ONE sympy-parseable scalar (int, '3/7', 'sqrt(2)').\n#   No lists/ranges, no words, no decimals needing rounding.\n# - Inverse construction: pick the answer first, then the problem.\n# - Stdlib only (math/fractions/itertools/functools/random; sympy ok).\n# - Every seed in 0..4 must terminate fast and be valid."
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    }
+  ],
+  "diversity_axis": "concept_group",
+  "uncertainty_metric": "h_span_max",
+  "seed_labels": {
+    "0": "number_theory",
+    "1": "combinatorics",
+    "2": "sequence",
+    "3": "algebra",
+    "4": "geometry",
+    "5": "inequality"
+  }
+}

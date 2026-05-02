@@ -1,0 +1,729 @@
+{
+  "global_step": 17,
+  "timestamp": "2026-05-02T09:13:28.198045",
+  "training_selection_mode": "h_priority_d_uniform",
+  "training_budget": 960,
+  "instances_per_program": 16,
+  "strict_anti_reuse": true,
+  "frontier_p_hat_range": [
+    0.1,
+    0.9
+  ],
+  "dataset_size": 79,
+  "archive_champions": 6,
+  "frontier_champions": 5,
+  "duplicate_signature_skipped_visits": 0,
+  "problems": [
+    {
+      "problem": "Find the number of solutions to the congruence equation 10x ≡ 9 (mod 16).",
+      "answer": "0",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 0
+    },
+    {
+      "problem": "Given positive real numbers a = 7 and b = 7, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 0
+    },
+    {
+      "problem": "A geometric sequence has the first term 6 and a common ratio 5. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "23436",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 16
+    },
+    {
+      "problem": "Consider the Stirling number of the first kind S(n, k), which counts the number of ways to arrange n objects into k cycles. Relate this to the number of derangements with exactly 7 fixed points in a set of 8 objects. (Hint: Explore the connection between derangements and permutations with cycles.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 0
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 4\nx - y = 4\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "4",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 0
+    },
+    {
+      "problem": "Given positive real numbers a = 3 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.18673220792786",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 1
+    },
+    {
+      "problem": "In a set of 4 distinct objects, how many ways can you arrange them such that exactly 3 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 1
+    },
+    {
+      "problem": "A geometric sequence has the first term 9 and a common ratio 5. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "7029",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 17
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "2",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 1
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 4x ≡ 3 (mod 14).",
+      "answer": "0",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 1
+    },
+    {
+      "problem": "Given positive real numbers a = 1 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0606601717798212",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 2
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 2x ≡ 3 (mod 11).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 2
+    },
+    {
+      "problem": "A geometric sequence has the first term 3 and a common ratio 2. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "189",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 18
+    },
+    {
+      "problem": "In a set of 2 distinct objects, how many ways can you arrange them such that exactly 1 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 2
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 1\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "1",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 2
+    },
+    {
+      "problem": "In a set of 5 distinct objects, how many ways can you arrange them such that exactly 2 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 3
+    },
+    {
+      "problem": "A geometric sequence has the first term 1 and a common ratio 2. Calculate the sum of the first 7 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "127",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 19
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.1067971810589328",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 3
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 4x ≡ 7 (mod 19).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 3
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "2",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 3
+    },
+    {
+      "problem": "In a three-dimensional grid of size 5x5x5, how many ways can you arrange the objects such that exactly 3 of them remain in their original positions, and no two selected objects are adjacent in any of the x, y, or z directions? (Hint: Consider the problem as a combinatorial selection with constraints in three dimensions.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 4
+    },
+    {
+      "problem": "A geometric sequence has the first term 3 and a common ratio 4. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "63",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 20
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 3\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "2",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 4
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0062305898749053",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 4
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 5x ≡ 6 (mod 11).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 4
+    },
+    {
+      "problem": "Given positive real numbers a = 10 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0606601717798212",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 5
+    },
+    {
+      "problem": "In a set of 6 distinct objects, how many ways can you arrange them such that exactly 3 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 5
+    },
+    {
+      "problem": "A geometric sequence has the first term 3 and a common ratio 5. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "11718",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 21
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 6x ≡ 7 (mod 20).",
+      "answer": "0",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 5
+    },
+    {
+      "problem": "Consider the linear system in three dimensions:\nx + y + z = 5\nx - y - z = 3\nWhat is the sum of the solutions (x + y + z)? Also, determine the sign of the coefficients.",
+      "answer": "5",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 5
+    },
+    {
+      "problem": "Given positive real numbers a = 10 and b = 2, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.3416407864998738",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 6
+    },
+    {
+      "problem": "In a set of 3 distinct objects, how many ways can you arrange them such that exactly 2 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 6
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 9x ≡ 7 (mod 15).",
+      "answer": "0",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 6
+    },
+    {
+      "problem": "A geometric sequence has the first term 3 and a common ratio 3. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "39",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 22
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 5\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "5",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 6
+    },
+    {
+      "problem": "In a set of 7 distinct objects, how many ways can you arrange them such that exactly 2 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 7
+    },
+    {
+      "problem": "Given positive real numbers a = 6 and b = 3, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0606601717798214",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 7
+    },
+    {
+      "problem": "A geometric sequence has the first term 5 and a common ratio 2. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "35",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 23
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 7x ≡ 4 (mod 16).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 7
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 3\nx - y = 2\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "3",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 7
+    },
+    {
+      "problem": "In a set of 5 distinct objects, how many ways can you arrange them such that exactly 3 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 8
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 3\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "2",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 8
+    },
+    {
+      "problem": "A geometric sequence has the first term 7 and a common ratio 3. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "280",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 24
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 6, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0206207261596576",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 8
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 5x ≡ 7 (mod 16).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 8
+    },
+    {
+      "problem": "A geometric sequence has the first term 7 and a common ratio 2. Calculate the sum of the first 4 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "105",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 25
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 9x ≡ 7 (mod 14).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 9
+    },
+    {
+      "problem": "In a set of 9 distinct objects, how many ways can you arrange them such that exactly 6 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 9
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 4\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "4",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 9
+    },
+    {
+      "problem": "Given positive real numbers a = 8 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0062305898749053",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 9
+    },
+    {
+      "problem": "Given positive real numbers a = 10 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.7392527130926085",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 10
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 5\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "5",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 10
+    },
+    {
+      "problem": "In a set of 2 distinct objects, how many ways can you arrange them such that exactly 1 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 10
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 9x ≡ 2 (mod 13).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 10
+    },
+    {
+      "problem": "A geometric sequence has the first term 4 and a common ratio 3. Calculate the sum of the first 6 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "1456",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 26
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 9x ≡ 10 (mod 17).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 11
+    },
+    {
+      "problem": "Given positive real numbers a = 8 and b = 9, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0017346066809425",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 11
+    },
+    {
+      "problem": "In a set of 9 distinct objects, how many ways can you arrange them such that exactly 8 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 11
+    },
+    {
+      "problem": "A geometric sequence has the first term 8 and a common ratio 4. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "2728",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 27
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 4\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "4",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 11
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 10x ≡ 7 (mod 12).",
+      "answer": "0",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 12
+    },
+    {
+      "problem": "Given positive real numbers a = 8 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0277402395547233",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 12
+    },
+    {
+      "problem": "Consider the Stirling number of the first kind S(n, k), which counts the number of ways to arrange n objects into k cycles. Relate this to the number of derangements with exactly 5 fixed points in a set of 9 objects. (Hint: Explore the connection between derangements and permutations with cycles.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 12
+    },
+    {
+      "problem": "Consider the linear system in three dimensions:\nx + y + z = 4\nx - y - z = 3\nWhat is the sum of the solutions (x + y + z)? Also, determine the sign of the coefficients.",
+      "answer": "4",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 12
+    },
+    {
+      "problem": "A geometric sequence has the first term 2 and a common ratio 3. Calculate the sum of the first 7 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "2186",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 28
+    },
+    {
+      "problem": "Given positive real numbers a = 5 and b = 5, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 13
+    },
+    {
+      "problem": "In a set of 6 distinct objects, how many ways can you arrange them such that exactly 3 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 13
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 4x ≡ 5 (mod 20).",
+      "answer": "0",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 13
+    },
+    {
+      "problem": "A geometric sequence has the first term 9 and a common ratio 2. Calculate the sum of the first 5 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "279",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 29
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 3\nx - y = 3\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "3",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 13
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 3x ≡ 10 (mod 13).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 14
+    },
+    {
+      "problem": "Given positive real numbers a = 2 and b = 10, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.3416407864998738",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 14
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 1\nx - y = 5\nWhat is the sum of the solutions (x + y)? Also, determine the sign of the coefficients.",
+      "answer": "1",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 14
+    },
+    {
+      "problem": "A geometric sequence has the first term 9 and a common ratio 4. Calculate the sum of the first 7 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "49149",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 30
+    },
+    {
+      "problem": "Given positive real numbers a = 4 and b = 1, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.25",
+      "program_id": "e58028182539",
+      "rq_score": 0.03085603192448616,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 15
+    },
+    {
+      "problem": "Consider the linear system:\nx + y = 2\nx - y = 1\nWhat is the sum of the solutions (x + y)? Also, explain why the sum is positive or negative.",
+      "answer": "2",
+      "program_id": "6781de9e34ed",
+      "rq_score": 0.07559290528297424,
+      "h_bin": 0,
+      "d_bin": 3,
+      "seed": 15
+    },
+    {
+      "problem": "Find the number of solutions to the congruence equation 5x ≡ 2 (mod 18).",
+      "answer": "1",
+      "program_id": "f104e57b9d75",
+      "rq_score": 0.03990072011947632,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 15
+    },
+    {
+      "problem": "In a set of 5 distinct objects, how many ways can you arrange them such that exactly 1 of them remain in their original positions? (Hint: Consider using the principle of inclusion-exclusion or the derangement formula.)",
+      "answer": "0",
+      "program_id": "139168b9ce9c",
+      "rq_score": 0.0525764524936676,
+      "h_bin": 0,
+      "d_bin": 1,
+      "seed": 15
+    },
+    {
+      "problem": "A geometric sequence has the first term 1 and a common ratio 5. Calculate the sum of the first 3 terms of the sequence. There is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "31",
+      "program_id": "1e4509983c77",
+      "rq_score": 0.07405191287398338,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 31
+    }
+  ]
+}

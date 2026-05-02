@@ -1,0 +1,688 @@
+{
+  "global_step": 9,
+  "timestamp": "2026-05-02T07:45:34.468598",
+  "metrics": {
+    "attempted": 54,
+    "inserted": 10,
+    "accept_rate": 0.18518518518518517,
+    "rounds": 8,
+    "grid_coverage": 0.1,
+    "grid_mean_rq": 0.05982200475409627,
+    "grid_max_rq": 0.10811232961714268,
+    "grid_min_rq": 0.036411238834261894,
+    "grid_champions": 6,
+    "diversity_axis": "concept_group",
+    "uncertainty_metric": "h",
+    "reservoir_candidates": 33,
+    "reservoir_cells": 11,
+    "reservoir_selections": 181,
+    "hard_champions": 0,
+    "total_niches": 60,
+    "total_insertions": 46,
+    "total_replacements": 33,
+    "total_reservoir_insertions": 139,
+    "total_duplicate_rejections": 17,
+    "champion_p_hat_mean": 0.4791666666666667,
+    "champion_p_hat_std": 0.11219093348196883,
+    "champion_h_mean": 0.25315821667512256,
+    "champion_h_std": 0.10543862538487948,
+    "archive_frontier_champions": 6,
+    "archive_too_hard_champions": 0,
+    "archive_too_easy_champions": 0,
+    "archive_zero_rq_champions": 0,
+    "dataset_non_frontier_skipped_visits": 0,
+    "dataset_duplicate_signature_skipped_visits": 0,
+    "reeval_count": 7,
+    "reeval_evicted": 0,
+    "reeval_low_h_evicted": 0,
+    "reeval_exec_fail_evicted": 0,
+    "reeval_extreme_p_kept": 1,
+    "reeval_bin_shifted": 1,
+    "reeval_rq_delta_mean": -0.0488215960296137,
+    "reeval_rq_delta_min": -0.24772892356850207,
+    "reeval_rq_delta_max": 0.03569649998098612,
+    "reeval_targets": 7,
+    "reeval_n_champions": 7,
+    "reeval_mode": 2,
+    "dataset_size": 96,
+    "event_log_file": "/data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo/evolution_logs/events/events_evo_4_step_9.jsonl"
+  },
+  "grid": [
+    {
+      "h_bin": 0,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.038878572173416615,
+      "reservoir_program_ids": [
+        "73700c8a7d9d",
+        "df2491239b2b",
+        "db479c263837",
+        "b637d2f4ab37"
+      ],
+      "rq_score": 0.03966775489971042,
+      "p_hat": 0.375,
+      "h_score": 0.16924908757209778,
+      "generation": 4,
+      "program_id": "b637d2f4ab37",
+      "root_seed_id": "",
+      "concept_type": "number_theory.crt_count",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.16924908757209778,
+        "h_span_max": 0.7464580535888672
+      },
+      "token_entropy": 0.16924908757209778,
+      "problem": "Find the number of solutions to the congruence equation 55x ≡ 7 (mod 365).",
+      "answer": "0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.crt_count\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate two co-prime integers a and b\n    a = rng.randint(2, 100)\n    b = rng.randint(2, 100)\n    while math.gcd(a, b) != 1:\n        a = rng.randint(2, 100)\n        b = rng.randint(2, 100)\n\n    # Generate a random modulus n\n    n = rng.randint(100, 1000)\n\n    # Compute the number of solutions to the congruence ax ≡ b (mod n)\n    solutions = 0\n\n    # Check for each x in the range [0, n-1]\n    for x in range(n):\n        if (a * x) % n == b:\n            solutions += 1\n\n    answer = solutions\n    problem = (\n        f\"Find the number of solutions to the congruence equation \"\n        f\"{a}x ≡ {b} (mod {n}).\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.03725205361843109,
+      "reservoir_program_ids": [
+        "c50348cf07ce",
+        "05d7344930a7",
+        "6f660c216401",
+        "a72ad4e94ac0"
+      ],
+      "rq_score": 0.036411238834261894,
+      "p_hat": 0.625,
+      "h_score": 0.15535461902618408,
+      "generation": 2,
+      "program_id": "7d1fc4968fba",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.derangement_fixed_points",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.15535461902618408,
+        "h_span_max": 0.22097803198772928
+      },
+      "token_entropy": 0.15535461902618408,
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card? Additionally, consider the case where the 4 fixed points are chosen in such a way that they form a subset of an arithmetic sequence of length 4.",
+      "answer": "630",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.derangement_fixed_points\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    n = rng.randint(5, 8)\n    k = rng.randint(1, min(n, 4))\n\n    # Example of a combinatorial problem related to derangements with a specific number of fixed points\n    problem = (\n        f\"{n} people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly {k} people receive their own card? Additionally, consider the case where the {k} fixed points are chosen in such a way that they form a subset of an arithmetic sequence of length {k}.\"\n    )\n\n    # Calculate the number of derangements\n    def derangement(n):\n        if n == 0:\n            return 1\n        if n == 1:\n            return 0\n        a, b = 1, 0\n        for k in range(2, n + 1):\n            a, b = b, (k - 1) * (a + b)\n        return b\n\n    # Calculate the number of ways to choose k people to have their own card\n    ways_to_choose_k = math.comb(n, k)\n\n    # Calculate the number of derangements of the remaining n - k people\n    derangements_of_remaining = derangement(n - k)\n\n    # The total number of ways to have exactly k people receive their own card\n    answer = ways_to_choose_k * derangements_of_remaining\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.052367907017469406,
+      "reservoir_program_ids": [
+        "586201bd2779",
+        "c8934360c993",
+        "aace030e894c",
+        "9e77049643f5"
+      ],
+      "rq_score": 0.10811232961714268,
+      "p_hat": 0.375,
+      "h_score": 0.4612792730331421,
+      "generation": 9,
+      "program_id": "2c82b59f6648",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.4612792730331421,
+        "h_span_max": 2.01686429977417
+      },
+      "token_entropy": 0.4612792730331421,
+      "problem": "A geometric sequence has the first term 7 and a common ratio 5. Calculate the sum of the first 3 terms of the sequence. However, there is a slight ambiguity in the problem statement. Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). Which interpretation is correct, and why?",
+      "answer": "217",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate random terms for a geometric sequence\n    a = rng.randint(1, 10)\n    r = rng.randint(2, 5)\n    n = rng.randint(3, 7)\n\n    # Calculate the sum of the first n terms of a geometric sequence\n    sum_terms = a * (r**n - 1) // (r - 1)\n\n    # Introduce an ambiguity by asking the solver to choose between two plausible techniques\n    # or by adding a non-obvious sign. Here, we'll ask the solver to consider two different\n    # interpretations of the problem.\n    problem = (\n        f\"A geometric sequence has the first term {a} and a common ratio {r}. \"\n        f\"Calculate the sum of the first {n} terms of the sequence. \"\n        f\"However, there is a slight ambiguity in the problem statement. \"\n        f\"Consider whether the sum should be interpreted as (a(r^n - 1)/(r - 1)) or (a(r^n + 1)/(r + 1)). \"\n        f\"Which interpretation is correct, and why?\"\n    )\n\n    # Provide two possible answers to guide the solver\n    answer1 = str(sum_terms)\n    answer2 = str(a * (r**n + 1) // (r + 1))\n\n    # The solver should be able to reason through the ambiguity and select the correct answer\n    # based on the context of the problem.\n    answer = answer1  # The correct interpretation is (a(r^n - 1)/(r - 1))\n\n    return problem, answer"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.01947198249399662,
+      "reservoir_program_ids": [
+        "722c61803a3c",
+        "10d8d00c5a02",
+        "aa3b17db3808",
+        "c460635466fa"
+      ],
+      "rq_score": 0.057137946132570505,
+      "p_hat": 0.625,
+      "h_score": 0.24378857016563416,
+      "generation": 6,
+      "program_id": "ce35dd913833",
+      "root_seed_id": "",
+      "concept_type": "algebra.quadratic_vieta_reciprocal",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.24378857016563416,
+        "h_span_max": 0.7016290517953726
+      },
+      "token_entropy": 0.24378857016563416,
+      "problem": "Find the number of solutions to the congruence equation 55x ≡ 7 (mod 365).",
+      "answer": "0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"algebra.quadratic_vieta_reciprocal\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate two co-prime integers a and b\n    a = rng.randint(2, 100)\n    b = rng.randint(2, 100)\n    while math.gcd(a, b) != 1:\n        a = rng.randint(2, 100)\n        b = rng.randint(2, 100)\n\n    # Generate a random modulus n\n    n = rng.randint(100, 1000)\n\n    # Compute the number of solutions to the congruence ax ≡ b (mod n)\n    solutions = 0\n\n    # Check for each x in the range [0, n-1]\n    for x in range(n):\n        if (a * x) % n == b:\n            solutions += 1\n\n    answer = solutions\n    problem = (\n        f\"Find the number of solutions to the congruence equation \"\n        f\"{a}x ≡ {b} (mod {n}).\"\n    )\n\n    # Add a dimension lift: consider the equation in a higher dimension\n    if rng.choice([True, False]):\n        problem = (\n            f\"Consider the quadratic equation x^2 - {a+b}x + {a*b} = 0 in two dimensions. \"\n            f\"What is the sum of the reciprocals of its roots? \"\n            f\"Also, determine the sign of the roots.\"\n        )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.03347967378795147,
+      "reservoir_program_ids": [
+        "4a2303d807bc",
+        "48da2350a060",
+        "e0968d945ea7",
+        "7ffca77b8a11"
+      ],
+      "rq_score": 0.046852581202983856,
+      "p_hat": 0.5,
+      "h_score": 0.18741032481193542,
+      "generation": 11,
+      "program_id": "5c59905f2c40",
+      "root_seed_id": "",
+      "concept_type": "geometry.power_of_point_secants",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.18741032481193542,
+        "h_span_max": 0.6932216443513569
+      },
+      "token_entropy": 0.18741032481193542,
+      "problem": "Given a circle with radius 5 and a point at a distance 4 from the center, what is the power of the point with respect to the circle? Additionally, explain why the power is positive when the point is outside the circle and negative when it is inside. Additionally, consider a secant line intersecting the circle at two points. What is the relationship between the power of the point and the length of the secant line? The power of the point is -9, and the length of the secant line is 2.",
+      "answer": "-9",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.power_of_point_secants\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Initialize with a simpler power of a point problem\n    circle_radius = rng.choice([2, 3, 4, 5])  # Radius of the circle\n    point_to_center_distance = rng.choice([1, 2, 3, 4, 5])  # Distance from the point to the center of the circle\n\n    # Calculate the power of the point\n    power_of_point = point_to_center_distance ** 2 - circle_radius ** 2\n\n    # Add a case analysis branch\n    if random.random() < 0.5:\n        problem = (\n            f\"Given a circle with radius {circle_radius} and a point at a distance {point_to_center_distance} from the center, what is the power of the point with respect to the circle? \"\n            f\"Additionally, explain why the power is positive when the point is outside the circle and negative when it is inside.\"\n        )\n    else:\n        problem = (\n            f\"Given a circle with radius {circle_radius} and a point at a distance {point_to_center_distance} from the center, what is the power of the point with respect to the circle? \"\n            f\"Explain why the power is zero when the point is on the circle.\"\n        )\n\n    # Add a dimension lift by considering a secant line\n    if random.random() < 0.5:\n        secant_length = rng.choice([2, 4, 6, 8])  # Length of the secant line\n        problem += f\" Additionally, consider a secant line intersecting the circle at two points. What is the relationship between the power of the point and the length of the secant line?\"\n        problem += f\" The power of the point is {power_of_point}, and the length of the secant line is {secant_length}.\"\n    else:\n        tangent_length = rng.choice([2, 4, 6, 8])  # Length of the tangent line\n        problem += f\" Additionally, consider a tangent line intersecting the circle at one point. What is the relationship between the power of the point and the length of the tangent line?\"\n        problem += f\" The power of the point is {power_of_point}, and the length of the tangent line is {tangent_length}.\"\n\n    return problem, str(power_of_point)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.03890655655413866,
+      "reservoir_program_ids": [
+        "e58028182539",
+        "2fe4e42caf31",
+        "af1358242025",
+        "f4bde97051f8"
+      ],
+      "rq_score": 0.07075017783790827,
+      "p_hat": 0.375,
+      "h_score": 0.30186742544174194,
+      "generation": 8,
+      "program_id": "d396feae0ca8",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.30186742544174194,
+        "h_span_max": 0.9180469512939453
+      },
+      "token_entropy": 0.30186742544174194,
+      "problem": "Given positive integers a = 4 and b = 4, what is the ratio of the arithmetic mean to the geometric mean of a and b? Additionally, explain why the ratio equals 1 when a = b.",
+      "answer": "1.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Define the domain parameters\n    a = rng.choice([1, 2, 3, 4, 5])  # First term of the geometric sequence\n    b = rng.choice([1, 2, 3, 4, 5])  # Second term of the geometric sequence\n\n    # Calculate the arithmetic mean and geometric mean\n    am = (a + b) / 2\n    gm = (a * b) ** 0.5\n\n    # Add a case analysis branch\n    if random.random() < 0.5:\n        problem = (\n            f\"Given positive integers a = {a} and b = {b}, what is the ratio of the arithmetic mean to the geometric mean of a and b? \"\n            f\"Additionally, explain why the ratio equals 1 when a = b.\"\n        )\n    else:\n        problem = (\n            f\"Given positive integers a = {a} and b = {b}, what is the ratio of the arithmetic mean to the geometric mean of a and b? \"\n            f\"Explain why the ratio is greater than or equal to 1 when a ≠ b.\"\n        )\n\n    # Calculate the ratio\n    ratio = am / gm\n\n    return problem, str(ratio)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "12565c8946de",
+        "277bc8069e7d",
+        "9a6388caa970"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "2bd0f6feba52"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "99233322b32e"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "06c2d0ee3c83"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "670ee0e92d3e",
+        "178ba1830cfc",
+        "80dcd511d34e"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    }
+  ],
+  "diversity_axis": "concept_group",
+  "uncertainty_metric": "h",
+  "seed_labels": {
+    "0": "number_theory",
+    "1": "combinatorics",
+    "2": "sequence",
+    "3": "algebra",
+    "4": "geometry",
+    "5": "inequality"
+  }
+}

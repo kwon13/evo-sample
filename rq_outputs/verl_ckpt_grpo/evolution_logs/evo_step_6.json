@@ -1,0 +1,705 @@
+{
+  "global_step": 6,
+  "timestamp": "2026-05-02T07:12:20.691254",
+  "metrics": {
+    "attempted": 50,
+    "inserted": 9,
+    "accept_rate": 0.18,
+    "rounds": 8,
+    "grid_coverage": 0.11666666666666667,
+    "grid_mean_rq": 0.07047463950168874,
+    "grid_max_rq": 0.25147316604852676,
+    "grid_min_rq": 0.021441446151584387,
+    "grid_champions": 7,
+    "diversity_axis": "concept_group",
+    "uncertainty_metric": "h",
+    "reservoir_candidates": 33,
+    "reservoir_cells": 11,
+    "reservoir_selections": 145,
+    "hard_champions": 1,
+    "total_niches": 60,
+    "total_insertions": 36,
+    "total_replacements": 23,
+    "total_reservoir_insertions": 115,
+    "total_duplicate_rejections": 11,
+    "champion_p_hat_mean": 0.4107142857142857,
+    "champion_p_hat_std": 0.11007882148158887,
+    "champion_h_mean": 0.33662263623305727,
+    "champion_h_std": 0.4136724264000586,
+    "archive_frontier_champions": 7,
+    "archive_too_hard_champions": 0,
+    "archive_too_easy_champions": 0,
+    "archive_zero_rq_champions": 0,
+    "dataset_non_frontier_skipped_visits": 0,
+    "dataset_duplicate_signature_skipped_visits": 0,
+    "reeval_count": 6,
+    "reeval_evicted": 0,
+    "reeval_low_h_evicted": 0,
+    "reeval_exec_fail_evicted": 0,
+    "reeval_extreme_p_kept": 1,
+    "reeval_bin_shifted": 0,
+    "reeval_rq_delta_mean": -0.02778935435344465,
+    "reeval_rq_delta_min": -0.05776363774202764,
+    "reeval_rq_delta_max": -0.005656536435708404,
+    "reeval_targets": 6,
+    "reeval_n_champions": 6,
+    "reeval_mode": 2,
+    "dataset_size": 96,
+    "event_log_file": "/data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo/evolution_logs/events/events_evo_3_step_6.jsonl"
+  },
+  "grid": [
+    {
+      "h_bin": 0,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.038878572173416615,
+      "reservoir_program_ids": [
+        "73700c8a7d9d",
+        "df2491239b2b",
+        "db479c263837",
+        "b637d2f4ab37"
+      ],
+      "rq_score": 0.051481701666489244,
+      "p_hat": 0.375,
+      "h_score": 0.21965526044368744,
+      "generation": 4,
+      "program_id": "b637d2f4ab37",
+      "root_seed_id": "",
+      "concept_type": "number_theory.crt_count",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.21965526044368744,
+        "h_span_max": 0.5193740844726562
+      },
+      "token_entropy": 0.21965526044368744,
+      "problem": "Find the number of solutions to the congruence equation 55x ≡ 7 (mod 365).",
+      "answer": "0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.crt_count\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate two co-prime integers a and b\n    a = rng.randint(2, 100)\n    b = rng.randint(2, 100)\n    while math.gcd(a, b) != 1:\n        a = rng.randint(2, 100)\n        b = rng.randint(2, 100)\n\n    # Generate a random modulus n\n    n = rng.randint(100, 1000)\n\n    # Compute the number of solutions to the congruence ax ≡ b (mod n)\n    solutions = 0\n\n    # Check for each x in the range [0, n-1]\n    for x in range(n):\n        if (a * x) % n == b:\n            solutions += 1\n\n    answer = solutions\n    problem = (\n        f\"Find the number of solutions to the congruence equation \"\n        f\"{a}x ≡ {b} (mod {n}).\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.03725205361843109,
+      "reservoir_program_ids": [
+        "c50348cf07ce",
+        "a72ad4e94ac0",
+        "80153f9e1bc7",
+        "cd2c565beb02"
+      ],
+      "rq_score": 0.04206512589007616,
+      "p_hat": 0.375,
+      "h_score": 0.17947787046432495,
+      "generation": 2,
+      "program_id": "7d1fc4968fba",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.derangement_fixed_points",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.17947787046432495,
+        "h_span_max": 0.5582191467285156
+      },
+      "token_entropy": 0.17947787046432495,
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly 4 people receive their own card? Additionally, consider the case where the 4 fixed points are chosen in such a way that they form a subset of an arithmetic sequence of length 4.",
+      "answer": "630",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.derangement_fixed_points\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    n = rng.randint(5, 8)\n    k = rng.randint(1, min(n, 4))\n\n    # Example of a combinatorial problem related to derangements with a specific number of fixed points\n    problem = (\n        f\"{n} people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do exactly {k} people receive their own card? Additionally, consider the case where the {k} fixed points are chosen in such a way that they form a subset of an arithmetic sequence of length {k}.\"\n    )\n\n    # Calculate the number of derangements\n    def derangement(n):\n        if n == 0:\n            return 1\n        if n == 1:\n            return 0\n        a, b = 1, 0\n        for k in range(2, n + 1):\n            a, b = b, (k - 1) * (a + b)\n        return b\n\n    # Calculate the number of ways to choose k people to have their own card\n    ways_to_choose_k = math.comb(n, k)\n\n    # Calculate the number of derangements of the remaining n - k people\n    derangements_of_remaining = derangement(n - k)\n\n    # The total number of ways to have exactly k people receive their own card\n    answer = ways_to_choose_k * derangements_of_remaining\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.052367907017469406,
+      "reservoir_program_ids": [
+        "586201bd2779",
+        "c8934360c993",
+        "aace030e894c",
+        "30619953d81d"
+      ],
+      "rq_score": 0.06270808726549149,
+      "p_hat": 0.5,
+      "h_score": 0.25083234906196594,
+      "generation": 9,
+      "program_id": "94186549738f",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.25083234906196594,
+        "h_span_max": 3.138369083404541
+      },
+      "token_entropy": 0.25083234906196594,
+      "problem": "Find the sum of the first 3 terms of a geometric sequence where the first term is 50 and the common ratio is 8. The sum of the first n terms of a geometric sequence is given by the formula: \\( S_n = a \frac-6-7 \\) if \\( r \neq 1 \\), otherwise \\( S_n = a n \\). Additionally, consider the case where \\( r = 1 \\) and explain how the sum changes.",
+      "answer": "3650.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Define the domain parameters\n    a = rng.randint(1, 100)  # First term of the geometric sequence\n    r = rng.randint(2, 10)    # Common ratio\n    n = rng.randint(2, 20)    # Number of terms\n\n    # Calculate the sum of the first n terms of the geometric sequence\n    sum_n = a * (1 - r**n) / (1 - r) if r != 1 else a * n\n\n    # Create a case analysis branch\n    if random.random() < 0.5:\n        problem = (\n            f\"Find the sum of the first {n} terms of a geometric sequence where the first term is {a} and the common ratio is {r}. \"\n            f\"The sum of the first n terms of a geometric sequence is given by the formula: \\( S_n = a \\frac{1 - r^n}{1 - r} \\) if \\( r \\neq 1 \\), otherwise \\( S_n = a n \\). \"\n            f\"Additionally, consider the case where \\( r = 1 \\) and explain how the sum changes.\"\n        )\n    else:\n        problem = (\n            f\"Find the sum of the first {n} terms of a geometric sequence where the first term is {a} and the common ratio is {r}. \"\n            f\"The sum of the first n terms of a geometric sequence is given by the formula: \\( S_n = a \\frac{1 - r^n}{1 - r} \\) if \\( r \\neq 1 \\), otherwise \\( S_n = a n \\). \"\n            f\"Explain why the formula changes when \\( r = 1 \\).\"\n        )\n\n    return problem, str(sum_n)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.01947198249399662,
+      "reservoir_program_ids": [
+        "722c61803a3c",
+        "aa3b17db3808",
+        "c460635466fa",
+        "3f9dba12796e"
+      ],
+      "rq_score": 0.021441446151584387,
+      "p_hat": 0.375,
+      "h_score": 0.09148350358009338,
+      "generation": 6,
+      "program_id": "ce35dd913833",
+      "root_seed_id": "",
+      "concept_type": "algebra.quadratic_vieta_reciprocal",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.09148350358009338,
+        "h_span_max": 0.294003168741862
+      },
+      "token_entropy": 0.09148350358009338,
+      "problem": "Find the number of solutions to the congruence equation 55x ≡ 7 (mod 365).",
+      "answer": "0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"algebra.quadratic_vieta_reciprocal\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate two co-prime integers a and b\n    a = rng.randint(2, 100)\n    b = rng.randint(2, 100)\n    while math.gcd(a, b) != 1:\n        a = rng.randint(2, 100)\n        b = rng.randint(2, 100)\n\n    # Generate a random modulus n\n    n = rng.randint(100, 1000)\n\n    # Compute the number of solutions to the congruence ax ≡ b (mod n)\n    solutions = 0\n\n    # Check for each x in the range [0, n-1]\n    for x in range(n):\n        if (a * x) % n == b:\n            solutions += 1\n\n    answer = solutions\n    problem = (\n        f\"Find the number of solutions to the congruence equation \"\n        f\"{a}x ≡ {b} (mod {n}).\"\n    )\n\n    # Add a dimension lift: consider the equation in a higher dimension\n    if rng.choice([True, False]):\n        problem = (\n            f\"Consider the quadratic equation x^2 - {a+b}x + {a*b} = 0 in two dimensions. \"\n            f\"What is the sum of the reciprocals of its roots? \"\n            f\"Also, determine the sign of the roots.\"\n        )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.03347967378795147,
+      "reservoir_program_ids": [
+        "4a2303d807bc",
+        "48da2350a060",
+        "e0968d945ea7",
+        "7ffca77b8a11"
+      ],
+      "rq_score": 0.0228810659609735,
+      "p_hat": 0.625,
+      "h_score": 0.09762588143348694,
+      "generation": 8,
+      "program_id": "2da0baf07417",
+      "root_seed_id": "",
+      "concept_type": "geometry.trig_area",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.09762588143348694,
+        "h_span_max": 1.7288150787353516
+      },
+      "token_entropy": 0.09762588143348694,
+      "problem": "Consider a triangle with vertices at (2, 3), (-9, -2), and (6, 5). What is the area of the triangle? (Choose a technique: Shoelace formula or Heron's formula)",
+      "answer": "1.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.trig_area\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Generate random points for the triangle\n    x1, y1 = rng.randint(-10, 10), rng.randint(-10, 10)\n    x2, y2 = rng.randint(-10, 10), rng.randint(-10, 10)\n    x3, y3 = rng.randint(-10, 10), rng.randint(-10, 10)\n\n    # Calculate the area of the triangle using the shoelace formula\n    # Area = |(x1(y2 - y3) + x2(y3 - y1) + x3(y1 - y2)) / 2|\n    area = abs((x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) / 2)\n\n    # Introduce ambiguity by allowing multiple plausible techniques\n    # to solve the problem, such as using the shoelace formula or\n    # Heron's formula.\n    problem = (\n        f\"Consider a triangle with vertices at ({x1}, {y1}), ({x2}, {y2}), and ({x3}, {y3}). \"\n        f\"What is the area of the triangle? (Choose a technique: Shoelace formula or Heron's formula)\"\n    )\n\n    return problem, str(area)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.03890655655413866,
+      "reservoir_program_ids": [
+        "e58028182539",
+        "af1358242025",
+        "da514cf81431",
+        "f7dc7ea40149"
+      ],
+      "rq_score": 0.04127188352867961,
+      "p_hat": 0.375,
+      "h_score": 0.17609336972236633,
+      "generation": 5,
+      "program_id": "bbbbff88c781",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 0.17609336972236633,
+        "h_span_max": 0.18178740414706143
+      },
+      "token_entropy": 0.17609336972236633,
+      "problem": "Given positive real numbers a = 4 and b = 4, what is the ratio of the arithmetic mean to the geometric mean of a and b? Explain why the ratio is greater than or equal to 1 when a ≠ b.",
+      "answer": "1.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Reduce numeric ranges for easier solvers, but preserve structure\n    a = rng.randint(1, 5)\n    b = rng.randint(1, 5)\n\n    # Given positive real numbers a and b, the AM-GM inequality states that:\n    # (a + b) / 2 ≥ sqrt(a * b)\n    # The equality holds if and only if a = b.\n    am_gm_ratio = (a + b) / (2 * (a * b) ** 0.5)\n\n    # Add a case analysis branch\n    if random.random() < 0.5:\n        problem = (\n            f\"Given positive real numbers a = {a} and b = {b}, \"\n            f\"what is the ratio of the arithmetic mean to the geometric mean of a and b? \"\n            f\"Additionally, explain why the ratio equals 1 when a = b.\"\n        )\n    else:\n        problem = (\n            f\"Given positive real numbers a = {a} and b = {b}, \"\n            f\"what is the ratio of the arithmetic mean to the geometric mean of a and b? \"\n            f\"Explain why the ratio is greater than or equal to 1 when a ≠ b.\"\n        )\n\n    return problem, str(am_gm_ratio)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "12565c8946de",
+        "277bc8069e7d",
+        "9a6388caa970"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "2bd0f6feba52"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "99233322b32e"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "06c2d0ee3c83"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "670ee0e92d3e",
+        "178ba1830cfc",
+        "80dcd511d34e"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.25147316604852676,
+      "p_hat": 0.25,
+      "h_score": 1.341190218925476,
+      "generation": 10,
+      "program_id": "94186549738f",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h",
+      "uncertainty_scores": {
+        "h": 1.341190218925476,
+        "h_span_max": 2.0101467768351235
+      },
+      "token_entropy": 1.341190218925476,
+      "problem": "Find the sum of the first 3 terms of a geometric sequence where the first term is 50 and the common ratio is 8. The sum of the first n terms of a geometric sequence is given by the formula: \\( S_n = a \frac-6-7 \\) if \\( r \neq 1 \\), otherwise \\( S_n = a n \\). Explain why the formula changes when \\( r = 1 \\).",
+      "answer": "3650.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Define the domain parameters\n    a = rng.randint(1, 100)  # First term of the geometric sequence\n    r = rng.randint(2, 10)    # Common ratio\n    n = rng.randint(2, 20)    # Number of terms\n\n    # Calculate the sum of the first n terms of the geometric sequence\n    sum_n = a * (1 - r**n) / (1 - r) if r != 1 else a * n\n\n    # Create a case analysis branch\n    if random.random() < 0.5:\n        problem = (\n            f\"Find the sum of the first {n} terms of a geometric sequence where the first term is {a} and the common ratio is {r}. \"\n            f\"The sum of the first n terms of a geometric sequence is given by the formula: \\( S_n = a \\frac{1 - r^n}{1 - r} \\) if \\( r \\neq 1 \\), otherwise \\( S_n = a n \\). \"\n            f\"Additionally, consider the case where \\( r = 1 \\) and explain how the sum changes.\"\n        )\n    else:\n        problem = (\n            f\"Find the sum of the first {n} terms of a geometric sequence where the first term is {a} and the common ratio is {r}. \"\n            f\"The sum of the first n terms of a geometric sequence is given by the formula: \\( S_n = a \\frac{1 - r^n}{1 - r} \\) if \\( r \\neq 1 \\), otherwise \\( S_n = a n \\). \"\n            f\"Explain why the formula changes when \\( r = 1 \\).\"\n        )\n\n    return problem, str(sum_n)"
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    }
+  ],
+  "diversity_axis": "concept_group",
+  "uncertainty_metric": "h",
+  "seed_labels": {
+    "0": "number_theory",
+    "1": "combinatorics",
+    "2": "sequence",
+    "3": "algebra",
+    "4": "geometry",
+    "5": "inequality"
+  }
+}

@@ -1,0 +1,1005 @@
+{
+  "global_step": 23,
+  "timestamp": "2026-05-02T05:28:50.095246",
+  "metrics": {
+    "attempted": 57,
+    "inserted": 25,
+    "accept_rate": 0.43859649122807015,
+    "rounds": 8,
+    "grid_coverage": 0.38333333333333336,
+    "grid_mean_rq": 0.19904032938403216,
+    "grid_max_rq": 0.7319352328777313,
+    "grid_min_rq": 0.0,
+    "grid_champions": 23,
+    "diversity_axis": "concept_group",
+    "uncertainty_metric": "h_span_max",
+    "reservoir_candidates": 52,
+    "reservoir_cells": 20,
+    "reservoir_selections": 192,
+    "hard_champions": 11,
+    "total_niches": 60,
+    "total_insertions": 129,
+    "total_replacements": 52,
+    "total_reservoir_insertions": 165,
+    "total_duplicate_rejections": 14,
+    "champion_p_hat_mean": 0.49264705882352944,
+    "champion_p_hat_std": 0.15140632560275,
+    "champion_h_mean": 1.2916446084554578,
+    "champion_h_std": 1.0752029127777365,
+    "archive_frontier_champions": 17,
+    "archive_too_hard_champions": 6,
+    "archive_too_easy_champions": 0,
+    "archive_zero_rq_champions": 6,
+    "dataset_non_frontier_skipped_visits": 102,
+    "dataset_duplicate_signature_skipped_visits": 0,
+    "reeval_count": 19,
+    "reeval_evicted": 0,
+    "reeval_low_h_evicted": 0,
+    "reeval_exec_fail_evicted": 0,
+    "reeval_extreme_p_kept": 7,
+    "reeval_bin_shifted": 14,
+    "reeval_rq_delta_mean": -0.1731794533238816,
+    "reeval_rq_delta_min": -1.1184216737747192,
+    "reeval_rq_delta_max": 0.12426626682281494,
+    "reeval_targets": 19,
+    "reeval_n_champions": 19,
+    "reeval_mode": 2,
+    "dataset_size": 192,
+    "event_log_file": "/data1/yhoon113/evo-sample/rq_output/verl_ckpt/evolution_logs/events/events_evo_5_step_23.jsonl"
+  },
+  "grid": [
+    {
+      "h_bin": 0,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.12376976013183594,
+      "reservoir_program_ids": [
+        "93f3ce752850",
+        "26e5b3558435",
+        "7e5b67a2e73f",
+        "d40241ab72cf"
+      ],
+      "rq_score": 0.1376429945230484,
+      "p_hat": 0.625,
+      "h_score": 0.5872767766316732,
+      "generation": 12,
+      "program_id": "41f4b17f5afd",
+      "root_seed_id": "",
+      "concept_type": "number_theory.legendre_symbol",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.2088705450296402,
+        "h_span_max": 0.5872767766316732
+      },
+      "token_entropy": 0.2088705450296402,
+      "problem": "The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. Given that p=23 and a=2, compute the value of (a/p). \nNote: Consider the properties of quadratic residues and the law of quadratic reciprocity to determine the result. Additionally, verify your answer using the supplementary condition that p is congruent to 1 modulo 4.",
+      "answer": "1",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.legendre_symbol\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p > 3\n    primes = [5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a quadratic residue 'a' modulo p\n    a = rng.randint(1, p - 1)\n    while not _is_quadratic_residue(a, p):\n        a = rng.randint(1, p - 1)\n\n    # Step 3: Compute the Legendre symbol (a/p)\n    answer = _legendre_symbol(a, p)\n\n    # Step 4: Construct the problem statement with an additional layer of ambiguity\n    problem = (\n        f\"The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. \"\n        f\"Given that p={p} and a={a}, compute the value of (a/p). \\n\"\n        f\"Note: Consider the properties of quadratic residues and the law of quadratic reciprocity to determine the result. \"\n        f\"Additionally, verify your answer using the supplementary condition that p is congruent to 1 modulo 4.\"\n    )\n\n    return problem, str(answer)\n\ndef _is_quadratic_residue(a, p):\n    if pow(a, (p - 1) // 2, p) != 1:\n        return False\n    return True\n\ndef _legendre_symbol(a, p):\n    return pow(a, (p - 1) // 2, p)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.12063813209533691,
+      "reservoir_program_ids": [
+        "f86ef326551e",
+        "8defaf6a35fd",
+        "017d5741ada2",
+        "d567bd3e32e8"
+      ],
+      "rq_score": 0.11946187700544085,
+      "p_hat": 0.5,
+      "h_score": 0.4778475080217634,
+      "generation": 8,
+      "program_id": "017d5741ada2",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.derangement_fixed_points",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.14471150934696198,
+        "h_span_max": 0.4778475080217634
+      },
+      "token_entropy": 0.14471150934696198,
+      "problem": "How many permutations of the set {1, 2, 3, 4, 5, 6, 7, 8, 9} have at least one fixed point?",
+      "answer": "229384",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.derangement_fixed_points\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick an integer n\n    n = rng.randint(3, 10)\n\n    # Step 2: Compute the number of derangements of n elements\n    derangements = math.factorial(n) * sum((-1)**k / math.factorial(k) for k in range(n + 1))\n\n    # Step 3: Compute the number of derangements with at least one fixed point\n    at_least_one_fixed_point = math.factorial(n) - int(derangements)\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"How many permutations of the set {set(range(1, n + 1))} \"\n        f\"have at least one fixed point?\"\n    )\n\n    return problem, str(at_least_one_fixed_point)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [
+        "07a6ed874716",
+        "eb1640259894",
+        "8d0bd52a18d9",
+        "0de9b401bb6b"
+      ],
+      "rq_score": 0.09387707710266113,
+      "p_hat": 0.5,
+      "h_score": 0.37550830841064453,
+      "generation": 0,
+      "program_id": "6937dcfa43ad",
+      "root_seed_id": "6937dcfa43ad",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.12536373734474182,
+        "h_span_max": 0.37550830841064453
+      },
+      "token_entropy": 0.12536373734474182,
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 13. What is the sum of the first 9 terms of this arithmetic sequence?",
+      "answer": "2268",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.randint(2, 5)\n    r = rng.choice([2, 3])\n    n = rng.randint(4, 8)\n    geo_sum = a * (r ** n - 1) // (r - 1)\n    d = rng.randint(5, 20)\n    m = rng.randint(5, 10)\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2\n    answer = arith_sum\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms. \"\n        f\"An arithmetic sequence has first term S and common difference {d}. \"\n        f\"What is the sum of the first {m} terms of this arithmetic sequence?\"\n    )\n\n    return problem, str(answer)\n"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.08320220027651105,
+      "reservoir_program_ids": [
+        "f294d008a235",
+        "3af5ce5bd370",
+        "b7c24ba32b08",
+        "fe28060f2812"
+      ],
+      "rq_score": 0.11135359605153401,
+      "p_hat": 0.5,
+      "h_score": 0.44541438420613605,
+      "generation": 6,
+      "program_id": "6f9555f44a39",
+      "root_seed_id": "",
+      "concept_type": "algebra.quadratic_vieta_reciprocal",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.2073938250541687,
+        "h_span_max": 0.44541438420613605
+      },
+      "token_entropy": 0.2073938250541687,
+      "problem": "Given the quadratic equation 2x^2 + 4x + 1 = 0, find the product of its roots.",
+      "answer": "0.5",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"algebra.quadratic_vieta_reciprocal\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a quadratic equation with integer coefficients\n    a = rng.randint(1, 5)  # Simplified range to make the problem easier\n    b = rng.randint(-5, 5)  # Allow negative coefficients for variety\n    c = rng.randint(1, 5)\n\n    # Step 2: Compute the discriminant\n    discriminant = b**2 - 4*a*c\n\n    # Step 3: Ensure the discriminant is non-negative for real roots\n    if discriminant < 0:\n        return generate(seed + 1)  # Retry if no real roots\n\n    # Step 4: Compute the roots of the quadratic equation using the quadratic formula\n    root1 = (-b + (discriminant)**0.5) / (2*a)\n    root2 = (-b - (discriminant)**0.5) / (2*a)\n\n    # Step 5: Compute the product of the roots (Vieta's formula)\n    answer = (c / a)\n\n    # Step 6: Construct the problem statement\n    problem = (\n        f\"Given the quadratic equation {a}x^2 + {b}x + {c} = 0, \"\n        f\"find the product of its roots.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.10095160348074776,
+      "reservoir_program_ids": [
+        "cae57afb73e0",
+        "3f8c2df19e82",
+        "cfb4aa98cb69",
+        "49bfa96dbce3"
+      ],
+      "rq_score": 0.12007713317871094,
+      "p_hat": 0.5,
+      "h_score": 0.48030853271484375,
+      "generation": 4,
+      "program_id": "95bfef29c49e",
+      "root_seed_id": "",
+      "concept_type": "geometry.power_of_point_secants",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.17397856712341309,
+        "h_span_max": 0.48030853271484375
+      },
+      "token_entropy": 0.17397856712341309,
+      "problem": "A circle has a radius of 11. A point is located 19 units away from the center of the circle. A secant line passing through this point intersects the circle. The length of the secant segment outside the circle is 9. Compute the power of the point with respect to the circle.",
+      "answer": "240",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.power_of_point_secants\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a circle and its radius\n    radius = rng.randint(5, 15)\n\n    # Step 2: Pick a point outside the circle\n    point_distance = rng.randint(radius + 2, radius + 8)\n\n    # Step 3: Pick a secant line passing through the point\n    secant_length = rng.randint(3, 15)\n\n    # Step 4: Compute the power of the point\n    answer = point_distance**2 - radius**2\n\n    # Step 5: Construct the problem statement\n    problem = (\n        f\"A circle has a radius of {radius}. \"\n        f\"A point is located {point_distance} units away from the center of the circle. \"\n        f\"A secant line passing through this point intersects the circle. \"\n        f\"The length of the secant segment outside the circle is {secant_length}. \"\n        f\"Compute the power of the point with respect to the circle.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.034454017877578735,
+      "reservoir_program_ids": [
+        "5b0c222f4b5c",
+        "af1358242025",
+        "8cfe75084161",
+        "a585a5fe80c9"
+      ],
+      "rq_score": 0.08307605981826782,
+      "p_hat": 0.375,
+      "h_score": 0.3544578552246094,
+      "generation": 3,
+      "program_id": "8cfe75084161",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.12385967373847961,
+        "h_span_max": 0.3544578552246094
+      },
+      "token_entropy": 0.12385967373847961,
+      "problem": "Let a and b be positive integers, with a = 7 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two positive integers a and b\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n\n    # Step 2: Compute the arithmetic mean and geometric mean\n    arithmetic_mean = (a + b) / 2\n    geometric_mean = (a * b) ** 0.5\n\n    # Step 3: Compute the difference between the arithmetic mean and geometric mean\n    answer = arithmetic_mean - geometric_mean\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Let a and b be positive integers, with a = {a} and b = {b}. \"\n        f\"Find the difference between the arithmetic mean and the geometric mean of a and b.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.24021434783935547,
+      "reservoir_program_ids": [
+        "7e5b67a2e73f",
+        "63c77d2c88f5",
+        "93f3ce752850",
+        "e4f4c7227189"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 1.1542701721191406,
+      "generation": 8,
+      "program_id": "241cecedc87f",
+      "root_seed_id": "",
+      "concept_type": "number_theory.crt_count",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.14374405145645142,
+        "h_span_max": 1.1542701721191406
+      },
+      "token_entropy": 0.14374405145645142,
+      "problem": "Find the number of solutions to the system of congruences:\nx ≡ 5 (mod 16)\nx ≡ 33 (mod 36)\nx ≡ 32 (mod 50)",
+      "answer": "25725",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.crt_count\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick three distinct primes p, q, r\n    p = rng.randint(10, 20)\n    q = rng.randint(30, 40)\n    r = rng.randint(50, 60)\n    while p == q or p == r or q == r:\n        p = rng.randint(10, 20)\n        q = rng.randint(30, 40)\n        r = rng.randint(50, 60)\n\n    # Step 2: Define the system of congruences\n    a = rng.randint(1, p-1)\n    b = rng.randint(1, q-1)\n    c = rng.randint(1, r-1)\n\n    # Step 3: Compute the number of solutions using CRT\n    # The number of solutions is (p-1)*(q-1)*(r-1)\n    answer = (p - 1) * (q - 1) * (r - 1)\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Find the number of solutions to the system of congruences:\\n\"\n        f\"x ≡ {a} (mod {p})\\n\"\n        f\"x ≡ {b} (mod {q})\\n\"\n        f\"x ≡ {c} (mod {r})\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.21599302291870118,
+      "reservoir_program_ids": [
+        "6bee8429d8fb",
+        "d567bd3e32e8",
+        "8defaf6a35fd",
+        "cf7ff6952c16"
+      ],
+      "rq_score": 0.18043287098407745,
+      "p_hat": 0.375,
+      "h_score": 0.7698469161987305,
+      "generation": 5,
+      "program_id": "d567bd3e32e8",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.committee_count",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.25063762068748474,
+        "h_span_max": 0.7698469161987305
+      },
+      "token_entropy": 0.25063762068748474,
+      "problem": "In a group of 8 people, how many ways can a committee of 5 members be formed?",
+      "answer": "56",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick the number of people and the committee size\n    n = rng.randint(5, 10)\n    k = rng.randint(2, n - 1)\n\n    # Step 2: Compute the number of ways to form a committee\n    answer = math.comb(n, k)\n\n    # Step 3: Construct the problem statement\n    problem = (\n        f\"In a group of {n} people, how many ways can a committee of {k} members be formed?\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "99233322b32e"
+      ],
+      "rq_score": 0.16833078861236572,
+      "p_hat": 0.625,
+      "h_score": 0.7182113647460937,
+      "generation": 7,
+      "program_id": "0de9b401bb6b",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.0853458121418953,
+        "h_span_max": 0.7182113647460937
+      },
+      "token_entropy": 0.0853458121418953,
+      "problem": "Consider the geometric sequence with first term 7 and common ratio 5. Find the sum of the first 5 terms of this sequence.",
+      "answer": "5467.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random integers a and r\n    a = rng.randint(1, 10)\n    r = rng.randint(2, 5)\n\n    # Step 2: Compute the sum of the first n terms of the geometric sequence\n    n = rng.randint(5, 10)\n    s = a * (1 - r**n) / (1 - r)\n\n    # Step 3: Construct the problem statement\n    problem = (\n        f\"Consider the geometric sequence with first term {a} and common ratio {r}. \"\n        f\"Find the sum of the first {n} terms of this sequence.\"\n    )\n\n    return problem, str(s)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.14229029417037964,
+      "reservoir_program_ids": [
+        "f294d008a235",
+        "66ea0d0a116e",
+        "3af5ce5bd370",
+        "06c2d0ee3c83"
+      ],
+      "rq_score": 0.25295162200927734,
+      "p_hat": 0.5,
+      "h_score": 1.0118064880371094,
+      "generation": 7,
+      "program_id": "b7c24ba32b08",
+      "root_seed_id": "",
+      "concept_type": "linear_algebra.linear_system_sum",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.11077908426523209,
+        "h_span_max": 1.0118064880371094
+      },
+      "token_entropy": 0.11077908426523209,
+      "problem": "Solve the following system of linear equations:\n4x + 4y = 1\n3x + 5y = 8\nFind the sum of the solutions (x + y).",
+      "answer": "0.25",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"linear_algebra.linear_system_sum\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random linear equations\n    a1, b1, c1 = rng.randint(1, 5), rng.randint(1, 5), rng.randint(1, 10)\n    a2, b2, c2 = rng.randint(1, 5), rng.randint(1, 5), rng.randint(1, 10)\n\n    # Step 2: Solve the system of equations to find the sum of the solutions\n    determinant = a1 * b2 - a2 * b1\n    if determinant == 0:\n        return generate(rng.randint(1, 4))  # Retry if the system is unsolvable\n\n    x = (c1 * b2 - c2 * b1) / determinant\n    y = (a1 * c2 - a2 * c1) / determinant\n\n    # Step 3: Compute the sum of the solutions (x + y)\n    answer = x + y\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Solve the following system of linear equations:\\n\"\n        f\"{a1}x + {b1}y = {c1}\\n\"\n        f\"{a2}x + {b2}y = {c2}\\n\"\n        f\"Find the sum of the solutions (x + y).\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.19633746147155762,
+      "reservoir_program_ids": [
+        "95bfef29c49e",
+        "38b018729bcf",
+        "1acc5e05bb7f",
+        "134656535049"
+      ],
+      "rq_score": 0.22408068180084229,
+      "p_hat": 0.625,
+      "h_score": 0.9560775756835938,
+      "generation": 12,
+      "program_id": "49bfa96dbce3",
+      "root_seed_id": "",
+      "concept_type": "geometry.power_of_point_secants",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.07135936617851257,
+        "h_span_max": 0.9560775756835938
+      },
+      "token_entropy": 0.07135936617851257,
+      "problem": "Given a circle with center at (2, 3) and radius 1, and two points on the circle at (1.9440050824173427, 3.9984310538063763) and (1.0025079939740609, 2.929220780490685), compute the power of the point (1.9440050824173427, 3.9984310538063763) with respect to the circle.",
+      "answer": "-3.3306690738754696e-16",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.power_of_point_secants\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random points for the circle\n    x1, y1 = rng.randint(-10, 10), rng.randint(-10, 10)\n    r = rng.randint(1, 10)\n\n    # Step 2: Compute the equation of the circle\n    circle_eq = f\"(x-{x1})^2 + (y-{y1})^2 = {r**2}\"\n\n    # Step 3: Pick two random points on the circle\n    theta1 = rng.uniform(0, 2 * 3.14159)\n    theta2 = rng.uniform(0, 2 * 3.14159)\n    x3, y3 = x1 + r * math.cos(theta1), y1 + r * math.sin(theta1)\n    x4, y4 = x1 + r * math.cos(theta2), y1 + r * math.sin(theta2)\n\n    # Step 4: Compute the power of the point (x3, y3) with respect to the circle\n    power = (x3 - x1) ** 2 + (y3 - y1) ** 2 - r ** 2\n\n    # Step 5: Construct the problem statement\n    problem = (\n        f\"Given a circle with center at ({x1}, {y1}) and radius {r}, \"\n        f\"and two points on the circle at ({x3}, {y3}) and ({x4}, {y4}), \"\n        f\"compute the power of the point ({x3}, {y3}) with respect to the circle.\"\n    )\n\n    return problem, str(power)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 2,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [
+        "a585a5fe80c9",
+        "87147ffb56df"
+      ],
+      "rq_score": 0.15493154525756836,
+      "p_hat": 0.375,
+      "h_score": 0.661041259765625,
+      "generation": 11,
+      "program_id": "c717048477dc",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.18328779935836792,
+        "h_span_max": 0.661041259765625
+      },
+      "token_entropy": 0.18328779935836792,
+      "problem": "Let a and b be integers, where a is even and b is odd, with a = 8 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.01668522645211734",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two integers a and b where a is even and b is odd\n    a = rng.randint(2, 10)  # Ensuring a is even\n    b = rng.randint(1, 10)  # Ensuring b is odd\n\n    # Step 2: Compute the arithmetic mean and geometric mean\n    arithmetic_mean = (a + b) / 2\n    geometric_mean = (a * b) ** 0.5\n\n    # Step 3: Compute the difference between the arithmetic mean and geometric mean\n    answer = arithmetic_mean - geometric_mean\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Let a and b be integers, where a is even and b is odd, with a = {a} and b = {b}. \"\n        f\"Find the difference between the arithmetic mean and the geometric mean of a and b.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.23506665229797363,
+      "reservoir_program_ids": [
+        "41f4b17f5afd"
+      ]
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [
+        "2f8cac96d138"
+      ],
+      "rq_score": 0.3757906549198683,
+      "p_hat": 0.375,
+      "h_score": 1.603373460991438,
+      "generation": 5,
+      "program_id": "0de9b401bb6b",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.05234334245324135,
+        "h_span_max": 1.603373460991438
+      },
+      "token_entropy": 0.05234334245324135,
+      "problem": "Consider the geometric sequence with first term 7 and common ratio 5. Find the sum of the first 5 terms of this sequence.",
+      "answer": "5467.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random integers a and r\n    a = rng.randint(1, 10)\n    r = rng.randint(2, 5)\n\n    # Step 2: Compute the sum of the first n terms of the geometric sequence\n    n = rng.randint(5, 10)\n    s = a * (1 - r**n) / (1 - r)\n\n    # Step 3: Construct the problem statement\n    problem = (\n        f\"Consider the geometric sequence with first term {a} and common ratio {r}. \"\n        f\"Find the sum of the first {n} terms of this sequence.\"\n    )\n\n    return problem, str(s)"
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.3197340667247772,
+      "reservoir_program_ids": [
+        "cd2d6a8225da"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 1.6842918395996094,
+      "generation": 10,
+      "program_id": "908d3a1d2510",
+      "root_seed_id": "",
+      "concept_type": "geometry.line_intersection_distance",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.02227100171148777,
+        "h_span_max": 1.6842918395996094
+      },
+      "token_entropy": 0.02227100171148777,
+      "problem": "Given two lines defined by points (x1, y1), (x2, y2) and (x3, y3), (x4, y4), compute the distance between the lines.",
+      "answer": "0.2857142857142857",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.line_intersection_distance\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random points for the lines\n    x1, y1 = rng.randint(1, 10), rng.randint(1, 10)\n    x2, y2 = rng.randint(1, 10), rng.randint(1, 10)\n    x3, y3 = rng.randint(1, 10), rng.randint(1, 10)\n    x4, y4 = rng.randint(1, 10), rng.randint(1, 10)\n\n    # Step 2: Compute the direction vectors of the lines\n    dx1, dy1 = x2 - x1, y2 - y1\n    dx2, dy2 = x4 - x3, y4 - y3\n\n    # Step 3: Compute the cross product of the direction vectors\n    cross_product = dx1 * dy2 - dx2 * dy1\n\n    # Step 4: Compute the distance between the lines using the cross product\n    if cross_product == 0:\n        return generate(rng.randint(1, 4))  # Retry if the lines are parallel\n\n    distance = abs((x1 - x3) * dy2 - (y1 - y3) * dx2) / abs(cross_product)\n\n    # Step 5: Construct the problem statement\n    problem = (\n        f\"Given two lines defined by points (x1, y1), (x2, y2) and (x3, y3), (x4, y4), compute the distance between the lines.\"\n    )\n\n    return problem, str(distance)"
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [
+        "e4b395d875a1"
+      ],
+      "rq_score": 0.22584059089422226,
+      "p_hat": 0.75,
+      "h_score": 1.204483151435852,
+      "generation": 12,
+      "program_id": "8cfe75084161",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.2921593487262726,
+        "h_span_max": 1.204483151435852
+      },
+      "token_entropy": 0.2921593487262726,
+      "problem": "Let a and b be positive integers, with a = 7 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two positive integers a and b\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n\n    # Step 2: Compute the arithmetic mean and geometric mean\n    arithmetic_mean = (a + b) / 2\n    geometric_mean = (a * b) ** 0.5\n\n    # Step 3: Compute the difference between the arithmetic mean and geometric mean\n    answer = arithmetic_mean - geometric_mean\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Let a and b be positive integers, with a = {a} and b = {b}. \"\n        f\"Find the difference between the arithmetic mean and the geometric mean of a and b.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.43048739433288574,
+      "reservoir_program_ids": [
+        "963eb8214115"
+      ]
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 1.8697090148925781,
+      "generation": 8,
+      "program_id": "983b33d3d44e",
+      "root_seed_id": "",
+      "concept_type": "geometry.trig_area",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.04873155429959297,
+        "h_span_max": 1.8697090148925781
+      },
+      "token_entropy": 0.04873155429959297,
+      "problem": "Given a triangle with a side length of 7 units and an angle of 216 degrees, compute the area of the triangle.",
+      "answer": "-14.400738681165588",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.trig_area\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a side length for the triangle\n    side_length = rng.randint(1, 10)\n\n    # Step 2: Pick an angle for the triangle\n    angle = rng.randint(1, 360)  # angle in degrees\n\n    # Step 3: Calculate the area using the formula: (side_length^2 * sin(angle)) / 2\n    area = (side_length ** 2 * math.sin(math.radians(angle))) / 2\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Given a triangle with a side length of {side_length} units and an angle of {angle} degrees, compute the area of the triangle.\"\n    )\n\n    return problem, str(area)"
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 2,
+      "reservoir_best_rq": 0.2919634059071541,
+      "reservoir_program_ids": [
+        "62536815b885",
+        "8defaf6a35fd"
+      ],
+      "rq_score": 0.6710695690578885,
+      "p_hat": 0.5,
+      "h_score": 2.684278276231554,
+      "generation": 5,
+      "program_id": "acdf0d30a963",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.committee_count",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.5373369455337524,
+        "h_span_max": 2.684278276231554
+      },
+      "token_entropy": 0.5373369455337524,
+      "problem": "There are 13 people available to form a committee. How many different committees of size 13 can be formed?",
+      "answer": "1",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick the total number of people\n    total_people = rng.randint(1, 20)\n\n    # Step 2: Pick the number of people in the committee\n    committee_size = rng.randint(1, total_people)\n\n    # Step 3: Compute the number of ways to form the committee\n    answer = math.comb(total_people, committee_size)\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"There are {total_people} people available to form a committee. \"\n        f\"How many different committees of size {committee_size} can be formed?\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 2.9072351455688477,
+      "generation": 8,
+      "program_id": "2f8cac96d138",
+      "root_seed_id": "",
+      "concept_type": "sequence.linear_recurrence",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.11271283775568008,
+        "h_span_max": 2.9072351455688477
+      },
+      "token_entropy": 0.11271283775568008,
+      "problem": "Consider the sequence defined by the recurrence relation: a_6 = a_5 + a_4 + 1. Given a_1 = 1, a_2 = 2, and a_3 = 4, find the value of a_6. \nNote: You can solve this by directly computing the terms or using the characteristic equation method.",
+      "answer": "7",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.linear_recurrence\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Define the recurrence relation\n    a = rng.randint(1, 3)  # Simplified to avoid overly complex coefficients\n    b = rng.randint(1, 3)\n    c = rng.randint(1, 3)\n\n    # Step 2: Generate the first few terms of the sequence\n    a1 = 1\n    a2 = a\n    a3 = a1 + a2 + c\n\n    # Step 3: Compute the nth term using the recurrence relation\n    n = rng.randint(2, 10)\n    answer = a1 + a2 + a3  # Simplified for demonstration\n\n    # Step 4: Construct the problem statement with multiple plausible techniques\n    problem = (\n        f\"Consider the sequence defined by the recurrence relation: \"\n        f\"a_{n} = a_{n-1} + a_{n-2} + {c}. \"\n        f\"Given a_1 = {a1}, a_2 = {a2}, and a_3 = {a3}, \"\n        f\"find the value of a_{n}. \\n\"\n        f\"Note: You can solve this by directly computing the terms or using the characteristic equation method.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.5643226951360703,
+      "p_hat": 0.375,
+      "h_score": 2.4077768325805664,
+      "generation": 4,
+      "program_id": "8cfe75084161",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.08639352768659592,
+        "h_span_max": 2.4077768325805664
+      },
+      "token_entropy": 0.08639352768659592,
+      "problem": "Let a and b be positive integers, with a = 7 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two positive integers a and b\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n\n    # Step 2: Compute the arithmetic mean and geometric mean\n    arithmetic_mean = (a + b) / 2\n    geometric_mean = (a * b) ** 0.5\n\n    # Step 3: Compute the difference between the arithmetic mean and geometric mean\n    answer = arithmetic_mean - geometric_mean\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Let a and b be positive integers, with a = {a} and b = {b}. \"\n        f\"Find the difference between the arithmetic mean and the geometric mean of a and b.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.33600349724292755,
+      "reservoir_program_ids": [
+        "652da22164f6"
+      ]
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 3.332427501678467,
+      "generation": 9,
+      "program_id": "581577e644b1",
+      "root_seed_id": "",
+      "concept_type": "algebra.quadratic_vieta_reciprocal",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.31237414479255676,
+        "h_span_max": 3.332427501678467
+      },
+      "token_entropy": 0.31237414479255676,
+      "problem": "Consider the quadratic equation 2x^2 + 3x = 0. Find the reciprocal of the product of its roots.",
+      "answer": "1.5",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"algebra.quadratic_vieta_reciprocal\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two random integers a and b\n    a = rng.randint(-10, 10)\n    b = rng.randint(-10, 10)\n\n    # Step 2: Compute the reciprocal of the product of the roots of the quadratic equation\n    reciprocal_product = b / a\n\n    # Step 3: Construct the problem statement\n    problem = (\n        f\"Consider the quadratic equation {a}x^2 + {b}x = 0. \"\n        f\"Find the reciprocal of the product of its roots.\"\n    )\n\n    return problem, str(reciprocal_product)"
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.3627525866031647,
+      "p_hat": 0.125,
+      "h_score": 3.3165950775146484,
+      "generation": 10,
+      "program_id": "c717048477dc",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.555682897567749,
+        "h_span_max": 3.3165950775146484
+      },
+      "token_entropy": 0.555682897567749,
+      "problem": "Let a and b be integers, where a is even and b is odd, with a = 8 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.01668522645211734",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two integers a and b where a is even and b is odd\n    a = rng.randint(2, 10)  # Ensuring a is even\n    b = rng.randint(1, 10)  # Ensuring b is odd\n\n    # Step 2: Compute the arithmetic mean and geometric mean\n    arithmetic_mean = (a + b) / 2\n    geometric_mean = (a * b) ** 0.5\n\n    # Step 3: Compute the difference between the arithmetic mean and geometric mean\n    answer = arithmetic_mean - geometric_mean\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Let a and b be integers, where a is even and b is odd, with a = {a} and b = {b}. \"\n        f\"Find the difference between the arithmetic mean and the geometric mean of a and b.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.7319352328777313,
+      "p_hat": 0.75,
+      "h_score": 3.9036545753479004,
+      "generation": 9,
+      "program_id": "8cfe75084161",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.24734370410442352,
+        "h_span_max": 3.9036545753479004
+      },
+      "token_entropy": 0.24734370410442352,
+      "problem": "Let a and b be positive integers, with a = 7 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two positive integers a and b\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n\n    # Step 2: Compute the arithmetic mean and geometric mean\n    arithmetic_mean = (a + b) / 2\n    geometric_mean = (a * b) ** 0.5\n\n    # Step 3: Compute the difference between the arithmetic mean and geometric mean\n    answer = arithmetic_mean - geometric_mean\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Let a and b be positive integers, with a = {a} and b = {b}. \"\n        f\"Find the difference between the arithmetic mean and the geometric mean of a and b.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 4.385687828063965,
+      "generation": 8,
+      "program_id": "93f3ce752850",
+      "root_seed_id": "",
+      "concept_type": "number_theory.legendre_symbol",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.4830285906791687,
+        "h_span_max": 4.385687828063965
+      },
+      "token_entropy": 0.4830285906791687,
+      "problem": "The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. Given that p=23 and a=2, compute the value of (a/p).",
+      "answer": "1",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.legendre_symbol\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p > 3\n    primes = [5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a quadratic residue 'a' modulo p\n    a = rng.randint(1, p - 1)\n    while not _is_quadratic_residue(a, p):\n        a = rng.randint(1, p - 1)\n\n    # Step 3: Compute the Legendre symbol (a/p)\n    answer = _legendre_symbol(a, p)\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"The Legendre symbol (a/p) is defined as 1 if the positive integer a is a quadratic residue modulo the prime p, and -1 otherwise. \"\n        f\"Given that p={p} and a={a}, compute the value of (a/p).\"\n    )\n\n    return problem, str(answer)\n\ndef _is_quadratic_residue(a, p):\n    if pow(a, (p - 1) // 2, p) != 1:\n        return False\n    return True\n\ndef _legendre_symbol(a, p):\n    return pow(a, (p - 1) // 2, p)"
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 1.1981556192040443,
+      "reservoir_program_ids": [
+        "0dd7d6bd0205"
+      ]
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    }
+  ],
+  "diversity_axis": "concept_group",
+  "uncertainty_metric": "h_span_max",
+  "seed_labels": {
+    "0": "number_theory",
+    "1": "combinatorics",
+    "2": "sequence",
+    "3": "algebra",
+    "4": "geometry",
+    "5": "inequality"
+  }
+}

@@ -1,0 +1,1602 @@
+{
+  "global_step": 0,
+  "timestamp": "2026-05-02T04:06:44.535762",
+  "training_selection_mode": "h_priority_d_uniform",
+  "training_budget": 960,
+  "instances_per_program": 16,
+  "strict_anti_reuse": true,
+  "frontier_p_hat_range": [
+    0.1,
+    0.9
+  ],
+  "dataset_size": 176,
+  "archive_champions": 16,
+  "frontier_champions": 14,
+  "duplicate_signature_skipped_visits": 0,
+  "problems": [
+    {
+      "problem": "The sum of the first 3 terms of a geometric sequence is 511. The common ratio of the sequence is 8. What is the sum of the first 3 terms of the corresponding arithmetic sequence?",
+      "answer": "511",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 0
+    },
+    {
+      "problem": "There are 9 people in a group. How many ways can you choose a committee of 7 people?",
+      "answer": "36",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 0
+    },
+    {
+      "problem": "Modulo the prime p=97, g=5 is a primitive root. Let a be the least positive residue of g^54 modulo p, so a=89. How many residue classes x modulo 97 satisfy x^2 ≡ a (mod 97)?",
+      "answer": "2",
+      "program_id": "268446f87a29",
+      "rq_score": 0.560764767229557,
+      "h_bin": 4,
+      "d_bin": 0,
+      "seed": 0
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (10, 8), and C = (7, 6). Find its area.",
+      "answer": "2",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 0
+    },
+    {
+      "problem": "Modulo the prime p=41, g=6 is a primitive root. Let a be the least positive residue of g^37 modulo p, so a=15. How many residue classes x modulo 41 satisfy x^3 ≡ a (mod 41)?",
+      "answer": "1",
+      "program_id": "268446f87a29",
+      "rq_score": 0.51664799451828,
+      "h_bin": 3,
+      "d_bin": 0,
+      "seed": 1
+    },
+    {
+      "problem": "10 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 8 people receive their own card?",
+      "answer": "46",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 0
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 7, 7, 1, and 5, find the sum of the products of the opposite sides.",
+      "answer": "42",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.34084126353263855,
+      "h_bin": 2,
+      "d_bin": 4,
+      "seed": 0
+    },
+    {
+      "problem": "Modulo the prime p=29, g=2 is a primitive root. Let a be the least positive residue of g^3 modulo p, so a=8. How many residue classes x modulo 29 satisfy x^3 ≡ a (mod 29)?",
+      "answer": "1",
+      "program_id": "268446f87a29",
+      "rq_score": 0.27698373794555664,
+      "h_bin": 1,
+      "d_bin": 0,
+      "seed": 2
+    },
+    {
+      "problem": "The quadratic equation x^2 + -6x + -7 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-22/7",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 0
+    },
+    {
+      "problem": "A club has 8 men and 7 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "532",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 0
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 3, 10, 2, and 5, find the sum of the products of the opposite sides.",
+      "answer": "35",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.12422859668731691,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 1
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 7 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.0",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 0
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 12 minutes, Route B every 16 minutes, Route C every 10 minutes, and Route D every 13 minutes. All four depart simultaneously at 6:00 AM. During the next 12 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "3",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 0
+    },
+    {
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 13. What is the sum of the first 9 terms of this arithmetic sequence?",
+      "answer": "2268",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 0
+    },
+    {
+      "problem": "The sum of the first 3 terms of a geometric sequence is 210. The common ratio of the sequence is 4. What is the sum of the first 3 terms of the corresponding arithmetic sequence?",
+      "answer": "210",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 1
+    },
+    {
+      "problem": "There are 5 people in a group. How many ways can you choose a committee of 5 people?",
+      "answer": "1",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 1
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (4, 10), and C = (2, 6). Find its area.",
+      "answer": "2",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 1
+    },
+    {
+      "problem": "Modulo the prime p=43, g=3 is a primitive root. Let a be the least positive residue of g^38 modulo p, so a=17. How many residue classes x modulo 43 satisfy x^4 ≡ a (mod 43)?",
+      "answer": "2",
+      "program_id": "268446f87a29",
+      "rq_score": 0.560764767229557,
+      "h_bin": 4,
+      "d_bin": 0,
+      "seed": 3
+    },
+    {
+      "problem": "Modulo the prime p=43, g=3 is a primitive root. Let a be the least positive residue of g^20 modulo p, so a=14. How many residue classes x modulo 43 satisfy x^3 ≡ a (mod 43)?",
+      "answer": "0",
+      "program_id": "268446f87a29",
+      "rq_score": 0.51664799451828,
+      "h_bin": 3,
+      "d_bin": 0,
+      "seed": 4
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 6 people receive their own card?",
+      "answer": "29",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 1
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 1, 2, 2, and 6, find the sum of the products of the opposite sides.",
+      "answer": "10",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.34084126353263855,
+      "h_bin": 2,
+      "d_bin": 4,
+      "seed": 2
+    },
+    {
+      "problem": "A club has 6 men and 8 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "456",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 1
+    },
+    {
+      "problem": "The quadratic equation x^2 + 8x + 7 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-20/7",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 1
+    },
+    {
+      "problem": "Modulo the prime p=113, g=3 is a primitive root. Let a be the least positive residue of g^33 modulo p, so a=84. How many residue classes x modulo 113 satisfy x^8 ≡ a (mod 113)?",
+      "answer": "0",
+      "program_id": "268446f87a29",
+      "rq_score": 0.27698373794555664,
+      "h_bin": 1,
+      "d_bin": 0,
+      "seed": 5
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 4, 10, 9, and 3, find the sum of the products of the opposite sides.",
+      "answer": "102",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.12422859668731691,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 3
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 8. What is the sum of the first 8 terms of this arithmetic sequence?",
+      "answer": "1736",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 1
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 3 and b = 10. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "1.0227744249483388",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 1
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 8 minutes, Route B every 18 minutes, Route C every 30 minutes, and Route D every 7 minutes. All four depart simultaneously at 6:00 AM. During the next 10 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "1",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 1
+    },
+    {
+      "problem": "The sum of the first 3 terms of a geometric sequence is 14. The common ratio of the sequence is 2. What is the sum of the first 3 terms of the corresponding arithmetic sequence?",
+      "answer": "14",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 2
+    },
+    {
+      "problem": "There are 3 people in a group. How many ways can you choose a committee of 1 people?",
+      "answer": "3",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 2
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (2, 2), and C = (2, 7). Find its area.",
+      "answer": "5",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 2
+    },
+    {
+      "problem": "Modulo the prime p=149, g=2 is a primitive root. Let a be the least positive residue of g^147 modulo p, so a=75. How many residue classes x modulo 149 satisfy x^3 ≡ a (mod 149)?",
+      "answer": "1",
+      "program_id": "268446f87a29",
+      "rq_score": 0.560764767229557,
+      "h_bin": 4,
+      "d_bin": 0,
+      "seed": 6
+    },
+    {
+      "problem": "Modulo the prime p=89, g=3 is a primitive root. Let a be the least positive residue of g^20 modulo p, so a=73. How many residue classes x modulo 89 satisfy x^10 ≡ a (mod 89)?",
+      "answer": "2",
+      "program_id": "268446f87a29",
+      "rq_score": 0.51664799451828,
+      "h_bin": 3,
+      "d_bin": 0,
+      "seed": 7
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 4, 5, 2, and 7, find the sum of the products of the opposite sides.",
+      "answer": "38",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.34084126353263855,
+      "h_bin": 2,
+      "d_bin": 4,
+      "seed": 4
+    },
+    {
+      "problem": "7 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 2 people receive their own card?",
+      "answer": "1331",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 2
+    },
+    {
+      "problem": "A club has 5 men and 4 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "100",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 2
+    },
+    {
+      "problem": "Modulo the prime p=43, g=3 is a primitive root. Let a be the least positive residue of g^24 modulo p, so a=16. How many residue classes x modulo 43 satisfy x^10 ≡ a (mod 43)?",
+      "answer": "2",
+      "program_id": "268446f87a29",
+      "rq_score": 0.27698373794555664,
+      "h_bin": 1,
+      "d_bin": 0,
+      "seed": 8
+    },
+    {
+      "problem": "The quadratic equation x^2 + 2x + -3 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-14/3",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 2
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 6 minutes, Route B every 9 minutes, Route C every 10 minutes, and Route D every 13 minutes. All four depart simultaneously at 6:00 AM. During the next 8 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "5",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 2
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 10, 5, 6, and 9, find the sum of the products of the opposite sides.",
+      "answer": "120",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.12422859668731691,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 5
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 1 and b = 2. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.08578643762690485",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 2
+    },
+    {
+      "problem": "A geometric sequence has first term 2 and common ratio 2. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 16. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "420",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 2
+    },
+    {
+      "problem": "The sum of the first 4 terms of a geometric sequence is 1560. The common ratio of the sequence is 5. What is the sum of the first 4 terms of the corresponding arithmetic sequence?",
+      "answer": "1560",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 3
+    },
+    {
+      "problem": "There are 6 people in a group. How many ways can you choose a committee of 5 people?",
+      "answer": "6",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 3
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (5, 10), and C = (9, 4). Find its area.",
+      "answer": "35",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 3
+    },
+    {
+      "problem": "Modulo the prime p=101, g=2 is a primitive root. Let a be the least positive residue of g^79 modulo p, so a=42. How many residue classes x modulo 101 satisfy x^8 ≡ a (mod 101)?",
+      "answer": "0",
+      "program_id": "268446f87a29",
+      "rq_score": 0.560764767229557,
+      "h_bin": 4,
+      "d_bin": 0,
+      "seed": 9
+    },
+    {
+      "problem": "Modulo the prime p=113, g=3 is a primitive root. Let a be the least positive residue of g^5 modulo p, so a=17. How many residue classes x modulo 113 satisfy x^10 ≡ a (mod 113)?",
+      "answer": "0",
+      "program_id": "268446f87a29",
+      "rq_score": 0.51664799451828,
+      "h_bin": 3,
+      "d_bin": 0,
+      "seed": 10
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 6 people receive their own card?",
+      "answer": "29",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 3
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 10, 2, 8, and 5, find the sum of the products of the opposite sides.",
+      "answer": "66",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.34084126353263855,
+      "h_bin": 2,
+      "d_bin": 4,
+      "seed": 6
+    },
+    {
+      "problem": "A club has 6 men and 8 women. A committee of 5 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "5440",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 3
+    },
+    {
+      "problem": "Modulo the prime p=101, g=2 is a primitive root. Let a be the least positive residue of g^72 modulo p, so a=24. How many residue classes x modulo 101 satisfy x^12 ≡ a (mod 101)?",
+      "answer": "4",
+      "program_id": "268446f87a29",
+      "rq_score": 0.27698373794555664,
+      "h_bin": 1,
+      "d_bin": 0,
+      "seed": 11
+    },
+    {
+      "problem": "The quadratic equation x^2 + 7x + 6 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-17/6",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 3
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 20. What is the sum of the first 10 terms of this arithmetic sequence?",
+      "answer": "2790",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 3
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 8 minutes, Route B every 18 minutes, Route C every 24 minutes, and Route D every 11 minutes. All four depart simultaneously at 6:00 AM. During the next 10 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "8",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 3
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 4 and b = 10. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.675444679663241",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 3
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 6, 3, 7, and 1, find the sum of the products of the opposite sides.",
+      "answer": "27",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.12422859668731691,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 7
+    },
+    {
+      "problem": "The sum of the first 3 terms of a geometric sequence is 155. The common ratio of the sequence is 5. What is the sum of the first 3 terms of the corresponding arithmetic sequence?",
+      "answer": "155",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 4
+    },
+    {
+      "problem": "There are 6 people in a group. How many ways can you choose a committee of 3 people?",
+      "answer": "20",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 4
+    },
+    {
+      "problem": "Modulo the prime p=101, g=2 is a primitive root. Let a be the least positive residue of g^35 modulo p, so a=39. How many residue classes x modulo 101 satisfy x^8 ≡ a (mod 101)?",
+      "answer": "0",
+      "program_id": "268446f87a29",
+      "rq_score": 0.560764767229557,
+      "h_bin": 4,
+      "d_bin": 0,
+      "seed": 12
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (5, 5), and C = (2, 8). Find its area.",
+      "answer": "15",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 4
+    },
+    {
+      "problem": "Modulo the prime p=73, g=5 is a primitive root. Let a be the least positive residue of g^38 modulo p, so a=48. How many residue classes x modulo 73 satisfy x^4 ≡ a (mod 73)?",
+      "answer": "0",
+      "program_id": "268446f87a29",
+      "rq_score": 0.51664799451828,
+      "h_bin": 3,
+      "d_bin": 0,
+      "seed": 13
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 4 people receive their own card?",
+      "answer": "771",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 4
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 4, 6, 7, and 3, find the sum of the products of the opposite sides.",
+      "answer": "54",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.34084126353263855,
+      "h_bin": 2,
+      "d_bin": 4,
+      "seed": 8
+    },
+    {
+      "problem": "A club has 6 men and 6 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "270",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 4
+    },
+    {
+      "problem": "Modulo the prime p=31, g=3 is a primitive root. Let a be the least positive residue of g^20 modulo p, so a=5. How many residue classes x modulo 31 satisfy x^5 ≡ a (mod 31)?",
+      "answer": "5",
+      "program_id": "268446f87a29",
+      "rq_score": 0.27698373794555664,
+      "h_bin": 1,
+      "d_bin": 0,
+      "seed": 14
+    },
+    {
+      "problem": "The quadratic equation x^2 + -1x + -56 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-223/56",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 4
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 8, 10, 6, and 5, find the sum of the products of the opposite sides.",
+      "answer": "100",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.12422859668731691,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 9
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 17. What is the sum of the first 8 terms of this arithmetic sequence?",
+      "answer": "1436",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 4
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 4 and b = 5. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.02786404500042039",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 4
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 8 minutes, Route B every 14 minutes, Route C every 10 minutes, and Route D every 17 minutes. All four depart simultaneously at 6:00 AM. During the next 10 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "2",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 4
+    },
+    {
+      "problem": "The sum of the first 3 terms of a geometric sequence is 258. The common ratio of the sequence is 6. What is the sum of the first 3 terms of the corresponding arithmetic sequence?",
+      "answer": "258",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 5
+    },
+    {
+      "problem": "There are 7 people in a group. How many ways can you choose a committee of 6 people?",
+      "answer": "7",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 5
+    },
+    {
+      "problem": "Modulo the prime p=43, g=3 is a primitive root. Let a be the least positive residue of g^1 modulo p, so a=3. How many residue classes x modulo 43 satisfy x^2 ≡ a (mod 43)?",
+      "answer": "0",
+      "program_id": "268446f87a29",
+      "rq_score": 0.560764767229557,
+      "h_bin": 4,
+      "d_bin": 0,
+      "seed": 15
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (5, 1), and C = (3, 3). Find its area.",
+      "answer": "6",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 5
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 10, 1, 7, and 8, find the sum of the products of the opposite sides.",
+      "answer": "87",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.34084126353263855,
+      "h_bin": 2,
+      "d_bin": 4,
+      "seed": 10
+    },
+    {
+      "problem": "9 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 7 people receive their own card?",
+      "answer": "37",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 5
+    },
+    {
+      "problem": "A club has 9 men and 6 women. A committee of 5 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "5976",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 5
+    },
+    {
+      "problem": "The quadratic equation x^2 + -7x + 6 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-31/6",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 5
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 8, 9, 8, and 8, find the sum of the products of the opposite sides.",
+      "answer": "136",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.12422859668731691,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 11
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 15 minutes, Route B every 14 minutes, Route C every 25 minutes, and Route D every 13 minutes. All four depart simultaneously at 6:00 AM. During the next 12 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "0",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 5
+    },
+    {
+      "problem": "A geometric sequence has first term 4 and common ratio 3. Let S be the sum of the first 8 terms. An arithmetic sequence has first term S and common difference 5. What is the sum of the first 8 terms of this arithmetic sequence?",
+      "answer": "105100",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 5
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 10 and b = 5. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.4289321881345245",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 5
+    },
+    {
+      "problem": "The sum of the first 5 terms of a geometric sequence is 968. The common ratio of the sequence is 3. What is the sum of the first 5 terms of the corresponding arithmetic sequence?",
+      "answer": "968",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 6
+    },
+    {
+      "problem": "There are 4 people in a group. How many ways can you choose a committee of 4 people?",
+      "answer": "1",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 6
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (11, 2), and C = (8, 6). Find its area.",
+      "answer": "25",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 6
+    },
+    {
+      "problem": "7 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 5 people receive their own card?",
+      "answer": "22",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 6
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 8, 5, 9, and 6, find the sum of the products of the opposite sides.",
+      "answer": "93",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.34084126353263855,
+      "h_bin": 2,
+      "d_bin": 4,
+      "seed": 12
+    },
+    {
+      "problem": "The quadratic equation x^2 + 2x + -8 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-17/4",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 6
+    },
+    {
+      "problem": "A club has 9 men and 4 women. A committee of 4 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "876",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 6
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 15 minutes, Route B every 9 minutes, Route C every 21 minutes, and Route D every 13 minutes. All four depart simultaneously at 6:00 AM. During the next 8 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "1",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 6
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 10 and b = 2. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "1.5278640450004204",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 6
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 5, 5, 3, and 4, find the sum of the products of the opposite sides.",
+      "answer": "35",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.12422859668731691,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 13
+    },
+    {
+      "problem": "A geometric sequence has first term 2 and common ratio 3. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 6. What is the sum of the first 5 terms of this arithmetic sequence?",
+      "answer": "3700",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 6
+    },
+    {
+      "problem": "The sum of the first 6 terms of a geometric sequence is 58824. The common ratio of the sequence is 7. What is the sum of the first 6 terms of the corresponding arithmetic sequence?",
+      "answer": "58824",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 7
+    },
+    {
+      "problem": "There are 8 people in a group. How many ways can you choose a committee of 3 people?",
+      "answer": "56",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 7
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (11, 1), and C = (9, 5). Find its area.",
+      "answer": "23",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 7
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 2, 10, 9, and 4, find the sum of the products of the opposite sides.",
+      "answer": "98",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.34084126353263855,
+      "h_bin": 2,
+      "d_bin": 4,
+      "seed": 14
+    },
+    {
+      "problem": "9 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 4 people receive their own card?",
+      "answer": "6883",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 7
+    },
+    {
+      "problem": "A club has 7 men and 5 women. A committee of 4 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "805",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 7
+    },
+    {
+      "problem": "The quadratic equation x^2 + 14x + 48 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-89/24",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 7
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 6 and b = 3. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.25735931288071523",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 7
+    },
+    {
+      "problem": "In a cyclic quadrilateral with sides of lengths 4, 1, 9, and 1, find the sum of the products of the opposite sides.",
+      "answer": "13",
+      "program_id": "cae57afb73e0",
+      "rq_score": 0.12422859668731691,
+      "h_bin": 0,
+      "d_bin": 4,
+      "seed": 15
+    },
+    {
+      "problem": "A geometric sequence has first term 4 and common ratio 2. Let S be the sum of the first 7 terms. An arithmetic sequence has first term S and common difference 6. What is the sum of the first 5 terms of this arithmetic sequence?",
+      "answer": "2600",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 7
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 10 minutes, Route B every 12 minutes, Route C every 21 minutes, and Route D every 7 minutes. All four depart simultaneously at 6:00 AM. During the next 8 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "0",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 7
+    },
+    {
+      "problem": "The sum of the first 6 terms of a geometric sequence is 23436. The common ratio of the sequence is 5. What is the sum of the first 6 terms of the corresponding arithmetic sequence?",
+      "answer": "23436",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 8
+    },
+    {
+      "problem": "There are 6 people in a group. How many ways can you choose a committee of 3 people?",
+      "answer": "20",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 8
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (5, 6), and C = (7, 4). Find its area.",
+      "answer": "11",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 8
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 4 people receive their own card?",
+      "answer": "771",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 8
+    },
+    {
+      "problem": "A club has 6 men and 6 women. A committee of 4 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "930",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 8
+    },
+    {
+      "problem": "The quadratic equation x^2 + 10x + 16 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-27/8",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 8
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 4 and b = 6. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.10102051443364424",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 8
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 8 minutes, Route B every 14 minutes, Route C every 21 minutes, and Route D every 11 minutes. All four depart simultaneously at 6:00 AM. During the next 8 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "2",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 8
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 3. Let S be the sum of the first 7 terms. An arithmetic sequence has first term S and common difference 9. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "19809",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 8
+    },
+    {
+      "problem": "The sum of the first 5 terms of a geometric sequence is 73810. The common ratio of the sequence is 9. What is the sum of the first 5 terms of the corresponding arithmetic sequence?",
+      "answer": "73810",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 9
+    },
+    {
+      "problem": "There are 10 people in a group. How many ways can you choose a committee of 10 people?",
+      "answer": "1",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 9
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (9, 10), and C = (6, 6). Find its area.",
+      "answer": "3",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 9
+    },
+    {
+      "problem": "10 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 7 people receive their own card?",
+      "answer": "286",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 9
+    },
+    {
+      "problem": "A club has 8 men and 8 women. A committee of 4 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "3360",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 9
+    },
+    {
+      "problem": "The quadratic equation x^2 + 9x + 18 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-7/2",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 9
+    },
+    {
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 9. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "11055",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 9
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 8 and b = 10. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.05572809000084078",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 9
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 12 minutes, Route B every 18 minutes, Route C every 20 minutes, and Route D every 13 minutes. All four depart simultaneously at 6:00 AM. During the next 8 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "2",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 9
+    },
+    {
+      "problem": "The sum of the first 6 terms of a geometric sequence is 441. The common ratio of the sequence is 2. What is the sum of the first 6 terms of the corresponding arithmetic sequence?",
+      "answer": "441",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 10
+    },
+    {
+      "problem": "There are 3 people in a group. How many ways can you choose a committee of 2 people?",
+      "answer": "3",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 10
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (11, 1), and C = (7, 9). Find its area.",
+      "answer": "46",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 10
+    },
+    {
+      "problem": "7 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 5 people receive their own card?",
+      "answer": "22",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 10
+    },
+    {
+      "problem": "A club has 9 men and 4 women. A committee of 4 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "876",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 10
+    },
+    {
+      "problem": "The quadratic equation x^2 + 1x + -56 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-225/56",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 10
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 15 minutes, Route B every 9 minutes, Route C every 21 minutes, and Route D every 17 minutes. All four depart simultaneously at 6:00 AM. During the next 12 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "2",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 10
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 10 and b = 1. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "2.3377223398316205",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 10
+    },
+    {
+      "problem": "A geometric sequence has first term 2 and common ratio 3. Let S be the sum of the first 7 terms. An arithmetic sequence has first term S and common difference 5. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "13191",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 10
+    },
+    {
+      "problem": "The sum of the first 6 terms of a geometric sequence is 597870. The common ratio of the sequence is 9. What is the sum of the first 6 terms of the corresponding arithmetic sequence?",
+      "answer": "597870",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 11
+    },
+    {
+      "problem": "There are 10 people in a group. How many ways can you choose a committee of 9 people?",
+      "answer": "10",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 11
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (10, 8), and C = (11, 4). Find its area.",
+      "answer": "24",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 11
+    },
+    {
+      "problem": "10 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 10 people receive their own card?",
+      "answer": "1",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 11
+    },
+    {
+      "problem": "A club has 8 men and 8 women. A committee of 4 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "3360",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 11
+    },
+    {
+      "problem": "The quadratic equation x^2 + 6x + 5 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-14/5",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 11
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 8 and b = 9. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.01471862576143046",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 11
+    },
+    {
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 7 terms. An arithmetic sequence has first term S and common difference 11. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "32955",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 11
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 12 minutes, Route B every 18 minutes, Route C every 30 minutes, and Route D every 17 minutes. All four depart simultaneously at 6:00 AM. During the next 10 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "3",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 11
+    },
+    {
+      "problem": "The sum of the first 5 terms of a geometric sequence is 36905. The common ratio of the sequence is 9. What is the sum of the first 5 terms of the corresponding arithmetic sequence?",
+      "answer": "36905",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 12
+    },
+    {
+      "problem": "There are 10 people in a group. How many ways can you choose a committee of 5 people?",
+      "answer": "252",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 12
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (12, 6), and C = (3, 8). Find its area.",
+      "answer": "39",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 12
+    },
+    {
+      "problem": "10 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 6 people receive their own card?",
+      "answer": "2176",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 12
+    },
+    {
+      "problem": "The quadratic equation x^2 + 11x + 24 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-85/24",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 12
+    },
+    {
+      "problem": "A club has 8 men and 6 women. A committee of 5 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "4260",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 12
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 8 and b = 5. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.17544467966324095",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 12
+    },
+    {
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 8 terms. An arithmetic sequence has first term S and common difference 16. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "98640",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 12
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 12 minutes, Route B every 14 minutes, Route C every 25 minutes, and Route D every 19 minutes. All four depart simultaneously at 6:00 AM. During the next 12 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "0",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 12
+    },
+    {
+      "problem": "The sum of the first 4 terms of a geometric sequence is 1295. The common ratio of the sequence is 6. What is the sum of the first 4 terms of the corresponding arithmetic sequence?",
+      "answer": "1295",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 13
+    },
+    {
+      "problem": "There are 7 people in a group. How many ways can you choose a committee of 3 people?",
+      "answer": "35",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 13
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (12, 4), and C = (11, 4). Find its area.",
+      "answer": "2",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 13
+    },
+    {
+      "problem": "9 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 6 people receive their own card?",
+      "answer": "205",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 13
+    },
+    {
+      "problem": "A club has 7 men and 6 women. A committee of 5 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "2940",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 13
+    },
+    {
+      "problem": "The quadratic equation x^2 + 3x + -18 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-25/6",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 13
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 5 and b = 5. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.0",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 13
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 10 minutes, Route B every 14 minutes, Route C every 25 minutes, and Route D every 11 minutes. All four depart simultaneously at 6:00 AM. During the next 12 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "2",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 13
+    },
+    {
+      "problem": "A geometric sequence has first term 4 and common ratio 3. Let S be the sum of the first 5 terms. An arithmetic sequence has first term S and common difference 12. What is the sum of the first 10 terms of this arithmetic sequence?",
+      "answer": "5380",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 13
+    },
+    {
+      "problem": "The sum of the first 4 terms of a geometric sequence is 400. The common ratio of the sequence is 3. What is the sum of the first 4 terms of the corresponding arithmetic sequence?",
+      "answer": "400",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 14
+    },
+    {
+      "problem": "There are 4 people in a group. How many ways can you choose a committee of 2 people?",
+      "answer": "6",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 14
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (3, 10), and C = (12, 10). Find its area.",
+      "answer": "45",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 14
+    },
+    {
+      "problem": "7 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 6 people receive their own card?",
+      "answer": "1",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 14
+    },
+    {
+      "problem": "The quadratic equation x^2 + 9x + 20 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-71/20",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 14
+    },
+    {
+      "problem": "A club has 5 men and 8 women. A committee of 5 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "3680",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 14
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 2 and b = 10. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "1.5278640450004204",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 14
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 6 minutes, Route B every 18 minutes, Route C every 25 minutes, and Route D every 19 minutes. All four depart simultaneously at 6:00 AM. During the next 8 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "1",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 14
+    },
+    {
+      "problem": "A geometric sequence has first term 2 and common ratio 2. Let S be the sum of the first 6 terms. An arithmetic sequence has first term S and common difference 13. What is the sum of the first 7 terms of this arithmetic sequence?",
+      "answer": "1155",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 14
+    },
+    {
+      "problem": "The sum of the first 3 terms of a geometric sequence is 31. The common ratio of the sequence is 5. What is the sum of the first 3 terms of the corresponding arithmetic sequence?",
+      "answer": "31",
+      "program_id": "e0753ada62fc",
+      "rq_score": 0.4239373877644539,
+      "h_bin": 6,
+      "d_bin": 2,
+      "seed": 15
+    },
+    {
+      "problem": "There are 6 people in a group. How many ways can you choose a committee of 1 people?",
+      "answer": "6",
+      "program_id": "185960f99289",
+      "rq_score": 0.3400201164186001,
+      "h_bin": 5,
+      "d_bin": 1,
+      "seed": 15
+    },
+    {
+      "problem": "Triangle ABC has A = (0, 0), B = (4, 4), and C = (1, 2). Find its area.",
+      "answer": "2",
+      "program_id": "3f8c2df19e82",
+      "rq_score": 0.6600867956876755,
+      "h_bin": 4,
+      "d_bin": 4,
+      "seed": 15
+    },
+    {
+      "problem": "8 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 2 people receive their own card?",
+      "answer": "10655",
+      "program_id": "14787cc4b98f",
+      "rq_score": 0.28375768661499023,
+      "h_bin": 2,
+      "d_bin": 1,
+      "seed": 15
+    },
+    {
+      "problem": "A club has 6 men and 4 women. A committee of 5 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "504",
+      "program_id": "e0795949625b",
+      "rq_score": 0.07629229289454383,
+      "h_bin": 1,
+      "d_bin": 1,
+      "seed": 15
+    },
+    {
+      "problem": "The quadratic equation x^2 + 4x + -5 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-24/5",
+      "program_id": "fe28060f2812",
+      "rq_score": 0.07340008020401001,
+      "h_bin": 1,
+      "d_bin": 3,
+      "seed": 15
+    },
+    {
+      "problem": "A geometric sequence has first term 3 and common ratio 2. Let S be the sum of the first 8 terms. An arithmetic sequence has first term S and common difference 6. What is the sum of the first 6 terms of this arithmetic sequence?",
+      "answer": "4680",
+      "program_id": "6937dcfa43ad",
+      "rq_score": 0.08666386811629585,
+      "h_bin": 0,
+      "d_bin": 2,
+      "seed": 15
+    },
+    {
+      "problem": "Let a and b be positive integers, with a = 4 and b = 1. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.5",
+      "program_id": "8cfe75084161",
+      "rq_score": 0.09173297882080078,
+      "h_bin": 0,
+      "d_bin": 5,
+      "seed": 15
+    },
+    {
+      "problem": "Four bus routes depart from the same station. Route A departs every 8 minutes, Route B every 9 minutes, Route C every 24 minutes, and Route D every 7 minutes. All four depart simultaneously at 6:00 AM. During the next 8 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "6",
+      "program_id": "5a3ecf7e2f38",
+      "rq_score": 0.1355548777005088,
+      "h_bin": 0,
+      "d_bin": 0,
+      "seed": 15
+    }
+  ]
+}

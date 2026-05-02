@@ -1,0 +1,852 @@
+{
+  "global_step": 0,
+  "timestamp": "2026-05-02T04:06:44.543230",
+  "metrics": {
+    "attempted": 41,
+    "inserted": 15,
+    "accept_rate": 0.36585365853658536,
+    "rounds": 8,
+    "grid_coverage": 0.26666666666666666,
+    "grid_mean_rq": 0.24943202775845175,
+    "grid_max_rq": 0.6600867956876755,
+    "grid_min_rq": 0.0,
+    "grid_champions": 16,
+    "diversity_axis": "concept_group",
+    "uncertainty_metric": "h_span_max",
+    "reservoir_candidates": 26,
+    "reservoir_cells": 12,
+    "reservoir_selections": 35,
+    "hard_champions": 7,
+    "total_niches": 60,
+    "total_insertions": 25,
+    "total_replacements": 5,
+    "total_reservoir_insertions": 29,
+    "total_duplicate_rejections": 2,
+    "champion_p_hat_mean": 0.36607142857142855,
+    "champion_p_hat_std": 0.21372695006403256,
+    "champion_h_mean": 1.607162536847506,
+    "champion_h_std": 1.1307357368765083,
+    "archive_frontier_champions": 14,
+    "archive_too_hard_champions": 2,
+    "archive_too_easy_champions": 0,
+    "archive_zero_rq_champions": 2,
+    "dataset_non_frontier_skipped_visits": 34,
+    "dataset_duplicate_signature_skipped_visits": 0,
+    "reeval_count": 6,
+    "reeval_evicted": 0,
+    "reeval_low_h_evicted": 0,
+    "reeval_exec_fail_evicted": 0,
+    "reeval_extreme_p_kept": 0,
+    "reeval_bin_shifted": 4,
+    "reeval_rq_delta_mean": 0.1667891865346188,
+    "reeval_rq_delta_min": 0.018737204604678682,
+    "reeval_rq_delta_max": 0.6500867956876755,
+    "reeval_targets": 6,
+    "reeval_n_champions": 6,
+    "reeval_mode": 2,
+    "dataset_size": 176,
+    "event_log_file": "/data1/yhoon113/evo-sample/rq_output/verl_ckpt/evolution_logs/events/events_evo_1_step_0.jsonl"
+  },
+  "grid": [
+    {
+      "h_bin": 0,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.11977071028489333,
+      "reservoir_program_ids": [
+        "26e5b3558435",
+        "bbffc04018e8",
+        "eebb4547f8a9",
+        "268446f87a29"
+      ],
+      "rq_score": 0.1355548777005088,
+      "p_hat": 0.375,
+      "h_score": 0.5783674781888376,
+      "generation": 0,
+      "program_id": "5a3ecf7e2f38",
+      "root_seed_id": "5a3ecf7e2f38",
+      "concept_type": "number_theory.gcd_lcm_sync",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.23070581257343292,
+        "h_span_max": 0.5783674781888376
+      },
+      "token_entropy": 0.23070581257343292,
+      "problem": "Four bus routes depart from the same station. Route A departs every 12 minutes, Route B every 16 minutes, Route C every 10 minutes, and Route D every 13 minutes. All four depart simultaneously at 6:00 AM. During the next 12 hours, excluding the initial 6:00 AM departure but including the endpoint, how many times do Routes A, B, and C depart together while Route D does not?",
+      "answer": "3",
+      "source_code": "import random\nimport math\n\nCONCEPT_TYPE = \"number_theory.gcd_lcm_sync\"\nCONCEPT_GROUP = \"number_theory\"\n\n\ndef lcm(x, y):\n    return x * y // math.gcd(x, y)\n\n\ndef lcm_list(nums):\n    out = 1\n    for n in nums:\n        out = lcm(out, n)\n    return out\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.choice([6, 8, 10, 12, 15])\n    b = rng.choice([9, 12, 14, 16, 18, 20])\n    c = rng.choice([10, 15, 20, 21, 24, 25, 30])\n    d = rng.choice([7, 11, 13, 17, 19])\n\n    hours = rng.choice([8, 10, 12])\n    total_minutes = hours * 60\n\n    lcm_abc = lcm_list([a, b, c])\n    lcm_abcd = lcm_list([a, b, c, d])\n\n    together_abc = total_minutes // lcm_abc\n    together_abcd = total_minutes // lcm_abcd\n\n    answer = together_abc - together_abcd\n\n    problem = (\n        f\"Four bus routes depart from the same station. Route A departs every \"\n        f\"{a} minutes, Route B every {b} minutes, Route C every {c} minutes, \"\n        f\"and Route D every {d} minutes. All four depart simultaneously at 6:00 AM. \"\n        f\"During the next {hours} hours, excluding the initial 6:00 AM departure \"\n        f\"but including the endpoint, how many times do Routes A, B, and C depart \"\n        f\"together while Route D does not?\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [
+        "36c0fffd923d"
+      ],
+      "rq_score": 0.08666386811629585,
+      "p_hat": 0.75,
+      "h_score": 0.46220729662024457,
+      "generation": 0,
+      "program_id": "6937dcfa43ad",
+      "root_seed_id": "6937dcfa43ad",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.1911153495311737,
+        "h_span_max": 0.46220729662024457
+      },
+      "token_entropy": 0.1911153495311737,
+      "problem": "A geometric sequence has first term 5 and common ratio 3. Let S be the sum of the first 4 terms. An arithmetic sequence has first term S and common difference 13. What is the sum of the first 9 terms of this arithmetic sequence?",
+      "answer": "2268",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.randint(2, 5)\n    r = rng.choice([2, 3])\n    n = rng.randint(4, 8)\n    geo_sum = a * (r ** n - 1) // (r - 1)\n    d = rng.randint(5, 20)\n    m = rng.randint(5, 10)\n    arith_sum = m * (2 * geo_sum + (m - 1) * d) // 2\n    answer = arith_sum\n    problem = (\n        f\"A geometric sequence has first term {a} and common ratio {r}. \"\n        f\"Let S be the sum of the first {n} terms. \"\n        f\"An arithmetic sequence has first term S and common difference {d}. \"\n        f\"What is the sum of the first {m} terms of this arithmetic sequence?\"\n    )\n\n    return problem, str(answer)\n"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 2,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [
+        "4c9e49ce29b4",
+        "d0a2b51c781a"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 0.2941363104458513,
+      "generation": 1,
+      "program_id": "55f328383ae1",
+      "root_seed_id": "",
+      "concept_type": "linear_algebra.linear_system_sum",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.17325352132320404,
+        "h_span_max": 0.2941363104458513
+      },
+      "token_entropy": 0.17325352132320404,
+      "problem": "Solve the following system of linear equations:\n4x + 4y + 1x + 3y + 5x + 4y + 4x + 3y = 49\n4x + 3y = 10",
+      "answer": "False",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"linear_algebra.linear_system_sum\"\nCONCEPT_GROUP = \"algebra\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    a = rng.randint(1, 5)\n    b = rng.randint(1, 5)\n    c = rng.randint(1, 5)\n    d = rng.randint(1, 5)\n    e = rng.randint(1, 5)\n    f = rng.randint(1, 5)\n    g = rng.randint(1, 5)\n    h = rng.randint(1, 5)\n\n    x = rng.randint(1, 5)\n    y = rng.randint(1, 5)\n\n    sum_eq = a * x + b * y + c * x + d * y + e * x + f * y + g * x + h * y\n    sum_eq = sum_eq // 2  # We'll double the coefficients later\n\n    problem = (\n        f\"Solve the following system of linear equations:\\n\"\n        f\"{a}x + {b}y + {c}x + {d}y + {e}x + {f}y + {g}x + {h}y = {sum_eq}\\n\"\n        f\"{x}x + {y}y = 10\"\n    )\n\n    answer = (sum_eq % 2 == 0)  # Whether the sum is even or odd\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.08159877407935358,
+      "reservoir_program_ids": [
+        "cd2d6a8225da",
+        "33873ae73271",
+        "cae57afb73e0",
+        "889157db49f0"
+      ],
+      "rq_score": 0.12422859668731691,
+      "p_hat": 0.625,
+      "h_score": 0.5300420125325521,
+      "generation": 5,
+      "program_id": "cae57afb73e0",
+      "root_seed_id": "",
+      "concept_type": "geometry.ptolemy_cyclic_quadrilateral",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.13573533296585083,
+        "h_span_max": 0.5300420125325521
+      },
+      "token_entropy": 0.13573533296585083,
+      "problem": "In a cyclic quadrilateral with sides of lengths 7, 7, 1, and 5, find the sum of the products of the opposite sides.",
+      "answer": "42",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.ptolemy_cyclic_quadrilateral\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a cyclic quadrilateral\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n    c = rng.randint(1, 10)\n    d = rng.randint(1, 10)\n\n    # Step 2: Calculate the product of the diagonals\n    diagonal_ac = (a * c) ** 0.5\n    diagonal_bd = (b * d) ** 0.5\n\n    # Step 3: Calculate the sum of the products of opposite sides\n    sum_products = a * d + b * c\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"In a cyclic quadrilateral with sides of lengths {a}, {b}, {c}, and {d}, \"\n        f\"find the sum of the products of the opposite sides.\"\n    )\n\n    return problem, str(sum_products)"
+    },
+    {
+      "h_bin": 0,
+      "div_bin": 5,
+      "has_champion": true,
+      "reservoir_count": 2,
+      "reservoir_best_rq": 0.028737204604678684,
+      "reservoir_program_ids": [
+        "af1358242025",
+        "862ee1345e99"
+      ],
+      "rq_score": 0.09173297882080078,
+      "p_hat": 0.25,
+      "h_score": 0.4892425537109375,
+      "generation": 2,
+      "program_id": "8cfe75084161",
+      "root_seed_id": "",
+      "concept_type": "inequality.am_gm_product",
+      "concept_group": "inequality",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.12164916098117828,
+        "h_span_max": 0.4892425537109375
+      },
+      "token_entropy": 0.12164916098117828,
+      "problem": "Let a and b be positive integers, with a = 7 and b = 7. Find the difference between the arithmetic mean and the geometric mean of a and b.",
+      "answer": "0.0",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"inequality.am_gm_product\"\nCONCEPT_GROUP = \"inequality\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick two positive integers a and b\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n\n    # Step 2: Compute the arithmetic mean and geometric mean\n    arithmetic_mean = (a + b) / 2\n    geometric_mean = (a * b) ** 0.5\n\n    # Step 3: Compute the difference between the arithmetic mean and geometric mean\n    answer = arithmetic_mean - geometric_mean\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Let a and b be positive integers, with a = {a} and b = {b}. \"\n        f\"Find the difference between the arithmetic mean and the geometric mean of a and b.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 4,
+      "reservoir_best_rq": 0.24021434783935547,
+      "reservoir_program_ids": [
+        "7e5b67a2e73f",
+        "eebb4547f8a9",
+        "12565c8946de",
+        "277bc8069e7d"
+      ],
+      "rq_score": 0.27698373794555664,
+      "p_hat": 0.5,
+      "h_score": 1.1079349517822266,
+      "generation": 2,
+      "program_id": "268446f87a29",
+      "root_seed_id": "",
+      "concept_type": "number_theory.kth_root_mod_prime",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.2825096547603607,
+        "h_span_max": 1.1079349517822266
+      },
+      "token_entropy": 0.2825096547603607,
+      "problem": "Modulo the prime p=97, g=5 is a primitive root. Let a be the least positive residue of g^54 modulo p, so a=89. How many residue classes x modulo 97 satisfy x^2 ≡ a (mod 97)?",
+      "answer": "2",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.kth_root_mod_prime\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p\n    primes = [29, 31, 41, 43, 73, 89, 97, 101, 109, 113, 127, 137, 149]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a primitive root g modulo p\n    g = _primitive_root(p)\n\n    # Step 3: Pick an exponent e in [1, p-2]\n    exponent = rng.randint(1, p - 2)\n\n    # Step 4: Compute a = g^e mod p\n    a = pow(g, exponent, p)\n\n    # Step 5: Pick a k in {2, 3, 4, 5, 6, 8, 10, 12}\n    k = rng.choice([2, 3, 4, 5, 6, 8, 10, 12])\n\n    # Step 6: Compute the number of solutions to x^k ≡ a (mod p)\n    divisor = math.gcd(k, p - 1)\n    answer = divisor if exponent % divisor == 0 else 0\n\n    # Step 7: Construct the problem statement\n    problem = (\n        f\"Modulo the prime p={p}, g={g} is a primitive root. \"\n        f\"Let a be the least positive residue of g^{exponent} modulo p, \"\n        f\"so a={a}. How many residue classes x modulo {p} satisfy \"\n        f\"x^{k} ≡ a (mod {p})?\"\n    )\n\n    return problem, str(answer)\n\ndef _primitive_root(p):\n    factors = _prime_factors(p - 1)\n    for g in range(2, p):\n        if all(pow(g, (p - 1) // q, p) != 1 for q in factors):\n            return g\n    return 2\n\ndef _prime_factors(n):\n    factors = set()\n    d = 2\n    while d * d <= n:\n        while n % d == 0:\n            factors.add(d)\n            n //= d\n        d += 1\n    if n > 1:\n        factors.add(n)\n    return factors"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "2bd0f6feba52"
+      ],
+      "rq_score": 0.07629229289454383,
+      "p_hat": 0.125,
+      "h_score": 0.6975295350358293,
+      "generation": 0,
+      "program_id": "e0795949625b",
+      "root_seed_id": "e0795949625b",
+      "concept_type": "combinatorics.committee_count",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.1562330275774002,
+        "h_span_max": 0.6975295350358293
+      },
+      "token_entropy": 0.1562330275774002,
+      "problem": "A club has 8 men and 7 women. A committee of 3 people is to be formed with at least 1 man and at least 1 woman. One member of the committee will be chosen as chair, and the chair must be a woman. How many ways can the committee and chair be chosen?",
+      "answer": "532",
+      "source_code": "import random\nimport math\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    n_men = rng.randint(5, 9)\n    n_women = rng.randint(4, 8)\n    committee = rng.randint(3, 5)\n\n    # Choose a female chair, then choose the remaining committee members.\n    # Since the chair is already a woman, we only need at least one man among\n    # the remaining committee-1 members.\n    remaining_slots = committee - 1\n\n    total_remaining = math.comb(n_men + n_women - 1, remaining_slots)\n    all_remaining_women = math.comb(n_women - 1, remaining_slots) if n_women - 1 >= remaining_slots else 0\n\n    answer = n_women * (total_remaining - all_remaining_women)\n\n    problem = (\n        f\"A club has {n_men} men and {n_women} women. A committee of \"\n        f\"{committee} people is to be formed with at least 1 man and at least \"\n        f\"1 woman. One member of the committee will be chosen as chair, and the \"\n        f\"chair must be a woman. How many ways can the committee and chair be chosen?\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "99233322b32e"
+      ],
+      "rq_score": 0.0,
+      "p_hat": 0.0,
+      "h_score": 0.903357187906901,
+      "generation": 2,
+      "program_id": "36c0fffd923d",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.18780159950256348,
+        "h_span_max": 0.903357187906901
+      },
+      "token_entropy": 0.18780159950256348,
+      "problem": "Given a geometric sequence with a common ratio of 8.599796663725433 and a first term of 7.821589626462722, the sum of the first 8 terms is 30789206.837288655. Convert this geometric sum to an arithmetic sum.",
+      "answer": "303.3670235960139",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a geometric sequence with common ratio r\n    r = rng.uniform(1, 10)\n    first_term = rng.uniform(1, 10)\n\n    # Step 2: Compute the sum of the first n terms\n    n = rng.randint(2, 10)\n    geometric_sum = first_term * (1 - r**n) / (1 - r)\n\n    # Step 3: Convert the geometric sum to an arithmetic sum\n    arithmetic_sum = (first_term + first_term + (n - 1) * r) * n / 2\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"Given a geometric sequence with a common ratio of {r} and a first term of {first_term}, \"\n        f\"the sum of the first {n} terms is {geometric_sum}. \"\n        f\"Convert this geometric sum to an arithmetic sum.\"\n    )\n\n    return problem, str(arithmetic_sum)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 3,
+      "has_champion": true,
+      "reservoir_count": 2,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "06c2d0ee3c83",
+        "64d688610382"
+      ],
+      "rq_score": 0.07340008020401001,
+      "p_hat": 0.125,
+      "h_score": 0.6710864475795201,
+      "generation": 0,
+      "program_id": "fe28060f2812",
+      "root_seed_id": "fe28060f2812",
+      "concept_type": "algebra.quadratic_vieta_reciprocal",
+      "concept_group": "algebra",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.15707355737686157,
+        "h_span_max": 0.6710864475795201
+      },
+      "token_entropy": 0.15707355737686157,
+      "problem": "The quadratic equation x^2 + -6x + -7 = 0 has two real roots r1 and r2. Let u = 2 + 1/r1 and v = 2 + 1/r2. Consider the monic quadratic equation whose roots are u and v. Find the coefficient of x in that new quadratic equation, as a fraction.",
+      "answer": "-22/7",
+      "source_code": "import random\nfrom fractions import Fraction\n\nCONCEPT_TYPE = \"algebra.quadratic_vieta_reciprocal\"\nCONCEPT_GROUP = \"algebra\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    r1 = rng.randint(-8, -1) if rng.random() < 0.5 else rng.randint(1, 8)\n    r2 = rng.randint(-8, -1) if rng.random() < 0.5 else rng.randint(1, 8)\n    while r2 == r1 or r1 * r2 == 0:\n        r2 = rng.randint(-8, -1) if rng.random() < 0.5 else rng.randint(1, 8)\n\n    s = r1 + r2\n    p = r1 * r2\n\n    b = -s\n    c = p\n\n    # New transformed roots:\n    # u = 2 + 1/r1, v = 2 + 1/r2\n    # The coefficient of x in the monic quadratic with roots u, v is -(u + v).\n    u_plus_v = Fraction(4, 1) + Fraction(s, p)\n    answer = -u_plus_v\n\n    problem = (\n        f\"The quadratic equation x^2 + {b}x + {c} = 0 has two real roots r1 and r2. \"\n        f\"Let u = 2 + 1/r1 and v = 2 + 1/r2. \"\n        f\"Consider the monic quadratic equation whose roots are u and v. \"\n        f\"Find the coefficient of x in that new quadratic equation, as a fraction.\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 3,
+      "reservoir_best_rq": 0.01,
+      "reservoir_program_ids": [
+        "670ee0e92d3e",
+        "178ba1830cfc",
+        "80dcd511d34e"
+      ]
+    },
+    {
+      "h_bin": 1,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.28375768661499023,
+      "p_hat": 0.25,
+      "h_score": 1.5133743286132812,
+      "generation": 1,
+      "program_id": "14787cc4b98f",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.derangement_fixed_points",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.012591566890478134,
+        "h_span_max": 1.5133743286132812
+      },
+      "token_entropy": 0.012591566890478134,
+      "problem": "10 people each write their name on a card. The cards are shuffled and redistributed. In how many redistributions do at least 8 people receive their own card?",
+      "answer": "46",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.derangement_fixed_points\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a number of people\n    n = rng.randint(7, 10)\n\n    # Step 2: Pick the number of fixed points (people who receive their own card)\n    k = rng.randint(2, n)\n\n    # Step 3: Compute the number of derangements with at least k fixed points\n    answer = sum(math.comb(n, j) * _derangement(n - j) for j in range(k, n + 1))\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"{n} people each write their name on a card. \"\n        f\"The cards are shuffled and redistributed. \"\n        f\"In how many redistributions do at least {k} people receive their own card?\"\n    )\n\n    return problem, str(answer)\n\ndef _derangement(n):\n    if n == 0:\n        return 1\n    if n == 1:\n        return 0\n    a, b = 1, 0\n    for k in range(2, n + 1):\n        a, b = b, (k - 1) * (a + b)\n    return b"
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.3197340667247772,
+      "reservoir_program_ids": [
+        "cd2d6a8225da"
+      ],
+      "rq_score": 0.34084126353263855,
+      "p_hat": 0.375,
+      "h_score": 1.4542560577392578,
+      "generation": 3,
+      "program_id": "cae57afb73e0",
+      "root_seed_id": "",
+      "concept_type": "geometry.ptolemy_cyclic_quadrilateral",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.8795161247253418,
+        "h_span_max": 1.4542560577392578
+      },
+      "token_entropy": 0.8795161247253418,
+      "problem": "In a cyclic quadrilateral with sides of lengths 7, 7, 1, and 5, find the sum of the products of the opposite sides.",
+      "answer": "42",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.ptolemy_cyclic_quadrilateral\"\nCONCEPT_GROUP = \"geometry\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a cyclic quadrilateral\n    a = rng.randint(1, 10)\n    b = rng.randint(1, 10)\n    c = rng.randint(1, 10)\n    d = rng.randint(1, 10)\n\n    # Step 2: Calculate the product of the diagonals\n    diagonal_ac = (a * c) ** 0.5\n    diagonal_bd = (b * d) ** 0.5\n\n    # Step 3: Calculate the sum of the products of opposite sides\n    sum_products = a * d + b * c\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"In a cyclic quadrilateral with sides of lengths {a}, {b}, {c}, and {d}, \"\n        f\"find the sum of the products of the opposite sides.\"\n    )\n\n    return problem, str(sum_products)"
+    },
+    {
+      "h_bin": 2,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 1,
+      "reservoir_best_rq": 0.43048739433288574,
+      "reservoir_program_ids": [
+        "963eb8214115"
+      ],
+      "rq_score": 0.51664799451828,
+      "p_hat": 0.375,
+      "h_score": 2.204364776611328,
+      "generation": 2,
+      "program_id": "268446f87a29",
+      "root_seed_id": "",
+      "concept_type": "number_theory.kth_root_mod_prime",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.03853277117013931,
+        "h_span_max": 2.204364776611328
+      },
+      "token_entropy": 0.03853277117013931,
+      "problem": "Modulo the prime p=97, g=5 is a primitive root. Let a be the least positive residue of g^54 modulo p, so a=89. How many residue classes x modulo 97 satisfy x^2 ≡ a (mod 97)?",
+      "answer": "2",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.kth_root_mod_prime\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p\n    primes = [29, 31, 41, 43, 73, 89, 97, 101, 109, 113, 127, 137, 149]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a primitive root g modulo p\n    g = _primitive_root(p)\n\n    # Step 3: Pick an exponent e in [1, p-2]\n    exponent = rng.randint(1, p - 2)\n\n    # Step 4: Compute a = g^e mod p\n    a = pow(g, exponent, p)\n\n    # Step 5: Pick a k in {2, 3, 4, 5, 6, 8, 10, 12}\n    k = rng.choice([2, 3, 4, 5, 6, 8, 10, 12])\n\n    # Step 6: Compute the number of solutions to x^k ≡ a (mod p)\n    divisor = math.gcd(k, p - 1)\n    answer = divisor if exponent % divisor == 0 else 0\n\n    # Step 7: Construct the problem statement\n    problem = (\n        f\"Modulo the prime p={p}, g={g} is a primitive root. \"\n        f\"Let a be the least positive residue of g^{exponent} modulo p, \"\n        f\"so a={a}. How many residue classes x modulo {p} satisfy \"\n        f\"x^{k} ≡ a (mod {p})?\"\n    )\n\n    return problem, str(answer)\n\ndef _primitive_root(p):\n    factors = _prime_factors(p - 1)\n    for g in range(2, p):\n        if all(pow(g, (p - 1) // q, p) != 1 for q in factors):\n            return g\n    return 2\n\ndef _prime_factors(n):\n    factors = set()\n    d = 2\n    while d * d <= n:\n        while n % d == 0:\n            factors.add(d)\n            n //= d\n        d += 1\n    if n > 1:\n        factors.add(n)\n    return factors"
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 3,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 0,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.560764767229557,
+      "p_hat": 0.75,
+      "h_score": 2.990745425224304,
+      "generation": 1,
+      "program_id": "268446f87a29",
+      "root_seed_id": "",
+      "concept_type": "number_theory.kth_root_mod_prime",
+      "concept_group": "number_theory",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.02386852167546749,
+        "h_span_max": 2.990745425224304
+      },
+      "token_entropy": 0.02386852167546749,
+      "problem": "Modulo the prime p=97, g=5 is a primitive root. Let a be the least positive residue of g^54 modulo p, so a=89. How many residue classes x modulo 97 satisfy x^2 ≡ a (mod 97)?",
+      "answer": "2",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"number_theory.kth_root_mod_prime\"\nCONCEPT_GROUP = \"number_theory\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a prime p\n    primes = [29, 31, 41, 43, 73, 89, 97, 101, 109, 113, 127, 137, 149]\n    p = rng.choice(primes)\n\n    # Step 2: Pick a primitive root g modulo p\n    g = _primitive_root(p)\n\n    # Step 3: Pick an exponent e in [1, p-2]\n    exponent = rng.randint(1, p - 2)\n\n    # Step 4: Compute a = g^e mod p\n    a = pow(g, exponent, p)\n\n    # Step 5: Pick a k in {2, 3, 4, 5, 6, 8, 10, 12}\n    k = rng.choice([2, 3, 4, 5, 6, 8, 10, 12])\n\n    # Step 6: Compute the number of solutions to x^k ≡ a (mod p)\n    divisor = math.gcd(k, p - 1)\n    answer = divisor if exponent % divisor == 0 else 0\n\n    # Step 7: Construct the problem statement\n    problem = (\n        f\"Modulo the prime p={p}, g={g} is a primitive root. \"\n        f\"Let a be the least positive residue of g^{exponent} modulo p, \"\n        f\"so a={a}. How many residue classes x modulo {p} satisfy \"\n        f\"x^{k} ≡ a (mod {p})?\"\n    )\n\n    return problem, str(answer)\n\ndef _primitive_root(p):\n    factors = _prime_factors(p - 1)\n    for g in range(2, p):\n        if all(pow(g, (p - 1) // q, p) != 1 for q in factors):\n            return g\n    return 2\n\ndef _prime_factors(n):\n    factors = set()\n    d = 2\n    while d * d <= n:\n        while n % d == 0:\n            factors.add(d)\n            n //= d\n        d += 1\n    if n > 1:\n        factors.add(n)\n    return factors"
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 4,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.6600867956876755,
+      "p_hat": 0.375,
+      "h_score": 2.8163703282674155,
+      "generation": 0,
+      "program_id": "3f8c2df19e82",
+      "root_seed_id": "3f8c2df19e82",
+      "concept_type": "geometry.trig_area",
+      "concept_group": "geometry",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.031046753749251366,
+        "h_span_max": 2.8163703282674155
+      },
+      "token_entropy": 0.031046753749251366,
+      "problem": "Triangle ABC has A = (0, 0), B = (10, 8), and C = (7, 6). Find its area.",
+      "answer": "2",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"geometry.trig_area\"\nCONCEPT_GROUP = \"geometry\"\n\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    while True:\n        x1 = rng.randint(2, 12)\n        y1 = rng.randint(1, 10)\n        x2 = rng.randint(1, 12)\n        y2 = rng.randint(2, 10)\n\n        twice_area = abs(x1 * y2 - x2 * y1)\n        if twice_area > 0 and twice_area % 2 == 0:\n            break\n\n    area = twice_area // 2\n\n    problem = (\n        f\"Triangle ABC has A = (0, 0), B = ({x1}, {y1}), \"\n        f\"and C = ({x2}, {y2}). Find its area.\"\n    )\n\n    return problem, str(area)"
+    },
+    {
+      "h_bin": 4,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 1,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.3400201164186001,
+      "p_hat": 0.125,
+      "h_score": 3.108755350112915,
+      "generation": 3,
+      "program_id": "185960f99289",
+      "root_seed_id": "",
+      "concept_type": "combinatorics.committee_count",
+      "concept_group": "combinatorics",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.30212166905403137,
+        "h_span_max": 3.108755350112915
+      },
+      "token_entropy": 0.30212166905403137,
+      "problem": "There are 9 people in a group. How many ways can you choose a committee of 7 people?",
+      "answer": "36",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"combinatorics.committee_count\"\nCONCEPT_GROUP = \"combinatorics\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a number of people in the committee\n    num_people = rng.randint(3, 10)\n\n    # Step 2: Pick a number of people to be in the committee\n    committee_size = rng.randint(1, num_people)\n\n    # Step 3: Compute the number of ways to choose the committee\n    answer = math.comb(num_people, committee_size)\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"There are {num_people} people in a group. \"\n        f\"How many ways can you choose a committee of {committee_size} people?\"\n    )\n\n    return problem, str(answer)"
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 5,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 2,
+      "has_champion": true,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": [],
+      "rq_score": 0.4239373877644539,
+      "p_hat": 0.125,
+      "h_score": 3.8759989738464355,
+      "generation": 2,
+      "program_id": "e0753ada62fc",
+      "root_seed_id": "",
+      "concept_type": "sequence.geometric_to_arithmetic_sum",
+      "concept_group": "sequence",
+      "uncertainty_metric": "h_span_max",
+      "uncertainty_scores": {
+        "h": 0.2850378751754761,
+        "h_span_max": 3.8759989738464355
+      },
+      "token_entropy": 0.2850378751754761,
+      "problem": "The sum of the first 3 terms of a geometric sequence is 511. The common ratio of the sequence is 8. What is the sum of the first 3 terms of the corresponding arithmetic sequence?",
+      "answer": "511",
+      "source_code": "import random\n\nCONCEPT_TYPE = \"sequence.geometric_to_arithmetic_sum\"\nCONCEPT_GROUP = \"sequence\"\n\ndef generate(seed):\n    rng = random.Random(seed)\n\n    # Step 1: Pick a geometric sequence with a common ratio r\n    r = rng.randint(2, 10)\n    a = rng.randint(1, 10)  # First term of the geometric sequence\n\n    # Step 2: Calculate the sum of the first n terms of the geometric sequence\n    n = rng.randint(3, 6)  # Number of terms in the geometric sequence\n    geometric_sum = a * (r**n - 1) // (r - 1)  # Sum of the geometric sequence\n\n    # Step 3: Convert the geometric sum to an arithmetic sum\n    # The arithmetic sum is the same as the geometric sum in this case\n    arithmetic_sum = geometric_sum\n\n    # Step 4: Construct the problem statement\n    problem = (\n        f\"The sum of the first {n} terms of a geometric sequence is {geometric_sum}. \"\n        f\"The common ratio of the sequence is {r}. \"\n        f\"What is the sum of the first {n} terms of the corresponding arithmetic sequence?\"\n    )\n\n    return problem, str(arithmetic_sum)"
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 6,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 7,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 8,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 0,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 1,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 2,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 3,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 4,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    },
+    {
+      "h_bin": 9,
+      "div_bin": 5,
+      "has_champion": false,
+      "reservoir_count": 0,
+      "reservoir_best_rq": 0.0,
+      "reservoir_program_ids": []
+    }
+  ],
+  "diversity_axis": "concept_group",
+  "uncertainty_metric": "h_span_max",
+  "seed_labels": {
+    "0": "number_theory",
+    "1": "combinatorics",
+    "2": "sequence",
+    "3": "algebra",
+    "4": "geometry",
+    "5": "inequality"
+  }
+}
