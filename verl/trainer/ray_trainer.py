@@ -491,6 +491,11 @@ class RayPPOTrainer:
             if self.config.trainer.val_only:
                 return
 
+        if hasattr(self, "_pre_train_hook"):
+            pre_train_metrics = self._pre_train_hook()
+            if pre_train_metrics:
+                self.logger.log(data=pre_train_metrics, step=self.global_step)
+
         for epoch_idx in tqdm(range(self.config.trainer.total_epochs), desc="Epoch", position=0):
             # Stop BEFORE the epoch hook fires. Without this guard, max_steps
             # is honored inside the inner loop but the _pre_epoch_hook would

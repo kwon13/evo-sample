@@ -503,6 +503,18 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         return evo_metrics
 
+    def _pre_train_hook(self) -> dict | None:
+        """Optionally run math benchmark eval before any epoch/evolution."""
+        cfg = getattr(self.config, "math_eval", None)
+        if cfg is None or not getattr(cfg, "enabled", False):
+            return None
+        if not getattr(cfg, "before_train", False):
+            return None
+        if not self.math_eval_dataloaders:
+            logger.warning("[MathEval] before_train requested but no benchmark dataloaders are available")
+            return None
+        return self._validate_math_benchmarks(epoch_idx=-1, phase="before_train")
+
     def _post_epoch_hook(self, epoch_idx: int) -> dict | None:
         """Run external math benchmark eval after an epoch of Solver updates."""
         cfg = getattr(self.config, "math_eval", None)
@@ -517,15 +529,17 @@ class RQEvolveTrainer(RayPPOTrainer):
         epoch_no = epoch_idx + 1
         if epoch_no % every != 0:
             return None
-        return self._validate_math_benchmarks(epoch_idx)
+        return self._validate_math_benchmarks(epoch_idx, phase="epoch")
 
-    def _validate_math_benchmarks(self, epoch_idx: int) -> dict:
+    def _validate_math_benchmarks(self, epoch_idx: int, phase: str = "epoch") -> dict:
         """Evaluate current policy on configured math benchmarks via veRL/vLLM."""
         cfg = self.config.math_eval
+        epoch_no = epoch_idx + 1 if epoch_idx >= 0 else 0
         metrics: dict[str, float] = {}
         details_payload = {
             "epoch": epoch_idx,
-            "epoch_no": epoch_idx + 1,
+            "epoch_no": epoch_no,
+            "phase": phase,
             "global_step": int(getattr(self, "global_step", 0) or 0),
             "benchmarks": {},
         }
@@ -534,8 +548,9 @@ class RQEvolveTrainer(RayPPOTrainer):
         competition = {"amc23", "aime24", "aime25", "olympiadbench"}
 
         logger.info(
-            "[MathEval] epoch=%s step=%s benchmarks=%s",
-            epoch_idx + 1,
+            "[MathEval] phase=%s epoch=%s step=%s benchmarks=%s",
+            phase,
+            epoch_no,
             getattr(self, "global_step", "?"),
             ",".join(sorted(self.math_eval_dataloaders)),
         )
@@ -631,10 +646,11 @@ class RQEvolveTrainer(RayPPOTrainer):
         metrics["math_eval/avg_competition"] = (
             float(np.mean(competition_accs)) if competition_accs else 0.0
         )
+        metrics["math_eval/before_train"] = 1.0 if phase == "before_train" else 0.0
         if getattr(cfg, "output_details", True):
             path = save_math_eval_details(
                 self.config.trainer.default_local_dir,
-                epoch=epoch_idx + 1,
+                epoch=epoch_no,
                 global_step=int(getattr(self, "global_step", 0) or 0),
                 payload=details_payload,
             )

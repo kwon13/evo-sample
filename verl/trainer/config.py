@@ -167,6 +167,7 @@ class RQConfig:
 @dataclass
 class MathEvalConfig:
     enabled: bool = False
+    before_train: bool = False
     every_n_epochs: int = 1
     max_tokens: int = 4096
     temperature: float = 0.0

@@ -75,6 +75,7 @@ trainer:
 
 math_eval:
   enabled: true
+  before_train: true
   every_n_epochs: 1
   max_tokens: 4096
   temperature: 0.0
