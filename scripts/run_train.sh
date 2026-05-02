@@ -12,6 +12,6 @@ export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-python run_verl.py --config configs/rq_config_grpo.yaml
+# python run_verl.py --config configs/rq_config_grpo.yaml
 # 또는
-# python run_verl.py --config configs/rq_config_reinforce.yaml
+python run_verl.py --config configs/rq_config_grpo_h.yaml

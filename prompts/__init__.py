@@ -8,6 +8,10 @@ from .mutation import (
     build_score_feedback,
     build_few_shot_examples,
     build_execution_feedback,
+    MUTATION_STOP,
+    parent_concept_fields,
+    choose_prefill_concept,
+    build_mutation_prefill,
 )
 
 from .solver import (

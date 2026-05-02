@@ -55,6 +55,7 @@ from .concepts import validate_concept_decl
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
     build_score_feedback, build_few_shot_examples, build_execution_feedback,
+    parent_concept_fields, choose_prefill_concept, build_mutation_prefill,
     SOLVER_SYSTEM_PROMPT,
 )
 
@@ -1370,7 +1371,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         few_shot = build_few_shot_examples(self.map_elites, top_k=3)
 
-        mutation_prompts = []  # (prompt_text, op, parent, parent_b)
+        mutation_prompts = []  # (prompt_text, op, parent, parent_b, recovery_prefix)
         for _ in range(batch_size):
             roll = random.random()
             if roll < self.crossover_ratio:
@@ -1396,7 +1397,11 @@ class RQEvolveTrainer(RayPPOTrainer):
                         h_b=getattr(pb, "h_score", 1.0),
                         few_shot=few_shot,
                     )
-                    mutation_prompts.append((prompt_text, op, pa, pb))
+                    chosen_t, chosen_g = choose_prefill_concept(op, pa, pb)
+                    suffix, recovery = build_mutation_prefill(chosen_t, chosen_g)
+                    mutation_prompts.append(
+                        (prompt_text + suffix, op, pa, pb, recovery)
+                    )
                     continue
 
             parent = self.map_elites.sample_parent() if op != "crossover" else pa
@@ -1405,14 +1410,22 @@ class RQEvolveTrainer(RayPPOTrainer):
 
             score_fb = build_score_feedback(parent)
             exec_fb = build_execution_feedback(parent)
+            ctype, cgroup, suggested = parent_concept_fields(parent)
             tmpl = MUTATE_DEPTH if op == "in_depth" else MUTATE_BREADTH
             prompt_text = tmpl.format(
                 code=parent.source_code,
                 score_feedback=score_fb,
                 exec_feedback=exec_fb,
                 few_shot=few_shot,
+                parent_concept_type=ctype,
+                parent_concept_group=cgroup,
+                suggested_groups=suggested,
             )
-            mutation_prompts.append((prompt_text, op, parent, None))
+            chosen_t, chosen_g = choose_prefill_concept(op, parent)
+            suffix, recovery = build_mutation_prefill(chosen_t, chosen_g)
+            mutation_prompts.append(
+                (prompt_text + suffix, op, parent, None, recovery)
+            )
 
         if not mutation_prompts:
             self._record_evolution_event({
@@ -1424,7 +1437,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         mut_batch = _make_gen_batch(
             tokenizer=self.tokenizer,
-            prompts_text=[pt for pt, _, _, _ in mutation_prompts],
+            prompts_text=[pt for pt, _, _, _, _ in mutation_prompts],
             answers=[""] * len(mutation_prompts),
             temperature=temperature,
             eos_token_id=eos_id, pad_token_id=pad_id,
@@ -1455,11 +1468,11 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         # Decode + execute (CPU)
         children = []  # (child, inst, op, mutation_output, source_code)
-        for i, (_, op, parent, parent_b) in enumerate(mutation_prompts):
+        for i, (_, op, parent, parent_b, recovery) in enumerate(mutation_prompts):
             code_text = self.tokenizer.decode(
                 resp_ids[i].tolist(), skip_special_tokens=True
             )
-            source_code = _extract_code(code_text)
+            source_code = _extract_code(recovery + code_text)
             if not source_code:
                 self._record_evolution_event({
                     "event": "candidate_failed",

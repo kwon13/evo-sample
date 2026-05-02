@@ -82,8 +82,8 @@ trainer:
   total_epochs: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo       # 실험 이름 구분
-  default_local_dir: ./rq_output/verl_ckpt_grpo
+  experiment_name: qwen3_4b_base_grpo__h_span_max
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_span_max
   logger:
     - console
     - wandb

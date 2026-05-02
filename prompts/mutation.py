@@ -309,3 +309,102 @@ def build_execution_feedback(parent: ProblemProgram) -> str:
     lines.append(f"# solver entropy  : {h_score:.2f}")
     lines.append("# === END PARENT TRACE ===")
     return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# Mutation prefill helpers (shared between feasibility and trainer)
+# ---------------------------------------------------------------------------
+
+# Stop tokens applied to every mutation generate() call. Keeps the model from
+# wandering into prose / unrelated code after the function body closes.
+MUTATION_STOP = ["\n```\n\n", "\n```\n#", "\n# end_of_code", "\n# === END"]
+
+
+def parent_concept_fields(parent: ProblemProgram) -> tuple[str, str, str]:
+    """Return (concept_type, concept_group, suggested_other_groups) for
+    prompt interpolation. Falls back to 'unknown' when parent metadata
+    is missing — concept rescue at extraction time handles those cases."""
+    from rq_questioner.concepts import CONCEPT_GROUPS
+    ctype = (
+        parent.declared_concept_type()
+        or (parent.metadata or {}).get("concept_type")
+        or "unknown"
+    )
+    cgroup = (
+        parent.declared_concept_group()
+        or (parent.metadata or {}).get("concept_group")
+        or "unknown"
+    )
+    others = [g for g in CONCEPT_GROUPS if g != cgroup]
+    suggested = ", ".join(others[:3]) if others else "any other group"
+    return ctype, cgroup, suggested
+
+
+def choose_prefill_concept(
+    op: str,
+    parent: ProblemProgram,
+    parent_b: ProblemProgram | None = None,
+    rng=None,
+) -> tuple[str, str]:
+    """Pick a (concept_type, concept_group) pair for prefill injection.
+
+    in_depth   : parent's exact concept (preserve constraint).
+    in_breadth : random whitelisted type whose group differs from parent.
+    crossover  : random whitelisted type from the union of A's and B's groups.
+    """
+    import random as _random
+    from rq_questioner.concepts import CONCEPT_TYPES, CONCEPT_TYPE_TO_GROUP
+    rng = rng or _random.Random()
+    p_ctype = (
+        parent.declared_concept_type()
+        or (parent.metadata or {}).get("concept_type")
+    )
+    p_cgroup = (
+        parent.declared_concept_group()
+        or (parent.metadata or {}).get("concept_group")
+    )
+
+    def _pair(t: str) -> tuple[str, str]:
+        return t, CONCEPT_TYPE_TO_GROUP[t]
+
+    if op == "in_depth":
+        if p_ctype in CONCEPT_TYPES:
+            return _pair(p_ctype)
+        return _pair(CONCEPT_TYPES[0])
+    if op == "in_breadth":
+        candidates = [
+            t for t in CONCEPT_TYPES
+            if CONCEPT_TYPE_TO_GROUP.get(t) != p_cgroup
+        ]
+        return _pair(rng.choice(candidates) if candidates else CONCEPT_TYPES[0])
+    # crossover
+    pb_cgroup = (
+        parent_b.declared_concept_group() or (parent_b.metadata or {}).get("concept_group")
+        if parent_b is not None else None
+    )
+    span = {g for g in (p_cgroup, pb_cgroup) if g}
+    candidates = [
+        t for t in CONCEPT_TYPES
+        if CONCEPT_TYPE_TO_GROUP.get(t) in span
+    ] or list(CONCEPT_TYPES)
+    return _pair(rng.choice(candidates))
+
+
+def build_mutation_prefill(ctype: str, cgroup: str) -> tuple[str, str]:
+    """Return (suffix_appended_to_prompt, prefix_for_extract_recovery).
+
+    The suffix opens a Python code fence, declares the chosen
+    CONCEPT_TYPE / CONCEPT_GROUP constants, and starts the
+    `def generate(seed):` header so the model only needs to write the
+    function body. The recovery prefix (suffix minus the fence) is
+    prepended to the model's output before code extraction so a full,
+    parseable program is reconstructed.
+    """
+    body = (
+        "import random\n\n"
+        f"CONCEPT_TYPE = \"{ctype}\"\n"
+        f"CONCEPT_GROUP = \"{cgroup}\"\n\n"
+        "def generate(seed):\n"
+    )
+    suffix = "\n```python\n" + body
+    return suffix, body
