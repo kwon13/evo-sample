@@ -165,6 +165,35 @@ class RQConfig:
     skip_initial_evolution_on_resume: bool = True
 
 @dataclass
+class MathEvalConfig:
+    enabled: bool = False
+    every_n_epochs: int = 1
+    max_tokens: int = 4096
+    temperature: float = 0.0
+    top_p: float = 1.0
+    batch_size: int = 128
+    sample_seed: int = 42
+    output_details: bool = True
+    max_logged_failures: int = 20
+    # Per-epoch eval can be expensive; use -1 for full benchmark.
+    fast_samples: dict = field(default_factory=lambda: {
+        "math500": 100,
+        "amc23": -1,
+        "aime24": -1,
+        "aime25": -1,
+        "minerva_math": 100,
+        "olympiadbench": 100,
+    })
+    benchmarks: list = field(default_factory=lambda: [
+        {"name": "math500", "hf_id": "test-time-compute/test_MATH", "split": "test"},
+        {"name": "amc23", "hf_id": "test-time-compute/test_amc23", "split": "test"},
+        {"name": "aime24", "hf_id": "test-time-compute/test_aime24", "split": "test"},
+        {"name": "aime25", "hf_id": "test-time-compute/aime_2025", "split": "test"},
+        {"name": "minerva_math", "hf_id": "test-time-compute/test_minerva_math", "split": "test"},
+        {"name": "olympiadbench", "hf_id": "test-time-compute/test_olympiadbench", "split": "test"},
+    ])
+
+@dataclass
 class PPOConfig:
     data: DataConfig = field(default_factory=DataConfig)
     worker: WorkerConfig = field(default_factory=WorkerConfig)
@@ -172,6 +201,7 @@ class PPOConfig:
     trainer: TrainerConfig = field(default_factory=TrainerConfig)
     ablation: AblationConfig = field(default_factory=AblationConfig)
     rq: RQConfig = field(default_factory=RQConfig)
+    math_eval: MathEvalConfig = field(default_factory=MathEvalConfig)
 
     def post_init(self):
         self.worker.rollout.prompt_length = self.data.max_prompt_length

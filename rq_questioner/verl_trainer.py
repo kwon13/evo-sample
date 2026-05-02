@@ -15,7 +15,7 @@ Method-aligned epoch flow (method.tex §coevolution):
        c. _refresh_dataset(): H-priority + D-uniform + strict anti-reuse로
           epoch dataset 재조립 → dataloader rebuild
     1. Solver epoch: refresh된 dataset으로 rollout → reward → REINFORCE++
-    2. val_freq 주기로 validation (수학 능력 추적)
+    2. epoch 종료 시 math_eval 벤치마크 평가 (설정된 주기)
 
   step-based _pre_actor_update_hook trigger는 제거됨.
 """
@@ -51,6 +51,7 @@ from .code_utils import (
     lint_problem_instance,
 )
 from .concepts import validate_concept_decl
+from evaluation.math_benchmarks import grade_math_response, save_math_eval_details
 
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
@@ -319,11 +320,11 @@ class RQEvolveTrainer(RayPPOTrainer):
              b. Mutation rounds × max_rounds (probe → H prefilter → expand G-1)
              c. _refresh_dataset() → dataloader rebuild
         2. 이 epoch 의 batch 들을 순회 → Solver rollout → REINFORCE++ update
-        3. val_freq 마다 validation
+        3. epoch 종료 시 math_eval 벤치마크 평가
 
     로깅:
       - evo/* : grid 상태, champion 분포, accept rate, reeval stats (Tracker 경유)
-      - val/*  : solver accuracy on val set (Tracker 경유)
+      - math_eval/* : external benchmark pass@1 and extraction stats
       - evolution_logs/*.json : grid 스냅샷 (파일)
     """
 
@@ -359,6 +360,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         # --- Epoch-start evolution hook ---
         evolve_before_train: bool = True,
         skip_initial_evolution_on_resume: bool = True,
+        math_eval_dataloaders: dict | None = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -400,6 +402,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         self._evolution_event_seq = 0
         self._current_event_path: str | None = None
         self._latest_event_path: str | None = None
+        self.math_eval_dataloaders = math_eval_dataloaders or {}
 
     # ------------------------------------------------------------------
     # Hook: called per mini-batch update
@@ -409,7 +412,7 @@ class RQEvolveTrainer(RayPPOTrainer):
     # DP-safe worker invocation — pads odd batches to world_size then unpads.
     # evolution/reeval produce arbitrary batch sizes (n_children, retained_indices,
     # extra_n × retained) that may be odd under 2-GPU DP, tripping
-    # DataProto.chunk(world_size) assertions. Mirrors ray_trainer._validate().
+    # DataProto.chunk(world_size) assertions. Same padding logic is used by math_eval.
     # ------------------------------------------------------------------
 
     def _generate_sequences_dp_safe(self, batch: DataProto) -> DataProto:
@@ -499,6 +502,145 @@ class RQEvolveTrainer(RayPPOTrainer):
         )
 
         return evo_metrics
+
+    def _post_epoch_hook(self, epoch_idx: int) -> dict | None:
+        """Run external math benchmark eval after an epoch of Solver updates."""
+        cfg = getattr(self.config, "math_eval", None)
+        if cfg is None or not getattr(cfg, "enabled", False):
+            return None
+        if not self.math_eval_dataloaders:
+            logger.warning("[MathEval] enabled but no benchmark dataloaders are available")
+            return None
+        every = int(getattr(cfg, "every_n_epochs", 1) or 1)
+        if every <= 0:
+            return None
+        epoch_no = epoch_idx + 1
+        if epoch_no % every != 0:
+            return None
+        return self._validate_math_benchmarks(epoch_idx)
+
+    def _validate_math_benchmarks(self, epoch_idx: int) -> dict:
+        """Evaluate current policy on configured math benchmarks via veRL/vLLM."""
+        cfg = self.config.math_eval
+        metrics: dict[str, float] = {}
+        details_payload = {
+            "epoch": epoch_idx,
+            "epoch_no": epoch_idx + 1,
+            "global_step": int(getattr(self, "global_step", 0) or 0),
+            "benchmarks": {},
+        }
+        accuracies: list[float] = []
+        competition_accs: list[float] = []
+        competition = {"amc23", "aime24", "aime25", "olympiadbench"}
+
+        logger.info(
+            "[MathEval] epoch=%s step=%s benchmarks=%s",
+            epoch_idx + 1,
+            getattr(self, "global_step", "?"),
+            ",".join(sorted(self.math_eval_dataloaders)),
+        )
+
+        for name, dataloader in self.math_eval_dataloaders.items():
+            total = correct = extracted = boxed = 0
+            failures = []
+            for batch_dict in dataloader:
+                test_batch = DataProto.from_single_dict(batch_dict)
+                if "multi_modal_data" in test_batch.non_tensor_batch.keys():
+                    gen_batch = test_batch.pop(
+                        batch_keys=["input_ids", "attention_mask", "position_ids"],
+                        non_tensor_batch_keys=["raw_prompt_ids", "multi_modal_data"],
+                    )
+                else:
+                    gen_batch = test_batch.pop(
+                        batch_keys=["input_ids", "attention_mask", "position_ids"],
+                        non_tensor_batch_keys=["raw_prompt_ids"],
+                    )
+
+                gen_batch.meta_info = {}
+                gen_batch.meta_info.update({
+                    "n": 1,
+                    "temperature": float(getattr(cfg, "temperature", 0.0)),
+                    "top_p": float(getattr(cfg, "top_p", 1.0)),
+                    "max_tokens": int(getattr(cfg, "max_tokens", self.config.data.max_response_length)),
+                    "min_pixels": self.config.data.min_pixels,
+                    "max_pixels": self.config.data.max_pixels,
+                })
+                gen_batch, pad_size = pad_dataproto_to_divisor(
+                    gen_batch, self.actor_rollout_wg.world_size
+                )
+                out_batch = self.actor_rollout_wg.generate_sequences(gen_batch)
+                out_batch = unpad_dataproto(out_batch, pad_size=pad_size)
+
+                response_ids = out_batch.batch["responses"]
+                response_mask = out_batch.batch["response_mask"].bool()
+                ground_truths = test_batch.non_tensor_batch["ground_truth"].tolist()
+                problems = test_batch.non_tensor_batch.get("problem", np.array([""] * len(ground_truths), dtype=object)).tolist()
+                indices = test_batch.non_tensor_batch.get("problem_index", np.arange(len(ground_truths))).tolist()
+
+                for i, gt in enumerate(ground_truths):
+                    valid_ids = response_ids[i][response_mask[i]]
+                    response = self.tokenizer.decode(valid_ids, skip_special_tokens=True)
+                    grade = grade_math_response(response, str(gt))
+                    total += 1
+                    correct += int(bool(grade["correct"]))
+                    extracted += int(bool(grade["extracted"]))
+                    boxed += int(bool(grade["boxed"]))
+                    if (
+                        not grade["correct"]
+                        and len(failures) < int(getattr(cfg, "max_logged_failures", 20))
+                    ):
+                        failures.append({
+                            "index": int(indices[i]) if str(indices[i]).isdigit() else str(indices[i]),
+                            "problem": str(problems[i])[:1200],
+                            "ground_truth": str(gt),
+                            "prediction": grade["pred"],
+                            "extract_method": grade["extract_method"],
+                            "response": response[:2000],
+                        })
+
+            acc = correct / total if total else 0.0
+            extract_rate = extracted / total if total else 0.0
+            boxed_rate = boxed / total if total else 0.0
+            accuracies.append(acc)
+            if name in competition:
+                competition_accs.append(acc)
+            metrics[f"math_eval/{name}/pass1"] = acc
+            metrics[f"math_eval/{name}/extract_rate"] = extract_rate
+            metrics[f"math_eval/{name}/boxed_rate"] = boxed_rate
+            metrics[f"math_eval/{name}/total"] = float(total)
+            metrics[f"math_eval/{name}/correct"] = float(correct)
+            details_payload["benchmarks"][name] = {
+                "accuracy": acc,
+                "correct": correct,
+                "total": total,
+                "extract_rate": extract_rate,
+                "boxed_rate": boxed_rate,
+                "failures": failures,
+            }
+            logger.info(
+                "[MathEval] %-15s pass@1=%6.2f%% (%d/%d), extract=%5.1f%% boxed=%5.1f%%",
+                name,
+                100.0 * acc,
+                correct,
+                total,
+                100.0 * extract_rate,
+                100.0 * boxed_rate,
+            )
+
+        metrics["math_eval/avg_all"] = float(np.mean(accuracies)) if accuracies else 0.0
+        metrics["math_eval/avg_competition"] = (
+            float(np.mean(competition_accs)) if competition_accs else 0.0
+        )
+        if getattr(cfg, "output_details", True):
+            path = save_math_eval_details(
+                self.config.trainer.default_local_dir,
+                epoch=epoch_idx + 1,
+                global_step=int(getattr(self, "global_step", 0) or 0),
+                payload=details_payload,
+            )
+            metrics["math_eval/details_written"] = 1.0
+            logger.info("[MathEval] details saved: %s", path)
+        return metrics
 
     # ------------------------------------------------------------------
     # Evolution step (driver-side, CPU)

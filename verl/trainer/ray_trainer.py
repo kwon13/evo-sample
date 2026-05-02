@@ -181,11 +181,11 @@ class RayPPOTrainer:
         tokenizer: PreTrainedTokenizer,
         processor: Optional[ProcessorMixin],
         train_dataloader: StatefulDataLoader,
-        val_dataloader: StatefulDataLoader,
         role_worker_mapping: dict[Role, Type[Worker]],
         resource_pool_manager: ResourcePoolManager,
         ray_worker_group_cls: Type[RayWorkerGroup] = RayWorkerGroup,
         reward_fn: Optional[FunctionRewardManager] = None,
+        val_dataloader: Optional[StatefulDataLoader] = None,
         val_reward_fn: Optional[FunctionRewardManager] = None,
     ):
         self.tokenizer = tokenizer
@@ -281,6 +281,9 @@ class RayPPOTrainer:
         self.logger.log_generation(samples, self.global_step)
 
     def _validate(self) -> Dict[str, Any]:
+        if self.val_dataloader is None or self.val_reward_fn is None:
+            return {}
+
         reward_tensor_lst = []
         # Lists to collect samples for the table
         sample_inputs, sample_outputs, sample_labels, sample_scores = [], [], [], []
@@ -675,8 +678,18 @@ class RayPPOTrainer:
                         f"reward_score={val_score:.4f}"
                     )
 
-        # perform validation after training
-        if self.val_reward_fn is not None:
+            if hasattr(self, "_post_epoch_hook") and self.global_step > epoch_start_step:
+                post_epoch_metrics = self._post_epoch_hook(epoch_idx)
+                if post_epoch_metrics:
+                    self.logger.log(data=post_epoch_metrics, step=self.global_step)
+
+        val_enabled = (
+            self.config.trainer.val_before_train
+            or self.config.trainer.val_freq > 0
+            or self.config.trainer.val_every_epoch
+            or self.config.trainer.val_only
+        )
+        if self.val_reward_fn is not None and val_enabled:
             if val_metrics is None or last_val_step != self.global_step:
                 val_metrics = self._validate()
                 self.logger.log(data=val_metrics, step=self.global_step)

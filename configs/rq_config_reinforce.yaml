@@ -1,10 +1,8 @@
 data:
   train_files: ""
-  val_files: ./data/math500_val.parquet
   max_prompt_length: 4096
   max_response_length: 4096
   rollout_batch_size: 32
-  val_batch_size: 500
   shuffle: true
 
 algorithm:
@@ -74,10 +72,43 @@ trainer:
   save_freq: 128      # step 128, 256 저장 → 중간 1회 + final 1회
   save_final_checkpoint: false  # save_freq 배수가 아닌 조기 종료 시 final save 생략
   save_limit: 2       # 최근 2개 checkpoint만 유지 (오래된 것 자동 삭제)
-  val_freq: 50
-  val_before_train: true
-  val_only: false
-  val_every_epoch: true
+
+math_eval:
+  enabled: true
+  every_n_epochs: 1
+  max_tokens: 4096
+  temperature: 0.0
+  top_p: 1.0
+  batch_size: 128
+  sample_seed: 42
+  output_details: true
+  max_logged_failures: 20
+  fast_samples:
+    math500: 100
+    amc23: -1
+    aime24: -1
+    aime25: -1
+    minerva_math: 100
+    olympiadbench: 100
+  benchmarks:
+    - name: math500
+      hf_id: test-time-compute/test_MATH
+      split: test
+    - name: amc23
+      hf_id: test-time-compute/test_amc23
+      split: test
+    - name: aime24
+      hf_id: test-time-compute/test_aime24
+      split: test
+    - name: aime25
+      hf_id: test-time-compute/aime_2025
+      split: test
+    - name: minerva_math
+      hf_id: test-time-compute/test_minerva_math
+      split: test
+    - name: olympiadbench
+      hf_id: test-time-compute/test_olympiadbench
+      split: test
 
 rq:
   seed_programs_dir: ./seed_programs

@@ -73,11 +73,10 @@ evo-sample/
 │   ├── test_local.py                  # ① CPU 검증 (GPU 불필요)
 │   ├── test_feasibility.py            # ② GPU + vLLM feasibility
 │   ├── test_feasibility_ollama.py     # ③ Ollama feasibility (로컬 M-series 가능)
-│   ├── evaluate.py                    # 벤치마크 평가
-│   ├── run_eval.sh / run_train.sh
+│   ├── run_train_*.sh                 # 학습 실행
 │   └── visualize_evolution.py
 │
-├── evaluation/                        # 벤치마크 로더 (GSM8K/MATH-500/AIME)
+├── evaluation/                        # math_eval 벤치마크 로더/채점
 ├── docs/
 │   ├── architecture.svg
 │   └── evolution_pipeline.md
@@ -403,17 +402,14 @@ uv run python run_verl.py --config configs/rq_config.yaml
 
 ```
 RayPPOTrainer.fit():
-  매 step:
+  매 epoch:
+    evolution → _refresh_dataset() → dataloader 재구성
+
+  epoch 내부 각 step:
     dynamic_dataset → rollout → reward → REINFORCE++ update
 
-  evolution_freq 마다 (기본: 전체 step의 10%):
-    ┌── Inner loop: Fixed-Budget Evolution ──────────────┐
-    │  위의 Phase 1 (A)~(G) 를 max_rounds 회 반복         │
-    └─────────────────────────────────────────────────────┘
-    _refresh_dataset() → dataloader 재구성
-    → 다음 step 부터 진화된 문제로 학습
-
-  val_freq 마다: solver accuracy 평가
+  math_eval.every_n_epochs 마다:
+    MATH-500 / AMC / AIME / Minerva / OlympiadBench pass@1 평가
 ```
 
 ---

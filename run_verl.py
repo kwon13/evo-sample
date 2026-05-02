@@ -197,8 +197,7 @@ class RQTaskRunner:
             num_cpus=reward_cfg.num_cpus
         )
         reward_fn = RemoteRewardManager.remote(reward_cfg, tokenizer)
-        val_reward_fn = RemoteRewardManager.remote(reward_cfg, tokenizer)
-        print("[Runner] reward managers created")
+        print("[Runner] reward manager created")
 
         # RQ config
         rq_cfg = getattr(config, 'rq', None) or {}
@@ -261,33 +260,20 @@ class RQTaskRunner:
             collate_fn=collate_fn,
         )
 
-        # Val dataloader
-        if config.data.val_files:
-            from verl.utils.dataset import RLHFDataset
-            val_dataset = RLHFDataset(
-                data_path=config.data.val_files,
+        math_eval_dataloaders = {}
+        if getattr(config.math_eval, "enabled", False):
+            from evaluation.math_benchmarks import build_math_eval_dataloaders
+
+            print("[Runner] loading math benchmark eval datasets...")
+            math_eval_dataloaders = build_math_eval_dataloaders(
+                math_eval_config=config.math_eval,
                 tokenizer=tokenizer,
-                processor=processor,
-                prompt_key=config.data.prompt_key,
-                answer_key=config.data.answer_key,
                 max_prompt_length=config.data.max_prompt_length,
-            )
-            val_bs = config.data.val_batch_size if config.data.val_batch_size > 0 else len(val_dataset)
-            val_dataloader = StatefulDataLoader(
-                dataset=val_dataset,
-                batch_size=val_bs,
-                num_workers=0,
-                shuffle=False,
-                drop_last=False,
                 collate_fn=collate_fn,
             )
-        else:
-            val_dataloader = StatefulDataLoader(
-                dataset=dynamic_dataset,
-                batch_size=min(len(dynamic_dataset), 32),
-                num_workers=0,
-                drop_last=False,
-                collate_fn=collate_fn,
+            print(
+                "[Runner] math eval benchmarks: "
+                + (", ".join(sorted(math_eval_dataloaders)) or "none")
             )
         print("[Runner] dataloaders created")
 
@@ -299,12 +285,10 @@ class RQTaskRunner:
             tokenizer=tokenizer,
             processor=processor,
             train_dataloader=train_dataloader,
-            val_dataloader=val_dataloader,
             role_worker_mapping=role_worker_mapping,
             resource_pool_manager=resource_pool_manager,
             ray_worker_group_cls=ray_worker_group_cls,
             reward_fn=reward_fn,
-            val_reward_fn=val_reward_fn,
             # RQ-specific
             map_elites=map_elites,
             dynamic_dataset=dynamic_dataset,
@@ -342,6 +326,7 @@ class RQTaskRunner:
             ),
             training_budget=rq_cfg_get("training_budget", None),
             strict_anti_reuse=rq_cfg_get("strict_anti_reuse", True),
+            math_eval_dataloaders=math_eval_dataloaders,
         )
         print("[Runner] trainer constructed")
 
