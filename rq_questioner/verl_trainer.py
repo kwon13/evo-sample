@@ -10,7 +10,7 @@ Method-aligned epoch flow (method.tex §coevolution):
           기준으로 R_Q 재측정 (self-invalidating archive)
        b. Mutation rounds × max_rounds:
           - MAP-Elites parent 샘플링 → LLM mutation → multi-seed 자가 검증
-          - entropy probe → H pre-filter → G-1 expand rollout → R_Q scoring
+          - entropy probe → G-1 additional rollouts → R_Q scoring
           - grid try_insert / evict
        c. _refresh_dataset(): H-priority + D-uniform + strict anti-reuse로
           epoch dataset 재조립 → dataloader rebuild
@@ -43,7 +43,7 @@ from verl.utils.dataset import collate_fn as verl_collate_fn
 
 from .map_elites import MAPElitesGrid
 from .program import ProblemProgram, ProblemInstance
-from .rq_score import compute_rq_full, h_prefilter
+from .rq_score import compute_rq_full
 from .verl_dataset import MapElitesDynamicDataset
 from .code_utils import (
     extract_generator_code,
@@ -317,7 +317,7 @@ class RQEvolveTrainer(RayPPOTrainer):
       epoch 0 .. N-1:
         1. _pre_epoch_hook(epoch_idx) → _evolution_step():
              a. Champion re-evaluation (self-invalidating archive)
-             b. Mutation rounds × max_rounds (probe → H prefilter → expand G-1)
+             b. Mutation rounds × max_rounds (probe → expand G-1 → scoring)
              c. _refresh_dataset() → dataloader rebuild
         2. 이 epoch 의 batch 들을 순회 → Solver rollout → REINFORCE++ update
         3. epoch 종료 시 math_eval 벤치마크 평가
@@ -340,7 +340,6 @@ class RQEvolveTrainer(RayPPOTrainer):
         instances_per_program: int = 3,
         in_depth_ratio: float = 0.5,
         crossover_ratio: float = 0.2,
-        h_threshold: float = 0.1,
         # --- Champion re-evaluation (Method-aligned self-invalidating archive) ---
         # None (default) — re-evaluate every occupied champion each evolution step.
         # int > 0        — partial budget (debug/ablation, age-weighted sampling).
@@ -379,7 +378,6 @@ class RQEvolveTrainer(RayPPOTrainer):
         self.instances_per_program = instances_per_program
         self.in_depth_ratio = in_depth_ratio
         self.crossover_ratio = crossover_ratio
-        self.h_threshold = h_threshold
         # re-evaluation
         self.reeval_per_step = reeval_per_step
         self.reeval_age_ratio = max(0.0, min(1.0, reeval_age_ratio))
@@ -480,8 +478,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             f"[Evolution Summary] epoch={epoch_idx}\n"
             f"  Reeval:   {evo_metrics['reeval_count']} updated, "
             f"{evo_metrics['reeval_evicted']} evicted "
-            f"(low_h={evo_metrics.get('reeval_low_h_evicted', 0)}, "
-            f"exec_fail={evo_metrics.get('reeval_exec_fail_evicted', 0)}), "
+            f"(exec_fail={evo_metrics.get('reeval_exec_fail_evicted', 0)}), "
             f"{evo_metrics['reeval_bin_shifted']} bin-shifted "
             f"(ΔR_Q={evo_metrics['reeval_rq_delta_mean']:+.4f})\n"
             f"  Mutation: {evo_metrics['attempted']} attempted, "
@@ -862,8 +859,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             logger.info(
                 f"[Reeval] updated={reeval_metrics['reevaluated']}, "
                 f"evicted={reeval_metrics['evicted']} "
-                f"(low_h={reeval_metrics.get('low_h_evicted', 0)}, "
-                f"exec_fail={reeval_metrics.get('exec_fail_evicted', 0)}), "
+                f"(exec_fail={reeval_metrics.get('exec_fail_evicted', 0)}), "
                 f"bin_shifted={reeval_metrics['bin_shifted']}, "
                 f"ΔR_Q mean={reeval_metrics['rq_delta_mean']:+.4f}"
             )
@@ -950,7 +946,6 @@ class RQEvolveTrainer(RayPPOTrainer):
             # Champion re-evaluation (self-invalidating archive)
             "reeval_count": reeval_metrics["reevaluated"],
             "reeval_evicted": reeval_metrics["evicted"],
-            "reeval_low_h_evicted": reeval_metrics.get("low_h_evicted", 0),
             "reeval_exec_fail_evicted": reeval_metrics.get("exec_fail_evicted", 0),
             "reeval_extreme_p_kept": reeval_metrics.get("extreme_p_kept", 0),
             "reeval_bin_shifted": reeval_metrics["bin_shifted"],
@@ -1213,7 +1208,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             - age-weighted 로 champion 샘플링 (오래 재평가 안 된 것 우선)
             - fresh seed 로 instance 재생성
             - 현재 solver 로 p_hat / H 측정 → R_Q 갱신
-            - p_hat 극단인 champion 은 niche 에서 evict → 재탐색 유도
+            - p_hat 극단인 champion 은 archive material 로 유지하되
+              Solver training data 에서는 제외
             - H 재측정으로 bin 경계를 넘으면 rebin_champion() 으로 이동
 
         Returns:
@@ -1224,7 +1220,6 @@ class RQEvolveTrainer(RayPPOTrainer):
         # (no champions, all execute-failing) carry the evictions they did.
         evicted = 0
         exec_fail_evicted = 0
-        low_h_evicted = 0
         extreme_p_kept = 0
         bin_shifted = 0
         reevaluated = 0
@@ -1234,7 +1229,6 @@ class RQEvolveTrainer(RayPPOTrainer):
             return {
                 "reevaluated": reevaluated,
                 "evicted": evicted,
-                "low_h_evicted": low_h_evicted,
                 "exec_fail_evicted": exec_fail_evicted,
                 "extreme_p_kept": extreme_p_kept,
                 "bin_shifted": bin_shifted,
@@ -1321,8 +1315,9 @@ class RQEvolveTrainer(RayPPOTrainer):
                 )
 
         # ---- 3. Probe generate (n=1) + full-vocab entropy -------------
-        # amortization 구조: probe 1회로 H̄ 측정 → H prefilter → 살아남은
-        # 후보에만 G-1 expand rollout. probe response는 첫 rollout으로 재사용.
+        # The probe response supplies U and is reused as the first correctness
+        # rollout. No entropy gate is applied; every executable champion gets
+        # the same rollout budget for the pass-rate estimate.
         n_pairs = len(pairs)
         pair_answers = [inst.answer for _, inst, _ in pairs]
 
@@ -1394,34 +1389,8 @@ class RQEvolveTrainer(RayPPOTrainer):
         low, high = self.frontier_p_hat_range
         extreme_p_kept = 0
 
-        # ---- 5. H prefilter — low-H champions are evicted --------------
-        # Method's self-invalidating archive: a champion whose current H̄ fell
-        # below τ_H no longer satisfies R_Q's learnability criterion. Keeping
-        # it would preserve stale high R_Q in the grid. Evict instead of skip.
-        retained_indices: list[int] = []
-        for ci in range(n_pairs):
-            champ, inst, _ = pairs[ci]
-            h_bar = h_per_pair[ci]
-            if not h_prefilter(h_bar, self.h_threshold):
-                champ.last_reeval_step = current_step
-                if self.map_elites.evict_champion(champ):
-                    evicted += 1
-                    low_h_evicted += 1
-                    logger.info(
-                        f"[Reeval] EVICT low-H ({champ.niche_h},{champ.niche_div}) "
-                        f"H={h_bar:.3f} < τ_H={self.h_threshold:.3f}, "
-                        f"id={champ.program_id}"
-                    )
-                continue
-            retained_indices.append(ci)
-
-        if low_h_evicted:
-            logger.info(
-                f"[Reeval] low-H evicted {low_h_evicted}/{n_pairs}; "
-                f"saved {low_h_evicted * (self.num_rollouts - 1)} expand rollouts"
-            )
-
-        # ---- 6. Expand rollout for retained champions -----------------
+        # ---- 5. Expand rollout for all executable champions ------------
+        retained_indices: list[int] = list(range(n_pairs))
         extra_flags_per_ci: dict[int, list[bool]] = {ci: [] for ci in retained_indices}
         extra_preds_per_ci: dict[int, list[str | None]] = {ci: [] for ci in retained_indices}
         extra_n = self.num_rollouts - 1
@@ -1460,7 +1429,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                         _answers_match(pred, ans) if pred else False
                     )
 
-        # ---- 7. Update / rebin — NEVER evict on extreme-p anymore ------
+        # ---- 6. Update / rebin — NEVER evict on extreme-p anymore ------
         # p=0 / p=1 champions are kept as archive material and will be
         # filtered out of Solver training data by _refresh_dataset().
         # Their R_Q naturally drops to 0 (since p(1-p)=0), so they cannot
@@ -1737,12 +1706,12 @@ class RQEvolveTrainer(RayPPOTrainer):
             return 0, 0
 
         # ================================================================
-        # Phase 2-4: entropy probe → H prefilter → expanded rollout → R_Q
+        # Phase 2-4: entropy probe → additional rollouts → R_Q
         # ================================================================
         # method.tex의 amortization 구조를 그대로 실현:
         #   (a) probe 1회 generate + actor forward로 full-vocab H̄ 계산
-        #   (b) H̄ < τ_H 후보는 G rollout 자체를 skip (비용 절감)
-        #   (c) 살아남은 후보만 G-1번 추가 rollout → probe와 합쳐 G개 flag
+        #   (b) 모든 검증 통과 후보에 대해 G-1번 추가 rollout
+        #   (c) probe와 추가 rollout을 합쳐 G개 correctness flag로 R_Q 계산
         solver_texts = []
         for _, inst, _, _, _ in children:
             msgs = [{"role": "system", "content": SYSTEM_PROMPT},
@@ -1846,54 +1815,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             for ci in range(n_children)
         ]
 
-        # ---- (b) H prefilter: retained set only proceeds to expand -----
-        retained_indices: list[int] = []
-        skipped_h = 0
-        for ci in range(n_children):
-            h_bar = h_per_child[ci]
-            if not h_prefilter(h_bar, self.h_threshold):
-                skipped_h += 1
-                child, inst, op, code_text, source_code = children[ci]
-                target_h = self.map_elites.h_to_bin(h_bar)
-                target_d = self.map_elites.program_to_div_bin(child, inst.problem)
-                self._record_evolution_event({
-                    "event": "candidate_scored",
-                    "round": round_num,
-                    "candidate_index": ci,
-                    "op": op,
-                    "child_id": child.program_id,
-                    "parent_id": child.parent_id,
-                    "status": "h_prefilter_skip",
-                    "h_bar": h_bar,
-                    "token_entropy": h_bar,
-                    "uncertainty_metric": self.uncertainty_metric,
-                    "h_bin": target_h,
-                    "d_bin": target_d,
-                    "concept_type": child.get_concept_type(),
-                    "concept_group": child.get_concept_group(),
-                    "probe_prediction": probe_predictions[ci],
-                    "probe_correct": probe_flags[ci],
-                    **self._event_text_fields("probe_response", probe_decoded[ci]),
-                    **self._event_text_fields("mutation_output", code_text, limit=8000),
-                    **self._event_text_fields("source_code", source_code, limit=12000),
-                    **entropy_event_fields[ci],
-                    "problem": inst.problem,
-                    "answer": inst.answer,
-                })
-                logger.debug(
-                    f"[Evolution] H={h_bar:.3f} < {self.h_threshold}, "
-                    f"skip rollout (amortized)"
-                )
-                continue
-            retained_indices.append(ci)
-
-        if skipped_h:
-            logger.info(
-                f"[Evolution] H prefilter: {skipped_h}/{n_children} candidates "
-                f"skipped before rollout (saved ~{skipped_h * (self.num_rollouts - 1)} generations)"
-            )
-
-        # ---- (c) Expand rollout: G-1 more per retained candidate -------
+        # ---- (b) Expand rollout: G-1 more per verified candidate -------
+        retained_indices: list[int] = list(range(n_children))
         extra_flags_per_ci: dict[int, list[bool]] = {ci: [] for ci in retained_indices}
         extra_preds_per_ci: dict[int, list[str | None]] = {ci: [] for ci in retained_indices}
         extra_n = self.num_rollouts - 1

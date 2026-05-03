@@ -306,7 +306,6 @@ class RQTaskRunner:
             instances_per_program=instances_per_program,
             in_depth_ratio=rq_cfg_get("in_depth_ratio", 0.5),
             crossover_ratio=rq_cfg_get("crossover_ratio", 0.2),
-            h_threshold=rq_cfg_get("h_threshold", 0.1),
             # Champion re-evaluation — null (default) = all occupied champions
             # under current Solver (self-invalidating archive). int > 0 = partial
             # budget for ablation; 0 disables.

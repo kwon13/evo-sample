@@ -69,23 +69,6 @@ def estimate_pass_rate(
     return sum(correct_flags) / len(correct_flags)
 
 
-def h_prefilter(h_bar: float, threshold: float = 0.1) -> bool:
-    """
-    H pre-filter: If H is too low, skip rollouts.
-    
-    Based on DPI inequality: p(1-p) ≤ H/2
-    If H is very low, p(1-p) must also be low, so R_Q will be low.
-    
-    Args:
-        h_bar: Mean entropy
-        threshold: Minimum H to pass filter
-    
-    Returns:
-        True if problem passes the filter (H is high enough)
-    """
-    return h_bar >= threshold
-
-
 def p_hat_filter(p_hat: float) -> bool:
     """p=0 또는 p=1이면 R_Q=0이므로 필터링."""
     return 0.0 < p_hat < 1.0

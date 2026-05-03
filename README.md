@@ -134,11 +134,7 @@ evo-sample/
             │       ├─ vLLM  : top-K logprobs 기반 Shannon H
             │       └─ Ollama: N 샘플의 boxed-answer 분포로 semantic H
             │
-            ├─ (F) 필터
-            │       ├─ h_prefilter(H ≥ --h_threshold)
-            │       └─ p_hat_filter(0 < p_hat < 1)
-            │
-            └─ (G) R_Q 계산 + grid 갱신
+            └─ (F) R_Q 계산 + grid 갱신
                     ├─ compute_rq_full(flags, H)
                     └─ grid.try_insert() — 같은 niche 의 기존 champion 과 R_Q 비교 → 교체
        │
@@ -192,7 +188,6 @@ runner.batch_entropy(instances)             -> list[float | None]
 - `compute_rq(p_hat, h) -> RQResult`
 - `compute_rq_full(flags: list[bool], h_bar: float) -> RQResult`
 - `estimate_pass_rate(flags) -> float`
-- `h_prefilter(h, threshold) -> bool`
 - `p_hat_filter(p_hat) -> bool` (0 < p < 1)
 
 ### [rq_questioner/verifier.py](rq_questioner/verifier.py)
@@ -329,7 +324,7 @@ uv run python scripts/test_feasibility_ollama.py \
     --max_parallel 4
 ```
 
-> Ollama의 semantic entropy는 vLLM token-logprob 기반보다 스케일이 작아 기본 `--h_range [0, 2.5]`, `--h_threshold 0.05` 로 잡혀 있다. 필요 시 조정.
+> Ollama의 semantic entropy는 vLLM token-logprob 기반보다 스케일이 작아 기본 `--h_range [0, 2.5]` 로 잡혀 있다. 필요 시 조정.
 
 ### 시나리오 D — 전체 학습 (veRL)
 
@@ -353,7 +348,6 @@ uv run python run_verl.py --config configs/rq_config.yaml
 | `--n_h_bins` | 6 | 6 | H축 bin 수 |
 | `--n_div_bins` | 6 | 6 | D축 bin 수 |
 | `--h_range` | `0.0 5.0` | `0.0 2.5` | H축 범위 |
-| `--h_threshold` | 0.1 | 0.05 | H pre-filter 임계값 |
 | `--crossover_ratio` | 0.2 | 0.2 | crossover 연산자 비율 |
 | `--in_depth_ratio` | 0.5 | 0.5 | in-depth 비율 (나머지=in-breadth) |
 | `--ucb_c` | 1.0 | 1.0 | rank-UCB exploration 계수 |
@@ -425,7 +419,7 @@ RayPPOTrainer.fit():
 | ε-greedy + rank-UCB | exploit 편향 제거 | Monte Carlo Elites (2023) |
 | Fixed budget (조기종료 X) | 안정적 탐색 | FunSearch |
 | Solver = REINFORCE++ | KL-regularized RL | veRL |
-| H pre-filter → rollout | 계층적 필터링 비용 절감 | 연구 제안서 S4.2 |
+| probe 재사용 | 첫 rollout을 entropy와 correctness에 함께 사용 | 구현 최적화 |
 
 ---
 

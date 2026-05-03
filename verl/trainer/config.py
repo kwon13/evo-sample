@@ -145,7 +145,6 @@ class RQConfig:
     instances_per_program: int = 16
     crossover_ratio: float = 0.2
     in_depth_ratio: float = 0.5
-    h_threshold: float = 0.1
     ucb_c: float = 1.0
     epsilon: float = 0.3
     candidate_reservoir_size: int = 4

@@ -85,9 +85,9 @@ MAP-Elites(Mouret & Clune, 2015)는 행동 공간을 grid로 분할하여, **각
 
 ### 4.2 Grid 축 설계
 
-**H축 (6 bins, 범위 [0.0, 5.0])**: 문제의 난이도/엔트로피 수준.
+**H축 (6 bins, 범위 [0.0, 5.0])**: Solver uncertainty 수준.
 
-연구 제안서 §2.6의 DPI 부등식 `p(1-p) ≤ H/2`에 의해, H는 문제의 난이도와 정보이론적으로 묶여 있다. H를 이산화하면 **각 난이도 수준에서 독립적으로 최적 문제가 유지**된다. Solver가 성장하면 특정 H 구간의 champion fitness가 하락하고, 해당 구간에서 새로운 mutation이 champion을 교체한다.
+H축은 Solver response의 token entropy를 이산화한 uncertainty axis이다. H를 이산화하면 **각 uncertainty 수준에서 독립적으로 최적 문제가 유지**된다. Solver가 성장하면 특정 H 구간의 champion fitness가 하락하고, 해당 구간에서 새로운 mutation이 champion을 교체한다.
 
 **D축 (10 bins, sentence embedding PCA)**: 문제의 의미적 다양성.
 
@@ -195,15 +195,16 @@ for round_num in range(1, max_rounds + 1):  # 항상 8라운드 실행
 
 ### Phase 3: Solver Rollout + Entropy 측정
 
-**계층적 비용 절감 구조** (연구 제안서 §4.2):
+**평가 구조**:
 
-| 단계 | 연산 | 비용 | 탈락률 |
-|------|------|------|--------|
-| Stage 1 | 프로그램 실행 + 검증 | ≈0 | ~30% |
-| Stage 2 | H 측정 (1회 forward pass) | O(T) | ~60% |
-| Stage 3 | G=10 rollouts → p_hat 추정 | 10×O(T) | 0% |
+| 단계 | 연산 | 비고 |
+|------|------|------|
+| Stage 1 | 프로그램 실행 + 검증 | 실패하면 폐기 |
+| Stage 2 | 첫 rollout + response-token entropy 측정 | 첫 rollout을 correctness flag로 재사용 |
+| Stage 3 | 추가 rollouts → p_hat 추정 | 모든 검증 통과 후보에 동일 적용 |
 
-H pre-filter(Stage 2)는 DPI 부등식 `p(1-p) ≤ H/2`에 근거한다. **H가 낮으면 R_Q가 구조적으로 낮을 수밖에 없으므로**, 가장 비싼 Stage 3를 호출하기 전에 후보의 약 60%를 제거한다.
+낮은 entropy라는 이유만으로 candidate를 사전에 제거하지 않는다. Entropy는
+$R_Q=s(1-s)U$의 uncertainty term과 archive H축에 사용된다.
 
 ### Phase 4: R_Q 계산 + Grid 삽입
 
@@ -244,4 +245,4 @@ dynamic_dataset 교체 + dataloader 재구성
 | 부모 선택 | ε-greedy + rank UCB | Monte Carlo Elites: exploit 편향 제거 |
 | 탐색 예산 | 고정 budget (8×8=64) | FunSearch: 조기 종료 없이 안정적 탐색 |
 | Solver 학습 | REINFORCE++ | 연구 제안서: GRPO에서 RL++로 전환 |
-| 비용 절감 | H pre-filter → rollout | 연구 제안서 §4.2: DPI 부등식 기반 계층적 필터링 |
+| 평가 재사용 | 첫 rollout의 entropy/correctness 동시 사용 | 구현 최적화 |

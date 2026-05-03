@@ -52,7 +52,7 @@ sys.path.insert(0, str(ROOT))
 
 from rq_questioner.program import ProblemProgram, ProblemInstance
 from rq_questioner.map_elites import MAPElitesGrid
-from rq_questioner.rq_score import compute_rq_full, h_prefilter
+from rq_questioner.rq_score import compute_rq_full
 from rq_questioner.concepts import (
     concept_axis_labels,
     validate_concept_decl,
@@ -585,13 +585,13 @@ class VLLMRunner:
                 span_means.append(sum(hs) / len(hs))
         return max(span_means) if span_means else sum(valid_hs) / len(valid_hs)
 
-    # ---- probe (entropy-only) + expand rollout -------------------------
+    # ---- probe entropy + rollout helpers -------------------------------
 
     def batch_entropy_probe(
         self, instances: list["ProblemInstance"], top_k: int = 20,
     ) -> list[tuple[Optional[float], Optional[bool], Optional[dict]]]:
         """
-        amortized prefilter용 probe: 각 문제에 대해 rollout temperature로
+        Probe generation used to measure entropy at rollout temperature.
         1회 생성 + top-K logprob → (H̄, probe_flag, probe_log).
 
         probe response는 동일 temperature·동일 policy에서 나왔으므로,
@@ -630,7 +630,7 @@ class VLLMRunner:
     def batch_rollout_extra(
         self, instances: list["ProblemInstance"], n_extra: int,
     ) -> list[tuple[list[bool], list[dict]]]:
-        """H-prefilter를 통과한 후보에 대해 G-1개 추가 rollout."""
+        """Generate additional rollouts for pass-rate estimation."""
         from vllm import SamplingParams
         if not instances or n_extra <= 0:
             return [([], []) for _ in instances]
@@ -664,7 +664,7 @@ class VLLMRunner:
         that produces the entropy probe (rollout idx 0, with logprobs)
         AND the G-1 expand rollouts. Removes the second prefill that
         ``batch_entropy_probe`` + ``batch_rollout_extra`` would do
-        when nearly every candidate survives the H prefilter anyway.
+        when entropy and rollout evaluation are both needed for every candidate.
 
         Returns per-candidate: (h_bar, flags[G], logs[G]).
         """
@@ -717,7 +717,7 @@ class VLLMRunner:
         G번 생성 → (flags, rollout_logs, H̄).
 
         seed 스코어링 같이 amortization이 불필요한 경우에만 사용.
-        probe→prefilter→expand 흐름에서는 batch_entropy_probe + batch_rollout_extra 조합.
+        Split probe→expand flows can use batch_entropy_probe + batch_rollout_extra.
         """
         from vllm import SamplingParams
         prompt = _SOLVE_PROMPT.format(problem=inst.problem)
@@ -1072,7 +1072,6 @@ def evolution_step(
     grid: MAPElitesGrid,
     candidates: int,
     n_rollouts: int,
-    h_threshold: float,
     rng: random.Random,
     model: Optional[str] = None,
     base_url: Optional[str] = None,
@@ -1100,7 +1099,6 @@ def evolution_step(
     inserted = 0
     attempted = 0
     skipped_execute = 0
-    skipped_h = 0
     candidate_logs = []
 
     # ================================================================
@@ -1265,14 +1263,13 @@ def evolution_step(
 
     if not children:
         return {"attempted": skipped_execute, "inserted": 0, "skipped_execute": skipped_execute,
-                "skipped_h": 0, "candidate_logs": candidate_logs}
+                "candidate_logs": candidate_logs}
 
     # ================================================================
-    # Phase 2: Entropy probe (n=1) → H prefilter → expand rollout
+    # Phase 2: Entropy probe + rollout evaluation
     # ================================================================
-    # method.tex의 amortization 구조:
-    #   probe(1회) → H̄ 측정 → H̄ < τ_H 후보는 expand rollout 생략.
-    #   probe response는 동일 temperature에서 나왔으므로 첫 rollout으로 재사용.
+    # The first rollout supplies entropy and is reused as one correctness
+    # sample. No entropy threshold gate is applied.
     instances = [inst for _, inst, _, _ in children]
 
     # Merged probe+expand: a single n=G generate call returns both the
@@ -1299,38 +1296,21 @@ def evolution_step(
             per_child_flags[ci] = flags
             per_child_logs[ci] = []
 
-    # H prefilter — gate downstream scoring/insertion (GPU work already
-    # done in the merged call, but the prefilter still semantically
-    # blocks low-H candidates from competing for niches).
-    retained_local_indices: list[int] = []
-    for ci, h_bar in enumerate(per_child_h):
-        if h_bar is None:
-            skipped_h += 1
-            if verbose:
-                print(f"  entropy probe failed, skip")
-            continue
-        if not h_prefilter(h_bar, h_threshold):
-            skipped_h += 1
-            if verbose:
-                print(f"  H={h_bar:.3f} < τ_H, skip insertion (post-rollout)")
-            continue
-        retained_local_indices.append(ci)
-
     # ================================================================
     # Phase 3: Scoring + Grid insertion (CPU, fast)
     # ================================================================
-    retained_set = set(retained_local_indices)
     for ci, (child, inst, task, task_idx) in enumerate(children):
         attempted += 1
-        if ci not in retained_set:
+        h_bar = per_child_h[ci]
+        if h_bar is None:
             candidate_logs.append({
                 "candidate_idx": task_idx,
                 "op": task["op"],
-                "status": "prefilter_skipped",
-                "failure_reason": "entropy below threshold or probe failed",
+                "status": "entropy_failed",
+                "failure_reason": "entropy probe failed",
                 "problem": inst.problem,
                 "answer": inst.answer,
-                "h_bar": per_child_h[ci],
+                "h_bar": None,
                 "parent_id": getattr(task.get("parent"), "program_id", None),
                 "parent_b_id": getattr(task.get("parent_b"), "program_id", None),
                 **_concept_log_fields(child),
@@ -1338,7 +1318,6 @@ def evolution_step(
             })
             continue
 
-        h_bar = per_child_h[ci]
         flags = list(per_child_flags[ci])
         rollout_logs = list(per_child_logs[ci])
         p_hat = sum(flags) / len(flags) if flags else 0.0
@@ -1438,7 +1417,6 @@ def evolution_step(
         "attempted": attempted + skipped_execute,
         "inserted": inserted,
         "skipped_execute": skipped_execute,
-        "skipped_h": skipped_h,
         "candidate_logs": candidate_logs,
     }
 
@@ -1846,7 +1824,6 @@ def main():
     )
     parser.add_argument("--h_range", type=float, nargs=2, default=[0.0, 5.0],
                         help="H축 범위 [min, max] (default: 0.0 5.0)")
-    parser.add_argument("--h_threshold", type=float, default=0.1)
     parser.add_argument(
         "--uncertainty_metric",
         choices=["h", "h_span_max"],
@@ -2055,7 +2032,6 @@ def main():
         step_attempted = 0
         step_inserted = 0
         step_skipped_execute = 0
-        step_skipped_h = 0
 
         # Mutation prefetch: while round k runs verify+rollout+score, the
         # next round's batch_mutate is dispatched in a background thread
@@ -2085,7 +2061,6 @@ def main():
                     grid=grid,
                     candidates=args.candidates,
                     n_rollouts=args.n_rollouts,
-                    h_threshold=args.h_threshold,
                     rng=rng,
                     model=args.model,
                     base_url=args.base_url,
@@ -2119,7 +2094,6 @@ def main():
                 step_attempted += round_result["attempted"]
                 step_inserted += round_result["inserted"]
                 step_skipped_execute += round_result.get("skipped_execute", 0)
-                step_skipped_h += round_result.get("skipped_h", 0)
 
                 for log in round_result.get("candidate_logs", []):
                     log["step"] = step
@@ -2148,7 +2122,6 @@ def main():
             "inserted": step_inserted,
             "rounds": args.max_rounds,
             "skipped_execute": step_skipped_execute,
-            "skipped_h": step_skipped_h,
         })
 
         elapsed = time.time() - t0

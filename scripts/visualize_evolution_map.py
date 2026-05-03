@@ -306,7 +306,6 @@ def _summarize_events(streams: list[dict[str, Any]]) -> dict[str, Any]:
             "count": len(events),
             "inserted": int(cell_status.get("inserted", 0)),
             "rejected": int(cell_status.get("rejected", 0)),
-            "h_skipped": int(cell_status.get("h_prefilter_skip", 0)),
             "ops": dict(cell_ops),
             "last_events": events[-6:],
         })
@@ -480,7 +479,6 @@ table.list th, table.list td {{ border-bottom: 1px solid #26333d; padding: 8px; 
 .status {{ font-weight: 700; }}
 .status-inserted {{ color: #9dd7c8; }}
 .status-rejected {{ color: #f0a08b; }}
-.status-h {{ color: #e7d37f; }}
 .status-failed {{ color: #c9a7ff; }}
 code {{ color: #9dd7c8; }}
 </style>
@@ -566,9 +564,6 @@ function eventColor(cell, maxCount) {{
   if ((cell.inserted || 0) > 0) {{
     return `rgb(${{Math.round(22 + 50 * t)}},${{Math.round(92 + 150 * t)}},${{Math.round(76 + 95 * t)}})`;
   }}
-  if ((cell.h_skipped || 0) > 0 && (cell.rejected || 0) === 0) {{
-    return `rgb(${{Math.round(85 + 135 * t)}},${{Math.round(74 + 118 * t)}},${{Math.round(32 + 40 * t)}})`;
-  }}
   if ((cell.rejected || 0) > 0) {{
     return `rgb(${{Math.round(92 + 150 * t)}},${{Math.round(58 + 62 * t)}},${{Math.round(50 + 40 * t)}})`;
   }}
@@ -577,7 +572,6 @@ function eventColor(cell, maxCount) {{
 function statusClass(status, eventName='') {{
   if (status === 'inserted') return 'status status-inserted';
   if (status === 'rejected') return 'status status-rejected';
-  if (status === 'h_prefilter_skip') return 'status status-h';
   if (String(eventName).includes('failed')) return 'status status-failed';
   return 'status';
 }}
@@ -598,14 +592,13 @@ function aggregateEvents(step, limit) {{
     if (!cellsByKey.has(key)) {{
       cellsByKey.set(key, {{
         h: Number(ev.h), d: Number(ev.d), count: 0,
-        inserted: 0, rejected: 0, h_skipped: 0, ops: {{}}, last_events: []
+        inserted: 0, rejected: 0, ops: {{}}, last_events: []
       }});
     }}
     const cell = cellsByKey.get(key);
     cell.count += 1;
     if (ev.status === 'inserted') cell.inserted += 1;
     if (ev.status === 'rejected') cell.rejected += 1;
-    if (ev.status === 'h_prefilter_skip') cell.h_skipped += 1;
     if (ev.op) cell.ops[ev.op] = (cell.ops[ev.op] || 0) + 1;
     cell.last_events.push(ev);
     if (cell.last_events.length > 6) cell.last_events.shift();
@@ -662,7 +655,6 @@ function renderStep(eventLimit) {{
     ['coverage', fmt(metrics.grid_coverage, 3)],
     ['accept rate', fmt(metrics.accept_rate, 3)],
     ['max R_Q', fmt(metrics.grid_max_rq, 4)],
-    ['low-H evicted', metrics.reeval_low_h_evicted],
     ['inserted', metrics.inserted],
     ['reservoir', metrics.reservoir_candidates],
     ['reservoir selections', metrics.reservoir_selections],
@@ -670,7 +662,6 @@ function renderStep(eventLimit) {{
     ['verified', ev.eventCounts.candidate_verified],
     ['event inserted', ev.statusCounts.inserted],
     ['event rejected', ev.statusCounts.rejected],
-    ['H skipped', ev.statusCounts.h_prefilter_skip],
   ].map(([k,v]) => `<div class="card"><div class="label">${{k}}</div><div class="value">${{v ?? '·'}}</div></div>`).join('');
   document.getElementById('archiveMap').innerHTML = makeTable(
     step.grid.filter(c => c.has),
@@ -690,7 +681,7 @@ function renderStep(eventLimit) {{
     evCells,
     c => `${{c.inserted}}/${{c.count}}`,
     c => eventColor(c, maxEventCount),
-    c => `H${{c.h}} D${{c.d}}\\nevents=${{c.count}} inserted=${{c.inserted}} rejected=${{c.rejected}} H-skip=${{c.h_skipped}}\\nops=${{Object.entries(c.ops || {{}}).map(([k,v]) => `${{k}}:${{v}}`).join(', ') || '·'}}\\n\\n` +
+    c => `H${{c.h}} D${{c.d}}\\nevents=${{c.count}} inserted=${{c.inserted}} rejected=${{c.rejected}}\\nops=${{Object.entries(c.ops || {{}}).map(([k,v]) => `${{k}}:${{v}}`).join(', ') || '·'}}\\n\\n` +
       (c.last_events || []).map(e => `#${{e.seq}} r${{e.round ?? '·'}} ${{e.op || e.event}} ${{e.status || ''}}${{e.reservoir_saved ? ' reservoir' : ''}}\\nchild=${{e.child_short || '·'}} parent=${{e.parent_short || '·'}}\\nRQ=${{fmt(e.rq, 4)}} p=${{fmt(e.p, 3)}} H=${{fmt(e.H, 3)}} tokens=${{e.response_tokens ?? '·'}} ent=[${{fmt(e.entropy_min, 3)}}, ${{fmt(e.entropy_max, 3)}}] std=${{fmt(e.entropy_std, 3)}}\\npred=${{e.probe_prediction || '·'}} correct=${{e.probe_correct ?? '·'}}\\nmutation: ${{shortText(e.mutation_output || '')}}\\nprobe: ${{shortText(e.probe_response || '')}}\\nQ: ${{e.problem || ''}}`).join('\\n\\n')
   ) : '<span class="muted">No candidate event log for this step.</span>';
   const rows = ev.timeline.slice(-140);
