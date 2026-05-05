@@ -1,11 +1,11 @@
 """
 R_Q Score: Computes the Questioner's objective function.
 
-R_Q(x') = p_θ(x') * (1 - p_θ(x')) * (1/T) * Σ H_t(x')
+R_Q(x') = p_θ(x') * (1 - p_θ(x')) * (1/G) * Σ_i H(y_i)
 
 Where:
   - p_θ(x') is estimated from G rollouts as pass rate
-  - H_t(x') is per-token entropy from Solver's forward pass
+  - H(y_i) is the mean per-token entropy of rollout response y_i
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ class RQResult:
     rq_score: float       # R_Q = p(1-p) * H_bar
     p_hat: float          # Estimated pass rate
     p_variance: float     # p(1-p) = learnability
-    h_bar: float          # Mean entropy = gradient richness
+    h_bar: float          # Mean response entropy across G rollouts
     num_rollouts: int     # G
     num_correct: int      # Number of correct rollouts
 
@@ -34,7 +34,7 @@ def compute_rq(
     
     Args:
         p_hat: Estimated pass rate from G rollouts
-        h_bar: Mean token-level entropy (1/T * Σ H_t)
+        h_bar: Mean response entropy across the sampled rollouts
     
     Returns:
         RQResult with the computed R_Q score
@@ -83,7 +83,7 @@ def compute_rq_full(
     
     Args:
         correct_flags: List of bool from G rollouts
-        h_bar: Mean entropy from forward pass
+        h_bar: Mean response entropy across the sampled rollouts
     
     Returns:
         Complete RQResult

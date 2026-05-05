@@ -30,7 +30,7 @@
 | **ProblemProgram** | 문제 생성 함수를 감싼 진화 단위. `source_code` + 실행 캐시 + `p_hat/h_score/rq_score` 보유 | [program.py](rq_questioner/program.py) |
 | **ProblemInstance** | `ProblemProgram.execute(seed)` 의 반환값. `(problem: str, answer: str)` | [program.py](rq_questioner/program.py) |
 | **p_hat** | Solver가 rollout G번 중 맞춘 비율 (문제의 난이도, 0~1) | [rq_score.py:estimate_pass_rate](rq_questioner/rq_score.py) |
-| **H / H_span_max** | R_Q에 쓰는 output entropy 지표. 기본값 `h`는 response token 평균 H, `h_span_max`는 reasoning/sentence span 최대 H | [verl_trainer.py](rq_questioner/verl_trainer.py) |
+| **H / H_span_max** | R_Q에 쓰는 output entropy 지표. `h`는 G개 response token entropy 평균, `h_span_max`는 response별 span-max entropy의 G 평균 | [verl_trainer.py](rq_questioner/verl_trainer.py) |
 | **R_Q** | `p_hat · (1 - p_hat) · H` — learnability × gradient-strength proxy | [rq_score.py:compute_rq](rq_questioner/rq_score.py) |
 | **niche** | `(H_bin, D_bin)` 좌표의 격자 cell. cell당 champion 1개 유지 | [map_elites.py:NicheInfo](rq_questioner/map_elites.py) |
 | **D축** | 기본값은 6개 controlled concept group. `concept_type` 또는 legacy `embedding` PCA 축도 선택 가능 | [map_elites.py](rq_questioner/map_elites.py) |
@@ -151,8 +151,8 @@ evo-sample/
 
 ```python
 runner.batch_mutate(tasks, grid)           -> list[str | None]
-runner.batch_rollout(instances, n_rollouts) -> list[tuple[flags, logs]]
-runner.batch_entropy(instances)             -> list[float | None]
+runner.batch_rollout_with_entropy(instances, n_rollouts)
+    -> list[tuple[h_bar, flags, logs]]
 ```
 
 | Runner | 위치 | Entropy 방식 |
@@ -419,7 +419,7 @@ RayPPOTrainer.fit():
 | ε-greedy + rank-UCB | exploit 편향 제거 | Monte Carlo Elites (2023) |
 | Fixed budget (조기종료 X) | 안정적 탐색 | FunSearch |
 | Solver = REINFORCE++ | KL-regularized RL | veRL |
-| probe 재사용 | 첫 rollout을 entropy와 correctness에 함께 사용 | 구현 최적화 |
+| G-rollout entropy 평균 | G개 response 모두에서 entropy를 측정해 평균 | p_hat 추정과 동일 샘플 사용 |
 
 ---
 

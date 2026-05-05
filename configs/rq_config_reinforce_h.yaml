@@ -132,8 +132,8 @@ rq:
   max_rounds: 8
   num_rollouts: 8
   # R_Q uncertainty metric:
-  #   h           : mean output-token entropy H
-  #   h_span_max : max entropy over output reasoning/sentence spans H_span_max
+  #   h           : mean output-token entropy averaged over G responses
+  #   h_span_max : response span-max entropy averaged over G responses
   uncertainty_metric: h
   instances_per_program: 16
   crossover_ratio: 0.2

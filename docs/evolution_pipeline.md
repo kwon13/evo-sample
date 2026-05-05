@@ -200,8 +200,8 @@ for round_num in range(1, max_rounds + 1):  # 항상 8라운드 실행
 | 단계 | 연산 | 비고 |
 |------|------|------|
 | Stage 1 | 프로그램 실행 + 검증 | 실패하면 폐기 |
-| Stage 2 | 첫 rollout + response-token entropy 측정 | 첫 rollout을 correctness flag로 재사용 |
-| Stage 3 | 추가 rollouts → p_hat 추정 | 모든 검증 통과 후보에 동일 적용 |
+| Stage 2 | G개 rollout 생성 | 모든 검증 통과 후보에 동일 적용 |
+| Stage 3 | G개 response-token entropy 평균 + p_hat 추정 | 같은 rollout set으로 uncertainty와 correctness 집계 |
 
 낮은 entropy라는 이유만으로 candidate를 사전에 제거하지 않는다. Entropy는
 $R_Q=s(1-s)U$의 uncertainty term과 archive H축에 사용된다.
@@ -245,4 +245,4 @@ dynamic_dataset 교체 + dataloader 재구성
 | 부모 선택 | ε-greedy + rank UCB | Monte Carlo Elites: exploit 편향 제거 |
 | 탐색 예산 | 고정 budget (8×8=64) | FunSearch: 조기 종료 없이 안정적 탐색 |
 | Solver 학습 | REINFORCE++ | 연구 제안서: GRPO에서 RL++로 전환 |
-| 평가 재사용 | 첫 rollout의 entropy/correctness 동시 사용 | 구현 최적화 |
+| 평가 재사용 | G개 rollout의 entropy/correctness 동시 집계 | p_hat과 uncertainty의 샘플 정합성 |

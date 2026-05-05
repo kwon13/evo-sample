@@ -12,18 +12,19 @@ R_Q(x) = p_hat(x) * (1 - p_hat(x)) * U(x)
 
 | 이름 | 정의 | 용도 |
 |---|---|---|
-| `h` | output token entropy의 평균 | 논문/기본 구현 |
-| `h_span_max` | output reasoning/sentence span별 평균 entropy의 최댓값 | ablation/debug |
+| `h` | G개 output token entropy의 평균 | 논문/기본 구현 |
+| `h_span_max` | response별 reasoning/sentence span-max entropy의 G 평균 | ablation/debug |
 
 `H_input`과 `H_full`은 사용하지 않는다. 현재 veRL actor forward는 prompt+response를 입력으로 받지만, R_Q 계산에 쓰는 `entropies`는 response position에 맞춰 잘린 값이다. 따라서 기본 `h`는 input이나 input+output 전체가 아니라 solver가 생성한 풀이/답변 토큰에 대한 entropy이다.
 
 ## 2. H
 
-문제 `x`에 대해 probe response의 output token sequence를 `t = 1, ..., T`라고 하자. 각 decoding step의 token distribution을 `p_t(v)`라고 하면,
+문제 `x`에 대해 G개 rollout response `y_i`를 생성한다고 하자. response `y_i`의 output token sequence를 `t = 1, ..., T_i`, 각 decoding step의 token distribution을 `p_{i,t}(v)`라고 하면,
 
 ```text
-H_t = - sum_{v in V} p_t(v) log p_t(v)
-H(x) = (1 / T) * sum_{t=1}^{T} H_t
+H_{i,t} = - sum_{v in V} p_{i,t}(v) log p_{i,t}(v)
+H(y_i) = (1 / T_i) * sum_{t=1}^{T_i} H_{i,t}
+H(x) = (1 / G) * sum_{i=1}^{G} H(y_i)
 ```
 
 기본 R_Q는 다음과 같다.
@@ -42,8 +43,9 @@ R_Q(x) = p_hat(x) * (1 - p_hat(x)) * H(x)
 
 ```text
 S_j = j번째 reasoning span에 속한 output token index 집합
-H_span(j) = (1 / |S_j|) * sum_{t in S_j} H_t
-H_span_max(x) = max_j H_span(j)
+H_span_i(j) = (1 / |S_j|) * sum_{t in S_j} H_{i,t}
+H_span_max(y_i) = max_j H_span_i(j)
+H_span_max(x) = (1 / G) * sum_{i=1}^{G} H_span_max(y_i)
 ```
 
 항상 출력이 `Step n:` 형식이라는 보장은 없기 때문에, 현재 구현은 다음 순서로 span을 만든다.
@@ -71,7 +73,7 @@ R_Q(x) = p_hat(x) * (1 - p_hat(x)) * H_span_max(x)
 --uncertainty_metric h_span_max
 ```
 
-설정 파일의 기본값은 모두 `h`이다. `scripts/test.sh`는 두 지표만 순차 테스트하도록 정리했다.
+설정 파일에서 `*_h.yaml`은 `h`, span ablation 설정은 `h_span_max`를 사용한다. `scripts/test.sh`는 두 지표를 순차 테스트하도록 정리했다.
 
 ```sh
 python3 scripts/test_feasibility.py --vllm_model /data1/yhoon113/qwen3-4b-base --tp 2 --uncertainty_metric h --out_dir ./h

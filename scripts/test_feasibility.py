@@ -327,12 +327,12 @@ def _select_uncertainty_score(
     flags: list[bool],
     rollout_logs: list[dict],
 ) -> tuple[float, dict[str, float]]:
-    probe_log = next((log for log in rollout_logs if log and log.get("probe")), None)
-    span_u = (
-        probe_log.get("h_span_max")
-        if probe_log and probe_log.get("h_span_max") is not None
-        else h_bar
-    )
+    span_values = [
+        float(log["h_span_max"])
+        for log in rollout_logs
+        if log and log.get("h_span_max") is not None
+    ]
+    span_u = (sum(span_values) / len(span_values)) if span_values else h_bar
 
     scores = {
         "h": float(h_bar),
@@ -585,17 +585,18 @@ class VLLMRunner:
                 span_means.append(sum(hs) / len(hs))
         return max(span_means) if span_means else sum(valid_hs) / len(valid_hs)
 
-    # ---- probe entropy + rollout helpers -------------------------------
+    # ---- rollout entropy helpers --------------------------------------
 
     def batch_entropy_probe(
         self, instances: list["ProblemInstance"], top_k: int = 20,
     ) -> list[tuple[Optional[float], Optional[bool], Optional[dict]]]:
         """
-        Probe generation used to measure entropy at rollout temperature.
-        1회 생성 + top-K logprob → (H̄, probe_flag, probe_log).
+        Legacy single-response entropy helper.
 
-        probe response는 동일 temperature·동일 policy에서 나왔으므로,
-        이후 G rollout 집계 시 첫 rollout으로 그대로 재사용된다.
+        The main scoring path uses ``batch_rollout_with_entropy`` so all G
+        rollouts contribute entropy. This helper is retained for ad-hoc
+        debugging of one response at rollout temperature.
+        1회 생성 + top-K logprob → (H̄, probe_flag, probe_log).
         """
         from vllm import SamplingParams
         if not instances:
@@ -656,15 +657,16 @@ class VLLMRunner:
             results.append((flags, logs))
         return results
 
-    def batch_probe_and_rollout(
+    def batch_rollout_with_entropy(
         self, instances: list["ProblemInstance"], n_rollouts: int, top_k: int = 20,
     ) -> list[tuple[Optional[float], list[bool], list[dict]]]:
         """
-        Combined probe + expand: a single ``generate(prompts, n=G)`` call
-        that produces the entropy probe (rollout idx 0, with logprobs)
-        AND the G-1 expand rollouts. Removes the second prefill that
-        ``batch_entropy_probe`` + ``batch_rollout_extra`` would do
-        when entropy and rollout evaluation are both needed for every candidate.
+        Single ``generate(prompts, n=G)`` call for scoring.
+
+        All G responses carry top-K logprobs, so h_bar is the mean of the
+        per-response token entropy estimates over the same rollouts used for
+        pass-rate estimation. The ``probe`` flag on rollout 0 is kept only for
+        backward-compatible log display.
 
         Returns per-candidate: (h_bar, flags[G], logs[G]).
         """
@@ -708,6 +710,12 @@ class VLLMRunner:
             results.append((h_bar, flags, logs))
         return results
 
+    def batch_probe_and_rollout(
+        self, instances: list["ProblemInstance"], n_rollouts: int, top_k: int = 20,
+    ) -> list[tuple[Optional[float], list[bool], list[dict]]]:
+        """Backward-compatible name for ``batch_rollout_with_entropy``."""
+        return self.batch_rollout_with_entropy(instances, n_rollouts, top_k=top_k)
+
     # ---- full-G rollout (+ entropy) — kept for seed scoring ------------
 
     def rollout(
@@ -716,8 +724,7 @@ class VLLMRunner:
         """
         G번 생성 → (flags, rollout_logs, H̄).
 
-        seed 스코어링 같이 amortization이 불필요한 경우에만 사용.
-        Split probe→expand flows can use batch_entropy_probe + batch_rollout_extra.
+        seed 스코어링 같이 batching amortization이 불필요한 경우에만 사용.
         """
         from vllm import SamplingParams
         prompt = _SOLVE_PROMPT.format(problem=inst.problem)
@@ -1266,24 +1273,22 @@ def evolution_step(
                 "candidate_logs": candidate_logs}
 
     # ================================================================
-    # Phase 2: Entropy probe + rollout evaluation
+    # Phase 2: Full-G rollout entropy + rollout evaluation
     # ================================================================
-    # The first rollout supplies entropy and is reused as one correctness
-    # sample. No entropy threshold gate is applied.
+    # All G rollouts supply both correctness and entropy samples. No entropy
+    # threshold gate is applied.
     instances = [inst for _, inst, _, _ in children]
 
-    # Merged probe+expand: a single n=G generate call returns both the
-    # entropy probe (rollout idx 0, with logprobs) and the G-1 expand
-    # rollouts. Saves the second prefill pass that the split
-    # batch_entropy_probe + batch_rollout_extra would do.
+    # A single n=G generate call returns all rollout responses with logprobs,
+    # then h_bar is averaged across those same G responses.
     per_child_h: list[Optional[float]] = [None] * len(children)
     per_child_flags: list[list[bool]] = [[] for _ in children]
     per_child_logs: list[list[dict]] = [[] for _ in children]
 
     if vllm_runner:
         if verbose:
-            print(f"  [probe+expand] {n_rollouts} rollouts × {len(instances)} candidates...")
-        merged = vllm_runner.batch_probe_and_rollout(instances, n_rollouts)
+            print(f"  [rollout+entropy] {n_rollouts} rollouts × {len(instances)} candidates...")
+        merged = vllm_runner.batch_rollout_with_entropy(instances, n_rollouts)
         for ci, (h_bar, flags, logs) in enumerate(merged):
             per_child_h[ci] = h_bar
             per_child_flags[ci] = flags
@@ -1307,7 +1312,7 @@ def evolution_step(
                 "candidate_idx": task_idx,
                 "op": task["op"],
                 "status": "entropy_failed",
-                "failure_reason": "entropy probe failed",
+                "failure_reason": "entropy failed",
                 "problem": inst.problem,
                 "answer": inst.answer,
                 "h_bar": None,
@@ -1830,7 +1835,7 @@ def main():
         default="h",
         help=(
             "R_Q에 사용할 uncertainty. h는 mean output-token entropy, "
-            "h_span_max는 Step/Final 또는 sentence/newline span별 최대 entropy."
+            "h_span_max는 response별 span-max entropy의 G 평균."
         ),
     )
     parser.add_argument("--crossover_ratio", type=float, default=0.2,

@@ -10,7 +10,7 @@ Method-aligned epoch flow (method.tex §coevolution):
           기준으로 R_Q 재측정 (self-invalidating archive)
        b. Mutation rounds × max_rounds:
           - MAP-Elites parent 샘플링 → LLM mutation → multi-seed 자가 검증
-          - entropy probe → G-1 additional rollouts → R_Q scoring
+          - G rollouts → response별 entropy 평균 → R_Q scoring
           - grid try_insert / evict
        c. _refresh_dataset(): H-priority + D-uniform + strict anti-reuse로
           epoch dataset 재조립 → dataloader rebuild
@@ -317,7 +317,7 @@ class RQEvolveTrainer(RayPPOTrainer):
       epoch 0 .. N-1:
         1. _pre_epoch_hook(epoch_idx) → _evolution_step():
              a. Champion re-evaluation (self-invalidating archive)
-             b. Mutation rounds × max_rounds (probe → expand G-1 → scoring)
+             b. Mutation rounds × max_rounds (G rollouts → entropy mean → scoring)
              c. _refresh_dataset() → dataloader rebuild
         2. 이 epoch 의 batch 들을 순회 → Solver rollout → REINFORCE++ update
         3. epoch 종료 시 math_eval 벤치마크 평가
@@ -408,8 +408,8 @@ class RQEvolveTrainer(RayPPOTrainer):
 
     # ------------------------------------------------------------------
     # DP-safe worker invocation — pads odd batches to world_size then unpads.
-    # evolution/reeval produce arbitrary batch sizes (n_children, retained_indices,
-    # extra_n × retained) that may be odd under 2-GPU DP, tripping
+    # evolution/reeval produce arbitrary batch sizes (n_children, G × candidates)
+    # that may be odd under 2-GPU DP, tripping
     # DataProto.chunk(world_size) assertions. Same padding logic is used by math_eval.
     # ------------------------------------------------------------------
 
@@ -428,8 +428,8 @@ class RQEvolveTrainer(RayPPOTrainer):
         # Per-rank length must therefore be a non-zero multiple of micro_batch_size,
         # so the overall padded length needs to be a multiple of
         # world_size × micro_batch_size. Otherwise split() divides by zero when
-        # the batch is tiny (reeval with 1–2 champions, evolution with few
-        # retained candidates).
+        # the batch is tiny (reeval with 1–2 champions, evolution with
+        # G × candidates).
         world_size = self.actor_rollout_wg.world_size
         try:
             mbs = int(self.config.worker.actor.micro_batch_size_per_device_for_experience)
@@ -737,6 +737,74 @@ class RQEvolveTrainer(RayPPOTrainer):
             "entropy_max": float(valid.max().item()),
             "entropy_std": float(valid.std(unbiased=False).item()),
         }
+
+    def _response_entropy_means(
+        self, entropies: torch.Tensor, response_mask: torch.Tensor,
+    ) -> list[float]:
+        """Mean token entropy for each generated response row."""
+        mask_f = response_mask.float()
+        h_tensor = (entropies * mask_f).sum(dim=-1) / mask_f.sum(dim=-1).clamp(min=1)
+        return [float(x) for x in h_tensor.detach().float().cpu().tolist()]
+
+    def _mean_by_rollout_group(
+        self, values: list[float], n_items: int, n_rollouts: int,
+    ) -> list[float]:
+        """Average flattened per-rollout values back to one value per prompt."""
+        grouped: list[float] = []
+        for ci in range(n_items):
+            start = ci * n_rollouts
+            group = values[start:start + n_rollouts]
+            grouped.append(float(sum(group) / len(group)) if group else 0.0)
+        return grouped
+
+    def _group_entropy_event_fields(
+        self,
+        entropies: torch.Tensor,
+        response_mask: torch.Tensor,
+        start_index: int,
+        n_rollouts: int,
+        per_response_h: list[float],
+    ) -> dict:
+        """Summarize entropy over all G responses for one prompt."""
+        indices = range(start_index, start_index + n_rollouts)
+        group_h = per_response_h[start_index:start_index + n_rollouts]
+        token_counts: list[int] = []
+        valid_chunks: list[torch.Tensor] = []
+        for idx in indices:
+            valid = entropies[idx][response_mask[idx].bool()].detach().float().cpu()
+            token_counts.append(int(valid.numel()))
+            if valid.numel() > 0:
+                valid_chunks.append(valid)
+
+        if not group_h:
+            return {
+                "response_tokens": 0,
+                "response_tokens_mean": 0.0,
+                "entropy_mean": 0.0,
+                "entropy_min": 0.0,
+                "entropy_max": 0.0,
+                "entropy_std": 0.0,
+            }
+
+        group_arr = np.asarray(group_h, dtype=float)
+        fields = {
+            "response_tokens": int(sum(token_counts)),
+            "response_tokens_mean": (
+                float(sum(token_counts) / len(token_counts)) if token_counts else 0.0
+            ),
+            "entropy_mean": float(group_arr.mean()),
+            "entropy_min": float(group_arr.min()),
+            "entropy_max": float(group_arr.max()),
+            "entropy_std": float(group_arr.std()),
+        }
+        if valid_chunks:
+            token_values = torch.cat(valid_chunks)
+            fields.update({
+                "token_entropy_min": float(token_values.min().item()),
+                "token_entropy_max": float(token_values.max().item()),
+                "token_entropy_std": float(token_values.std(unbiased=False).item()),
+            })
+        return fields
 
     def _span_max_entropy_from_response(
         self,
@@ -1314,48 +1382,60 @@ class RQEvolveTrainer(RayPPOTrainer):
                     f"system: {SYSTEM_PROMPT}\nuser: {inst.problem}"
                 )
 
-        # ---- 3. Probe generate (n=1) + full-vocab entropy -------------
-        # The probe response supplies U and is reused as the first correctness
-        # rollout. No entropy gate is applied; every executable champion gets
-        # the same rollout budget for the pass-rate estimate.
+        # ---- 3. Full-G rollout + full-vocab entropy -------------------
+        # Every generated response contributes both a correctness sample and
+        # a token-entropy sample. This keeps U aligned with the same G
+        # trajectories used for p_hat, instead of special-casing rollout 0.
         n_pairs = len(pairs)
         pair_answers = [inst.answer for _, inst, _ in pairs]
+        n_eval_rollouts = max(1, int(self.num_rollouts))
 
-        probe_batch = _make_gen_batch(
+        rollout_batch = _make_gen_batch(
             tokenizer=self.tokenizer,
             prompts_text=solver_texts,
             answers=pair_answers,
             temperature=temperature,
             eos_token_id=eos_id, pad_token_id=pad_id,
             max_prompt_length=self.config.data.max_prompt_length,
-            n_repeat=1,
+            n_repeat=n_eval_rollouts,
         )
         try:
-            probe_output = self._generate_sequences_dp_safe(probe_batch)
+            rollout_output = self._generate_sequences_dp_safe(rollout_batch)
         except Exception as e:
-            logger.warning(f"[Reeval] probe rollout failed: {e}")
+            logger.warning(f"[Reeval] rollout failed: {e}")
             return _metrics()
 
-        probe_resp_ids = probe_output.batch.get("responses")
-        response_mask = probe_output.batch.get("response_mask")
-        if probe_resp_ids is None or response_mask is None:
+        rollout_resp_ids = rollout_output.batch.get("responses")
+        response_mask = rollout_output.batch.get("response_mask")
+        if rollout_resp_ids is None or response_mask is None:
             return _metrics()
 
-        probe_flags: list[bool] = []
-        probe_predictions: list[str | None] = []
-        probe_decoded: list[str] = []
-        for ci in range(n_pairs):
-            decoded = self.tokenizer.decode(
-                probe_resp_ids[ci].tolist(), skip_special_tokens=True,
+        expected_rows = n_pairs * n_eval_rollouts
+        if rollout_resp_ids.shape[0] != expected_rows:
+            logger.warning(
+                f"[Reeval] rollout rows {rollout_resp_ids.shape[0]} != "
+                f"expected {expected_rows}"
             )
-            pred = _extract_boxed(decoded)
-            probe_decoded.append(decoded)
-            probe_predictions.append(pred)
-            probe_flags.append(_answers_match(pred, pair_answers[ci]) if pred else False)
+            return _metrics()
+
+        flags_per_pair: list[list[bool]] = [[] for _ in range(n_pairs)]
+        predictions_per_pair: list[list[str | None]] = [[] for _ in range(n_pairs)]
+        decoded_per_pair: list[list[str]] = [[] for _ in range(n_pairs)]
+        for ci in range(n_pairs):
+            ans = pair_answers[ci]
+            for ri in range(n_eval_rollouts):
+                idx = ci * n_eval_rollouts + ri
+                decoded = self.tokenizer.decode(
+                    rollout_resp_ids[idx].tolist(), skip_special_tokens=True,
+                )
+                pred = _extract_boxed(decoded)
+                decoded_per_pair[ci].append(decoded)
+                predictions_per_pair[ci].append(pred)
+                flags_per_pair[ci].append(_answers_match(pred, ans) if pred else False)
 
         try:
             entropy_output = self._compute_log_probs_dp_safe(
-                probe_output, calculate_entropy=True, temperature=temperature,
+                rollout_output, calculate_entropy=True, temperature=temperature,
             )
         except Exception as e:
             logger.warning(f"[Reeval] entropy forward failed: {e}")
@@ -1370,16 +1450,27 @@ class RQEvolveTrainer(RayPPOTrainer):
             f"{tuple(response_mask.shape)}"
         )
 
-        mask_f = response_mask.float()
-        h_tensor = (entropies * mask_f).sum(dim=-1) / mask_f.sum(dim=-1).clamp(min=1)
-        h_per_pair: list[float] = h_tensor.cpu().tolist()
-        response_token_ids = probe_resp_ids
-        span_max_per_pair = [
-            self._span_max_entropy_from_response(
-                probe_decoded[ci], response_token_ids, entropies, response_mask, ci,
+        h_per_response = self._response_entropy_means(entropies, response_mask)
+        h_per_pair = self._mean_by_rollout_group(
+            h_per_response, n_pairs, n_eval_rollouts,
+        )
+        span_max_per_pair: list[float | None] = []
+        for ci in range(n_pairs):
+            span_values = []
+            for ri in range(n_eval_rollouts):
+                idx = ci * n_eval_rollouts + ri
+                span_i = self._span_max_entropy_from_response(
+                    decoded_per_pair[ci][ri],
+                    rollout_resp_ids,
+                    entropies,
+                    response_mask,
+                    idx,
+                )
+                if span_i is not None:
+                    span_values.append(span_i)
+            span_max_per_pair.append(
+                float(sum(span_values) / len(span_values)) if span_values else None
             )
-            for ci in range(n_pairs)
-        ]
 
         # ---- 4. Counters (evicted / exec_fail_evicted already initialized) --
         # frontier_p_hat_range defines the training-data frontier band; it is
@@ -1389,56 +1480,16 @@ class RQEvolveTrainer(RayPPOTrainer):
         low, high = self.frontier_p_hat_range
         extreme_p_kept = 0
 
-        # ---- 5. Expand rollout for all executable champions ------------
-        retained_indices: list[int] = list(range(n_pairs))
-        extra_flags_per_ci: dict[int, list[bool]] = {ci: [] for ci in retained_indices}
-        extra_preds_per_ci: dict[int, list[str | None]] = {ci: [] for ci in retained_indices}
-        extra_n = self.num_rollouts - 1
-        if retained_indices and extra_n > 0:
-            retained_texts = [solver_texts[ci] for ci in retained_indices]
-            retained_answers = [pair_answers[ci] for ci in retained_indices]
-            extra_batch = _make_gen_batch(
-                tokenizer=self.tokenizer,
-                prompts_text=retained_texts,
-                answers=retained_answers,
-                temperature=temperature,
-                eos_token_id=eos_id, pad_token_id=pad_id,
-                max_prompt_length=self.config.data.max_prompt_length,
-                n_repeat=extra_n,
-            )
-            try:
-                extra_output = self._generate_sequences_dp_safe(extra_batch)
-            except Exception as e:
-                logger.warning(f"[Reeval] expand rollout failed: {e}")
-                return _metrics()
-
-            extra_resp_ids = extra_output.batch.get("responses")
-            if extra_resp_ids is None:
-                return _metrics()
-
-            for local_idx, ci in enumerate(retained_indices):
-                ans = pair_answers[ci]
-                for ri in range(extra_n):
-                    idx = local_idx * extra_n + ri
-                    decoded = self.tokenizer.decode(
-                        extra_resp_ids[idx].tolist(), skip_special_tokens=True,
-                    )
-                    pred = _extract_boxed(decoded)
-                    extra_preds_per_ci[ci].append(pred)
-                    extra_flags_per_ci[ci].append(
-                        _answers_match(pred, ans) if pred else False
-                    )
-
-        # ---- 6. Update / rebin — NEVER evict on extreme-p anymore ------
+        # ---- 5. Update / rebin — NEVER evict on extreme-p anymore ------
         # p=0 / p=1 champions are kept as archive material and will be
         # filtered out of Solver training data by _refresh_dataset().
         # Their R_Q naturally drops to 0 (since p(1-p)=0), so they cannot
         # displace positive-R_Q candidates at try_insert time.
-        for ci in retained_indices:
+        for ci in range(n_pairs):
             champ, inst, rq_before = pairs[ci]
             h_bar = h_per_pair[ci]
-            flags = [probe_flags[ci]] + extra_flags_per_ci[ci]
-            pred_answers = [probe_predictions[ci]] + extra_preds_per_ci[ci]
+            flags = flags_per_pair[ci]
+            pred_answers = predictions_per_pair[ci]
             new_p_hat = sum(flags) / len(flags) if flags else 0.0
             uncertainty_score, uncertainty_scores = _select_uncertainty_score(
                 self.uncertainty_metric,
@@ -1706,12 +1757,11 @@ class RQEvolveTrainer(RayPPOTrainer):
             return 0, 0
 
         # ================================================================
-        # Phase 2-4: entropy probe → additional rollouts → R_Q
+        # Phase 2-4: full-G rollout entropy → R_Q
         # ================================================================
-        # method.tex의 amortization 구조를 그대로 실현:
-        #   (a) probe 1회 generate + actor forward로 full-vocab H̄ 계산
-        #   (b) 모든 검증 통과 후보에 대해 G-1번 추가 rollout
-        #   (c) probe와 추가 rollout을 합쳐 G개 correctness flag로 R_Q 계산
+        # 각 검증 통과 후보마다 G개 response를 생성하고, 그 G개 전부에 대해
+        # actor forward로 full-vocab entropy를 계산한다. p_hat과 U가 같은
+        # rollout set에서 추정되므로 probe 특례가 사라진다.
         solver_texts = []
         for _, inst, _, _, _ in children:
             msgs = [{"role": "system", "content": SYSTEM_PROMPT},
@@ -1724,57 +1774,75 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         n_children = len(children)
         inst_answers = [inst.answer for _, inst, _, _, _ in children]
+        n_eval_rollouts = max(1, int(self.num_rollouts))
 
-        # ---- (a-1) Probe generate: n_repeat=1 at rollout temperature ----
-        probe_batch = _make_gen_batch(
+        # ---- (a) Generate G rollouts at rollout temperature ------------
+        rollout_batch = _make_gen_batch(
             tokenizer=self.tokenizer,
             prompts_text=solver_texts,
             answers=inst_answers,
             temperature=temperature,
             eos_token_id=eos_id, pad_token_id=pad_id,
             max_prompt_length=self.config.data.max_prompt_length,
-            n_repeat=1,
+            n_repeat=n_eval_rollouts,
         )
         try:
-            probe_output = self._generate_sequences_dp_safe(probe_batch)
+            rollout_output = self._generate_sequences_dp_safe(rollout_batch)
         except Exception as e:
-            logger.warning(f"[Evolution] probe rollout failed: {e}")
+            logger.warning(f"[Evolution] rollout failed: {e}")
             self._record_evolution_event({
                 "event": "round_failed",
                 "round": round_num,
-                "phase": "probe_rollout",
+                "phase": "rollout",
                 "error": str(e),
             })
             return 0, 0
 
-        probe_resp_ids = probe_output.batch.get("responses")
-        response_mask = probe_output.batch.get("response_mask")
-        if probe_resp_ids is None or response_mask is None:
+        rollout_resp_ids = rollout_output.batch.get("responses")
+        response_mask = rollout_output.batch.get("response_mask")
+        if rollout_resp_ids is None or response_mask is None:
             self._record_evolution_event({
                 "event": "round_failed",
                 "round": round_num,
-                "phase": "probe_rollout",
+                "phase": "rollout",
                 "error": "responses or response_mask missing",
             })
             return 0, 0
 
-        # Decode probe flag per child (reused as the 1st of G rollouts).
-        probe_flags: list[bool] = []
-        probe_decoded: list[str] = []
-        probe_predictions: list[str | None] = []
-        for ci in range(n_children):
-            decoded = self.tokenizer.decode(
-                probe_resp_ids[ci].tolist(), skip_special_tokens=True
+        expected_rows = n_children * n_eval_rollouts
+        if rollout_resp_ids.shape[0] != expected_rows:
+            err = (
+                f"rollout rows {rollout_resp_ids.shape[0]} != "
+                f"expected {expected_rows}"
             )
-            pred = _extract_boxed(decoded)
-            probe_decoded.append(decoded)
-            probe_predictions.append(pred)
-            probe_flags.append(_answers_match(pred, inst_answers[ci]) if pred else False)
+            logger.warning(f"[Evolution] {err}")
+            self._record_evolution_event({
+                "event": "round_failed",
+                "round": round_num,
+                "phase": "rollout",
+                "error": err,
+            })
+            return 0, 0
 
-        # ---- (a-2) Full-vocab entropy via actor forward pass -----------
+        flags_per_child: list[list[bool]] = [[] for _ in range(n_children)]
+        predictions_per_child: list[list[str | None]] = [[] for _ in range(n_children)]
+        decoded_per_child: list[list[str]] = [[] for _ in range(n_children)]
+        for ci in range(n_children):
+            ans = inst_answers[ci]
+            for ri in range(n_eval_rollouts):
+                idx = ci * n_eval_rollouts + ri
+                decoded = self.tokenizer.decode(
+                    rollout_resp_ids[idx].tolist(), skip_special_tokens=True
+                )
+                pred = _extract_boxed(decoded)
+                decoded_per_child[ci].append(decoded)
+                predictions_per_child[ci].append(pred)
+                flags_per_child[ci].append(_answers_match(pred, ans) if pred else False)
+
+        # ---- (b) Full-vocab entropy via actor forward pass -------------
         try:
             entropy_output = self._compute_log_probs_dp_safe(
-                probe_output, calculate_entropy=True, temperature=temperature,
+                rollout_output, calculate_entropy=True, temperature=temperature,
             )
         except Exception as e:
             logger.warning(f"[Evolution] entropy forward failed: {e}")
@@ -1801,71 +1869,37 @@ class RQEvolveTrainer(RayPPOTrainer):
             f"{tuple(response_mask.shape)}"
         )
 
-        mask_f = response_mask.float()
-        h_tensor = (entropies * mask_f).sum(dim=-1) / mask_f.sum(dim=-1).clamp(min=1)
-        h_per_child: list[float] = h_tensor.cpu().tolist()
+        h_per_response = self._response_entropy_means(entropies, response_mask)
+        h_per_child = self._mean_by_rollout_group(
+            h_per_response, n_children, n_eval_rollouts,
+        )
         entropy_event_fields = [
-            self._entropy_event_fields(entropies, response_mask, ci)
-            for ci in range(n_children)
-        ]
-        span_max_per_child = [
-            self._span_max_entropy_from_response(
-                probe_decoded[ci], probe_resp_ids, entropies, response_mask, ci,
+            self._group_entropy_event_fields(
+                entropies,
+                response_mask,
+                ci * n_eval_rollouts,
+                n_eval_rollouts,
+                h_per_response,
             )
             for ci in range(n_children)
         ]
-
-        # ---- (b) Expand rollout: G-1 more per verified candidate -------
-        retained_indices: list[int] = list(range(n_children))
-        extra_flags_per_ci: dict[int, list[bool]] = {ci: [] for ci in retained_indices}
-        extra_preds_per_ci: dict[int, list[str | None]] = {ci: [] for ci in retained_indices}
-        extra_n = self.num_rollouts - 1
-        if retained_indices and extra_n > 0:
-            retained_texts = [solver_texts[ci] for ci in retained_indices]
-            retained_answers = [inst_answers[ci] for ci in retained_indices]
-            extra_batch = _make_gen_batch(
-                tokenizer=self.tokenizer,
-                prompts_text=retained_texts,
-                answers=retained_answers,
-                temperature=temperature,
-                eos_token_id=eos_id, pad_token_id=pad_id,
-                max_prompt_length=self.config.data.max_prompt_length,
-                n_repeat=extra_n,
+        span_max_per_child: list[float | None] = []
+        for ci in range(n_children):
+            span_values = []
+            for ri in range(n_eval_rollouts):
+                idx = ci * n_eval_rollouts + ri
+                span_i = self._span_max_entropy_from_response(
+                    decoded_per_child[ci][ri],
+                    rollout_resp_ids,
+                    entropies,
+                    response_mask,
+                    idx,
+                )
+                if span_i is not None:
+                    span_values.append(span_i)
+            span_max_per_child.append(
+                float(sum(span_values) / len(span_values)) if span_values else None
             )
-            try:
-                extra_output = self._generate_sequences_dp_safe(extra_batch)
-            except Exception as e:
-                logger.warning(f"[Evolution] expand rollout failed: {e}")
-                self._record_evolution_event({
-                    "event": "round_failed",
-                    "round": round_num,
-                    "phase": "expand_rollout",
-                    "error": str(e),
-                })
-                return n_children, 0
-
-            extra_resp_ids = extra_output.batch.get("responses")
-            if extra_resp_ids is None:
-                self._record_evolution_event({
-                    "event": "round_failed",
-                    "round": round_num,
-                    "phase": "expand_rollout",
-                    "error": "responses missing",
-                })
-                return n_children, 0
-
-            for local_idx, ci in enumerate(retained_indices):
-                ans = inst_answers[ci]
-                for ri in range(extra_n):
-                    idx = local_idx * extra_n + ri
-                    decoded = self.tokenizer.decode(
-                        extra_resp_ids[idx].tolist(), skip_special_tokens=True,
-                    )
-                    pred = _extract_boxed(decoded)
-                    extra_preds_per_ci[ci].append(pred)
-                    extra_flags_per_ci[ci].append(
-                        _answers_match(pred, ans) if pred else False
-                    )
 
         # ---- (d) Score + grid insertion ------------------------------
         # p=0 / p=1 candidates are KEPT as archive material (evolutionary
@@ -1877,11 +1911,11 @@ class RQEvolveTrainer(RayPPOTrainer):
         f_low, f_high = self.frontier_p_hat_range
         attempted = n_children
         inserted = 0
-        for ci in retained_indices:
+        for ci in range(n_children):
             child, inst, op, code_text, source_code = children[ci]
             h_bar = h_per_child[ci]
-            flags = [probe_flags[ci]] + extra_flags_per_ci[ci]
-            pred_answers = [probe_predictions[ci]] + extra_preds_per_ci[ci]
+            flags = flags_per_child[ci]
+            pred_answers = predictions_per_child[ci]
             p_hat = sum(flags) / len(flags) if flags else 0.0
             uncertainty_score, uncertainty_scores = _select_uncertainty_score(
                 self.uncertainty_metric,
@@ -1922,6 +1956,9 @@ class RQEvolveTrainer(RayPPOTrainer):
                 program=child, h_value=uncertainty_score,
                 problem_text=inst.problem, rq_score=rq_result.rq_score,
             )
+            first_prediction = pred_answers[0] if pred_answers else None
+            first_correct = flags[0] if flags else False
+            first_response = decoded_per_child[ci][0] if decoded_per_child[ci] else ""
             self._record_evolution_event({
                 "event": "candidate_scored",
                 "round": round_num,
@@ -1948,9 +1985,9 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "d_bin": target_d,
                 "concept_type": child.get_concept_type(),
                 "concept_group": child.get_concept_group(),
-                "probe_prediction": probe_predictions[ci],
-                "probe_correct": probe_flags[ci],
-                **self._event_text_fields("probe_response", probe_decoded[ci]),
+                "probe_prediction": first_prediction,
+                "probe_correct": first_correct,
+                **self._event_text_fields("probe_response", first_response),
                 **self._event_text_fields("mutation_output", code_text, limit=8000),
                 **self._event_text_fields("source_code", source_code, limit=12000),
                 **entropy_event_fields[ci],
