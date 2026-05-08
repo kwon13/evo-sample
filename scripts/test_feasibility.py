@@ -432,14 +432,30 @@ def _choose_prefill_concept(
     return _pair(rng.choice(candidates))
 
 
-def _build_mutation_prefill(ctype: str, cgroup: str) -> tuple[str, str]:
-    """Return (suffix_appended_to_prompt, prefix_for_extract_recovery)."""
-    body = (
-        "import random\n\n"
-        f"CONCEPT_TYPE = \"{ctype}\"\n"
-        f"CONCEPT_GROUP = \"{cgroup}\"\n\n"
-        "def generate(seed):\n"
-    )
+def _build_mutation_prefill(
+    ctype: str, cgroup: str, op: str = "in_depth"
+) -> tuple[str, str]:
+    """Return (suffix_appended_to_prompt, prefix_for_extract_recovery).
+
+    in_depth          — locks both CONCEPT_GROUP and CONCEPT_TYPE.
+    in_breadth /
+    crossover         — locks CONCEPT_GROUP only and leaves the type
+                        as an open quote so the model picks a
+                        whitelisted type that fits the body it writes.
+    """
+    if op == "in_depth":
+        body = (
+            "import random\n\n"
+            f"CONCEPT_GROUP = \"{cgroup}\"\n"
+            f"CONCEPT_TYPE = \"{ctype}\"\n\n"
+            "def generate(seed):\n"
+        )
+    else:
+        body = (
+            "import random\n\n"
+            f"CONCEPT_GROUP = \"{cgroup}\"\n"
+            "CONCEPT_TYPE = \""
+        )
     suffix = "\n```python\n" + body
     return suffix, body
 
@@ -783,7 +799,7 @@ class VLLMRunner:
         )
         op = "in_depth" if in_depth else "in_breadth"
         chosen_t, chosen_g = _choose_prefill_concept(op, parent)
-        suffix, recovery = _build_mutation_prefill(chosen_t, chosen_g)
+        suffix, recovery = _build_mutation_prefill(chosen_t, chosen_g, op=op)
         prompt = prompt + suffix
         params = SamplingParams(
             temperature=0.75 if in_depth else 0.95,
@@ -886,7 +902,7 @@ class VLLMRunner:
                 )
                 chosen_t, chosen_g = _choose_prefill_concept(op, parent, None, rng_local)
 
-            suffix, recovery = _build_mutation_prefill(chosen_t, chosen_g)
+            suffix, recovery = _build_mutation_prefill(chosen_t, chosen_g, op=op)
             p = p + suffix
             prompts.append(p)
             recoveries.append(recovery)

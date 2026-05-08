@@ -1,10 +1,8 @@
 import random
 from fractions import Fraction
 
-CONCEPT_TYPE = "geometry.power_of_point_secants"
 CONCEPT_GROUP = "geometry"
-
-
+CONCEPT_TYPE = "geometry.power_of_point_secants"
 def generate(seed):
     rng = random.Random(seed)
 

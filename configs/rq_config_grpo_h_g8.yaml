@@ -1,7 +1,7 @@
 data:
   train_files: ""
-  max_prompt_length: 4096
-  max_response_length: 4096
+  max_prompt_length: 8192
+  max_response_length: 8192
   rollout_batch_size: 32
   shuffle: true
 
@@ -54,12 +54,12 @@ worker:
     max_num_batched_tokens: 8192
     dtype: bfloat16
     tensor_parallel_size: 1
-    enable_chunked_prefill: false
+    enable_chunked_prefill: true
     enforce_eager: false
     # G=16 rollouts/prompt for GRPO group. Memory 2배 trade-off로 group reward
     # 표준편차 추정이 더 안정적.
-    n: 16
-    gpu_memory_utilization: 0.5
+    n: 8
+    gpu_memory_utilization: 0.7
     ignore_eos: false
     disable_log_stats: true
 
@@ -70,16 +70,16 @@ worker:
 
 trainer:
   total_outer_iterations: 100
-  max_steps: 256
+  max_steps: 512
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo_h_g16
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g16
+  experiment_name: qwen3_4b_base_grpo_h_g8
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8
   logger:
     - console
     - wandb
   n_gpus_per_node: 4
   nnodes: 1
-  save_freq: 128      # step 128, 256 저장 → 중간 1회 + final 1회
+  save_freq: 32      # step 128, 256 저장 → 중간 1회 + final 1회
   save_final_checkpoint: false  # save_freq 배수가 아닌 조기 종료 시 final save 생략
   save_limit: 2       # 최근 2개 checkpoint만 유지 (오래된 것 자동 삭제)
 
@@ -87,7 +87,7 @@ math_eval:
   enabled: true
   before_train: true
   every_n_outer_iterations: 1
-  max_tokens: 4096
+  max_tokens: 8192
   temperature: 0.0
   top_p: 1.0
   batch_size: 128
@@ -182,7 +182,7 @@ rq:
   # exec-failing ones.
   # L=[0.3, 0.7]: 이전 [0.1, 0.9] 대비 narrower band — Solver가 진짜 경계
   # (어렵지도 쉽지도 않은) 문제만 학습. Training set 크기는 줄어듦.
-  frontier_p_hat_range: [0.3, 0.7]
+  frontier_p_hat_range: [0.1, 0.9]
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
   # mode:

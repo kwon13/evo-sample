@@ -1,10 +1,8 @@
 import math
 import random
 
-CONCEPT_TYPE = "number_theory.kth_root_mod_prime"
 CONCEPT_GROUP = "number_theory"
-
-
+CONCEPT_TYPE = "number_theory.kth_root_mod_prime"
 def _prime_factors(n):
     factors = set()
     d = 2

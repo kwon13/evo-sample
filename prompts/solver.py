@@ -1,11 +1,9 @@
 SOLVER_SYSTEM_PROMPT = (
-    "Solve the following math problem step by step. "
-    "Put your final answer in \\boxed{}."
+    "Please reason step by step, and put your final answer within \\boxed{}."
 )
 
 SOLVER_COMPLETION_PROMPT = (
-    "Solve the following math problem step by step.\n"
-    "Put your final answer in \\boxed{{}}.\n\n"
+    "Please reason step by step, and put your final answer within \\boxed{}."
+    "\n\n"
     "Problem: {problem}\n\n"
-    "Solution:"
 )

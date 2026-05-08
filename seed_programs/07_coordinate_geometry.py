@@ -1,10 +1,8 @@
 import random
 import math
 
-CONCEPT_TYPE = "geometry.line_intersection_distance"
 CONCEPT_GROUP = "geometry"
-
-
+CONCEPT_TYPE = "geometry.line_intersection_distance"
 def generate(seed):
     rng = random.Random(seed)
 

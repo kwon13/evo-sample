@@ -216,6 +216,37 @@ def _extract_code(text: str) -> str | None:
     return extract_generator_code(text)
 
 
+def _format_mutation_prompt(tokenizer, prompt_text: str, suffix: str) -> str:
+    """Wrap a mutation prompt in chat format while keeping the assistant prefill.
+
+    Layout:
+      - user turn: instructions, parent code, rubric (= prompt_text)
+      - assistant turn (partial, not closed): code-fence + prefill body (= suffix)
+
+    Uses `continue_final_message=True` so the assistant turn stays open and the
+    model continues directly from the prefill. Falls back to raw concatenation
+    when the tokenizer has no chat_template or does not support the option,
+    preserving previous behavior.
+    """
+    chat_template = getattr(tokenizer, "chat_template", None)
+    if not chat_template:
+        return prompt_text + suffix
+
+    messages = [
+        {"role": "user", "content": prompt_text},
+        {"role": "assistant", "content": suffix.lstrip("\n")},
+    ]
+    try:
+        return tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=False,
+            continue_final_message=True,
+        )
+    except (TypeError, ValueError):
+        return prompt_text + suffix
+
+
 def _make_gen_batch(
     tokenizer,
     prompts_text: list[str],
@@ -1676,9 +1707,14 @@ class RQEvolveTrainer(RayPPOTrainer):
                         few_shot=few_shot,
                     )
                     chosen_t, chosen_g = choose_prefill_concept(op, pa, pb)
-                    suffix, recovery = build_mutation_prefill(chosen_t, chosen_g)
+                    suffix, recovery = build_mutation_prefill(
+                        chosen_t, chosen_g, op=op
+                    )
+                    full_prompt = _format_mutation_prompt(
+                        self.tokenizer, prompt_text, suffix
+                    )
                     mutation_prompts.append(
-                        (prompt_text + suffix, op, pa, pb, recovery)
+                        (full_prompt, op, pa, pb, recovery)
                     )
                     continue
 
@@ -1700,9 +1736,14 @@ class RQEvolveTrainer(RayPPOTrainer):
                 suggested_groups=suggested,
             )
             chosen_t, chosen_g = choose_prefill_concept(op, parent)
-            suffix, recovery = build_mutation_prefill(chosen_t, chosen_g)
+            suffix, recovery = build_mutation_prefill(
+                chosen_t, chosen_g, op=op
+            )
+            full_prompt = _format_mutation_prompt(
+                self.tokenizer, prompt_text, suffix
+            )
             mutation_prompts.append(
-                (prompt_text + suffix, op, parent, None, recovery)
+                (full_prompt, op, parent, None, recovery)
             )
 
         if not mutation_prompts:

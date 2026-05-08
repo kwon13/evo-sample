@@ -1,9 +1,7 @@
 import random
 
-CONCEPT_TYPE = "geometry.trig_area"
 CONCEPT_GROUP = "geometry"
-
-
+CONCEPT_TYPE = "geometry.trig_area"
 def generate(seed):
     rng = random.Random(seed)
 

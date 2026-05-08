@@ -1,9 +1,7 @@
 import random
 
-CONCEPT_TYPE = "linear_algebra.linear_system_sum"
 CONCEPT_GROUP = "algebra"
-
-
+CONCEPT_TYPE = "linear_algebra.linear_system_sum"
 def generate(seed):
     rng = random.Random(seed)
 

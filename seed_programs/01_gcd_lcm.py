@@ -1,10 +1,8 @@
 import random
 import math
 
-CONCEPT_TYPE = "number_theory.gcd_lcm_sync"
 CONCEPT_GROUP = "number_theory"
-
-
+CONCEPT_TYPE = "number_theory.gcd_lcm_sync"
 def lcm(x, y):
     return x * y // math.gcd(x, y)
 

@@ -1,9 +1,7 @@
 import random
 
-CONCEPT_TYPE = "inequality.am_gm_product"
 CONCEPT_GROUP = "inequality"
-
-
+CONCEPT_TYPE = "inequality.am_gm_product"
 def generate(seed):
     rng = random.Random(seed)
 

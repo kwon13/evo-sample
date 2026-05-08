@@ -71,10 +71,11 @@ def concept_prompt_block() -> str:
     types = ", ".join(CONCEPT_TYPES)
     groups = ", ".join(CONCEPT_GROUPS)
     return (
-        "# Required top-level constants (must use these EXACT strings):\n"
-        f"#   CONCEPT_TYPE in: {types}\n"
-        f"#   CONCEPT_GROUP in: {groups}\n"
-        "#   (CONCEPT_GROUP must equal the prefix-group of CONCEPT_TYPE.)\n"
+        "Required top-level constants (use these exact strings):\n"
+        f"  CONCEPT_TYPE must be one of: {types}\n"
+        f"  CONCEPT_GROUP must be one of: {groups}\n"
+        "  CONCEPT_GROUP must match the prefix-group of CONCEPT_TYPE.\n"
+        "\n"
     )
 
 
