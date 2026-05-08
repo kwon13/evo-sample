@@ -1,7 +1,7 @@
 data:
   train_files: ""
-  max_prompt_length: 8192
-  max_response_length: 8192
+  max_prompt_length: 4096
+  max_response_length: 6144
   rollout_batch_size: 32
   shuffle: true
 
@@ -50,8 +50,11 @@ worker:
   rollout:
     name: vllm
     temperature: 0.7
-    max_model_len: 8192
-    max_num_batched_tokens: 8192
+    # max_model_len = max_prompt_length + max_response_length = 4096 + 6144
+    max_model_len: 10240
+    # vLLM requires max_num_batched_tokens > max_prompt_length + max_response_length
+    # (strict >). Set to ~1.5x for batched throughput headroom.
+    max_num_batched_tokens: 16384
     dtype: bfloat16
     tensor_parallel_size: 1
     enable_chunked_prefill: true
