@@ -85,12 +85,12 @@ math_eval:
   output_details: true
   max_logged_failures: 20
   fast_samples:
-    math500: 100
+    math500: -1
     amc23: -1
     aime24: -1
     aime25: -1
-    minerva_math: 100
-    olympiadbench: 100
+    minerva_math: -1
+    olympiadbench: -1
   benchmarks:
     - name: math500
       hf_id: test-time-compute/test_MATH
