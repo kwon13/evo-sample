@@ -69,7 +69,7 @@ worker:
     num_cpus: 1
 
 trainer:
-  total_epochs: 100
+  total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
   experiment_name: qwen3_4b_base_grpo_h
@@ -86,7 +86,7 @@ trainer:
 math_eval:
   enabled: true
   before_train: true
-  every_n_epochs: 1
+  every_n_outer_iterations: 1
   max_tokens: 4096
   temperature: 0.0
   top_p: 1.0
@@ -134,12 +134,11 @@ rq:
   # token-level entropy, matching the Fisher/gradient derivation. The supported
   # metrics are h and h_span_max.
   h_range: [0.0, 2.0]
-  # Evolution now runs once per Solver epoch via _pre_epoch_hook() —
-  # evolution_pct / evolution_freq are NOT consulted. Kept here only for
-  # backward-compatible YAML parsing; safe to delete.
-  evolution_pct: 0.1
-  candidates_per_evo: 8
-  max_rounds: 8
+  # Outer iteration budget: each inner iteration mutates, verifies,
+  # evaluates, and tries to insert one candidate program. The batch size is
+  # only a throughput knob; it does not change the algorithmic budget.
+  inner_iterations: 64
+  inner_iteration_batch_size: 8
   # rq.num_rollouts는 R_Q scoring용 rollout 수 (evolution 내부).
   # worker.rollout.n (GRPO group size)과 완전히 독립.
   num_rollouts: 8
@@ -186,7 +185,7 @@ rq:
   #   "h_priority_d_uniform" (default) — H 내림차순 × D 균등 + (program, seed) 재사용 금지
   #   "uniform"                         — 모든 champion × seeds[0, m)  (legacy)
   # training_budget:
-  #   epoch 당 총 (problem, answer) 인스턴스 수.
+  #   outer iteration 당 총 (problem, answer) 인스턴스 수.
   #   null 이면 n_h_bins × n_div_bins × instances_per_program 로 자동 설정.
   # strict_anti_reuse:
   #   true  (권장) — 같은 (program_id, seed) 쌍은 전체 학습 동안 최대 1회만
@@ -194,28 +193,28 @@ rq:
   #                   _load_checkpoint 가 JSON sidecar (rq_used_seeds.json)
   #                   로 저장/복원하므로 restart 후에도 유지됨.
   #   false        — _refresh_dataset 시작 시 used_seeds 가 초기화되어 한
-  #                   epoch 안에서만 중복 금지. epoch 간에는 같은
+  #                   outer iteration 안에서만 중복 금지. outer iteration 간에는 같은
   #                   (program_id, seed) 쌍이 재사용될 수 있음.
   training_selection_mode: "h_priority_d_uniform"
   training_budget: null
   strict_anti_reuse: true
 
-  # --- Epoch-start evolution hook (Method epoch order) ---
-  # Evolution runs at the beginning of each Solver epoch via _pre_epoch_hook().
-  # Method's order: archive reevaluation → mutation rounds → dataset refresh →
-  # Solver epoch training. Controlled here:
+  # --- Outer-iteration-start evolution hook (Method outer-iteration order) ---
+  # Evolution runs at the beginning of each Solver outer iteration via _pre_outer_iteration_hook().
+  # Method's order: archive reevaluation → inner iterations → dataset refresh →
+  # Solver training update pass. Controlled here:
   #
   # evolve_before_train:
-  #   true (default) — run evolution at epoch 0 too (first Solver update
+  #   true (default) — run evolution at outer iteration 0 too (first Solver update
   #                    trains on archive-selected problems, not bootstrap seeds).
-  #   false          — skip only the epoch-0 evolution; remaining epochs still
+  #   false          — skip only the outer-iteration-0 evolution; remaining outer iterations still
   #                    run evolution normally.
   # skip_initial_evolution_on_resume:
   #   true (default) — when trainer.load_checkpoint_path is set, skip the
-  #                    epoch-0 evolution. Safe default because the archive state
+  #                    outer-iteration-0 evolution. Safe default because the archive state
   #                    is not part of the checkpoint — we don't want to evolve
   #                    on an unknown archive snapshot.
-  #   false          — evolve at epoch 0 even on resume. Checkpoint is already
+  #   false          — evolve at outer iteration 0 even on resume. Checkpoint is already
   #                    loaded by fit() at that point, so this scores the archive
   #                    with the checkpointed policy (not the base model).
   evolve_before_train: true

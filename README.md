@@ -111,14 +111,14 @@ evo-sample/
   │    ├─ controlled concept D축 사용 (embedding 축이면 PCA fitting)
   │    └─ 각 seed 에 대해 H, p_hat 측정 → R_Q → MAPElitesGrid.try_insert()
   │
-  └─ Phase 1~N. Evolution Loop (--n_evo step)
+  └─ Phase 1~N. Outer Iteration Loop
        │
-       └─ 매 step, --max_rounds 라운드 반복:
+       └─ 매 outer iteration, inner_iterations 만큼 문제 생성:
             │
             ├─ (A) 부모 선택 — grid.sample_parent() / sample_two_parents()
             │       └─ ε-greedy + rank-UCB
             │
-            ├─ (B) Mutation (LLM 호출, --candidates 개 배치)
+            ├─ (B) Mutation (LLM 호출, inner_iteration_batch_size 단위 배치)
             │       ├─ crossover   — MUTATE_CROSSOVER
             │       ├─ in-depth    — MUTATE_DEPTH (난이도↑)
             │       └─ in-breadth  — MUTATE_BREADTH (도메인 전환)
@@ -341,9 +341,9 @@ uv run python run_verl.py --config configs/rq_config.yaml
 | 인자 | 기본 (vLLM) | 기본 (Ollama) | 설명 |
 |------|-------------|----------------|------|
 | `--seed_dir` | `./seed_programs` | 동일 | seed `.py` 디렉터리 |
-| `--n_evo` | 10 | 10 | evolution step 수 (outer loop) |
-| `--candidates` | 8 | 8 | 라운드당 mutation 후보 수 |
-| `--max_rounds` | 8 | 8 | step당 라운드 수 (fixed budget) |
+| `--n_evo` | 10 | 10 | feasibility용 outer iteration 수 |
+| `--candidates` | 8 | 8 | feasibility용 inner iteration batch size |
+| `--max_rounds` | 8 | 8 | legacy: `--n_evo` 안의 batch 수 (`8 × 8 = 64` inner iterations) |
 | `--n_rollouts` | 10 | 10 | 문제당 solver rollout (G) |
 | `--n_h_bins` | 6 | 6 | H축 bin 수 |
 | `--n_div_bins` | 6 | 6 | D축 bin 수 |
@@ -364,6 +364,15 @@ uv run python run_verl.py --config configs/rq_config.yaml
 | `--gpu_mem` | 0.85 | `gpu_memory_utilization` |
 | `--max_tokens` | 10240 | rollout 최대 토큰 |
 | `--model / --base_url / --api_key` | — | OpenAI 호환 API (mutation만 실제, 나머지 mock) |
+
+### veRL 학습 config 표기
+
+| 키 | 의미 |
+|----|------|
+| `trainer.total_outer_iterations` | 공진화 outer iteration 수 |
+| `rq.inner_iterations` | outer iteration마다 생성/평가할 candidate program 수 |
+| `rq.inner_iteration_batch_size` | inner iteration을 batch 처리하는 구현상 크기 |
+| `math_eval.every_n_outer_iterations` | math benchmark 평가 주기 |
 
 ### Ollama 전용 — [test_feasibility_ollama.py](scripts/test_feasibility_ollama.py)
 
@@ -396,13 +405,13 @@ uv run python run_verl.py --config configs/rq_config.yaml
 
 ```
 RayPPOTrainer.fit():
-  매 epoch:
-    evolution → _refresh_dataset() → dataloader 재구성
+  매 outer iteration:
+    RefreshChampions → inner iterations → _refresh_dataset() → dataloader 재구성
 
-  epoch 내부 각 step:
+  outer iteration 내부 각 Solver step:
     dynamic_dataset → rollout → reward → REINFORCE++ update
 
-  math_eval.every_n_epochs 마다:
+  math_eval.every_n_outer_iterations 마다:
     MATH-500 / AMC / AIME / Minerva / OlympiadBench pass@1 평가
 ```
 

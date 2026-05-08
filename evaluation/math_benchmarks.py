@@ -331,13 +331,18 @@ def build_math_eval_dataloaders(
 
 def save_math_eval_details(
     output_dir: str | Path,
-    epoch: int,
     global_step: int,
     payload: dict[str, Any],
+    outer_iteration: int | None = None,
+    epoch: int | None = None,
 ) -> Path:
     out_dir = Path(output_dir) / "math_eval"
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"math_eval_epoch_{epoch}_step_{global_step}.json"
+    iteration = outer_iteration if outer_iteration is not None else epoch
+    if iteration is None:
+        iteration = 0
+    prefix = "outer_iteration" if outer_iteration is not None else "epoch"
+    path = out_dir / f"math_eval_{prefix}_{iteration}_step_{global_step}.json"
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
     latest = out_dir / "latest_math_eval.json"

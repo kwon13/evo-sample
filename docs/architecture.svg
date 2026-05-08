@@ -23,7 +23,7 @@
   <rect x="24" y="72" width="290" height="460" rx="12" fill="white" stroke="#bfdbfe" stroke-width="1.5" filter="url(#sh)"/>
   <rect x="24" y="72" width="290" height="40" rx="12" fill="url(#gB)"/>
   <rect x="24" y="100" width="290" height="12" rx="0" fill="url(#gB)"/>
-  <text x="169" y="98" text-anchor="middle" font-size="13" font-weight="600" fill="white">Solver Training (Outer Loop)</text>
+  <text x="169" y="98" text-anchor="middle" font-size="13" font-weight="600" fill="white">Solver Training (Outer Iteration)</text>
 
   <!-- Step boxes - uniform 250w x 36h, centered at x=169 -->
   <rect x="44" y="126" width="250" height="36" rx="7" fill="#eff6ff" stroke="#bfdbfe"/>
@@ -52,7 +52,7 @@
   <line x1="169" y1="370" x2="169" y2="384" stroke="#94a3b8" stroke-width="1.2" marker-end="url(#a)"/>
 
   <rect x="44" y="386" width="250" height="36" rx="7" fill="#f0fdf4" stroke="#86efac"/>
-  <text x="169" y="409" text-anchor="middle" font-size="11" fill="#166534">Math Eval (epoch interval)</text>
+  <text x="169" y="409" text-anchor="middle" font-size="11" fill="#166534">Math Eval (outer-iteration interval)</text>
 
   <rect x="44" y="436" width="250" height="36" rx="7" fill="#fefce8" stroke="#fde68a"/>
   <text x="169" y="453" text-anchor="middle" font-size="10" fill="#854d0e">MATH / AMC / AIME</text>
@@ -68,7 +68,7 @@
   <rect x="340" y="72" width="596" height="460" rx="12" fill="white" stroke="#fde68a" stroke-width="1.5" filter="url(#sh)"/>
   <rect x="340" y="72" width="596" height="40" rx="12" fill="url(#gA)"/>
   <rect x="340" y="100" width="596" height="12" rx="0" fill="url(#gA)"/>
-  <text x="638" y="98" text-anchor="middle" font-size="13" font-weight="600" fill="white">Evolution (Inner Loop, every evolution_freq steps)</text>
+  <text x="638" y="98" text-anchor="middle" font-size="13" font-weight="600" fill="white">Evolution (Inner Iterations)</text>
 
   <!-- LEFT COLUMN: 4 phases, uniform 240w x 50h -->
   <rect x="360" y="126" width="240" height="50" rx="7" fill="#fffbeb" stroke="#fde68a"/>
@@ -163,7 +163,7 @@
   <text x="770" y="411" text-anchor="middle" font-size="10" fill="#059669">champions x 16 seeds -> new training data</text>
 
   <!-- Repeat label -->
-  <text x="480" y="444" text-anchor="middle" font-size="10" font-weight="600" fill="#64748b">8 rounds x 8 candidates = 64 attempts (fixed budget)</text>
+  <text x="480" y="444" text-anchor="middle" font-size="10" font-weight="600" fill="#64748b">64 inner iterations, batched by 8 (fixed budget)</text>
   <path d="M 380,450 Q 380,466 480,466 Q 580,466 580,450" fill="none" stroke="#fcd34d" stroke-width="1" stroke-dasharray="3,2"/>
 
   <!-- ================================================================ -->

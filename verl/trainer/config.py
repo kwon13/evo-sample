@@ -78,6 +78,10 @@ class AlgorithmConfig:
 
 @dataclass
 class TrainerConfig:
+    # Paper notation: one outer iteration is one archive refresh followed by
+    # one pass over the refreshed Solver dataset. total_epochs is kept as a
+    # legacy alias for older YAMLs.
+    total_outer_iterations: Optional[int] = None
     total_epochs: int = 10
     max_steps: Optional[int] = None
     project_name: str = "easy_r1"
@@ -91,20 +95,37 @@ class TrainerConfig:
     val_only: bool = False
     val_generations_to_log: int = 0
     val_mode: str = "reward"
-    val_every_epoch: bool = False  # Run validation at end of each epoch
+    val_every_outer_iteration: Optional[bool] = None
+    val_every_epoch: bool = False  # Legacy alias.
     code_validation_dataset_path: Optional[str] = None
     code_validation_batch_size: int = 8
     code_validation_workers: int = 8
     code_validation_timeout_sec: float = 2.0
     save_freq: int = -1
     save_limit: int = -1
-    save_every_epoch: bool = True  # Save checkpoint at end of each epoch
+    save_every_outer_iteration: Optional[bool] = None
+    save_every_epoch: bool = True  # Legacy alias.
     save_final_checkpoint: bool = True  # Save at fit() end if not already saved on save_freq
     save_checkpoint_path: Optional[str] = None
     load_checkpoint_path: Optional[str] = None
-    default_local_dir: Optional[str] = None  # For epoch snapshots and rollout logs
+    default_local_dir: Optional[str] = None  # For outer-iteration snapshots and rollout logs
 
     def post_init(self):
+        if self.total_outer_iterations is None:
+            self.total_outer_iterations = self.total_epochs
+        else:
+            self.total_epochs = int(self.total_outer_iterations)
+
+        if self.val_every_outer_iteration is None:
+            self.val_every_outer_iteration = self.val_every_epoch
+        else:
+            self.val_every_epoch = bool(self.val_every_outer_iteration)
+
+        if self.save_every_outer_iteration is None:
+            self.save_every_outer_iteration = self.save_every_epoch
+        else:
+            self.save_every_epoch = bool(self.save_every_outer_iteration)
+
         # Set default_local_dir first if not provided
         if self.default_local_dir is None:
             self.default_local_dir = os.path.join("checkpoints", self.project_name, self.experiment_name)
@@ -138,6 +159,12 @@ class RQConfig:
     evolution_pct: float = 0.1
     evolution_freq: int = 50
     target_hard_champions: int = 6
+    # Paper notation: each inner iteration mutates/evaluates one candidate
+    # program P'. The implementation batches several inner iterations for
+    # throughput. max_evo_attempts, candidates_per_evo, and max_rounds are
+    # legacy aliases for older YAMLs.
+    inner_iterations: Optional[int] = None
+    inner_iteration_batch_size: Optional[int] = None
     max_evo_attempts: int = 64
     candidates_per_evo: int = 8
     max_rounds: int = 8
@@ -163,10 +190,28 @@ class RQConfig:
     evolve_before_train: bool = True
     skip_initial_evolution_on_resume: bool = True
 
+    def post_init(self):
+        if self.inner_iteration_batch_size is None:
+            self.inner_iteration_batch_size = self.candidates_per_evo
+        self.inner_iteration_batch_size = max(1, int(self.inner_iteration_batch_size))
+        self.candidates_per_evo = self.inner_iteration_batch_size
+
+        if self.inner_iterations is None:
+            self.inner_iterations = int(self.max_rounds) * self.inner_iteration_batch_size
+        self.inner_iterations = max(0, int(self.inner_iterations))
+
+        # Keep legacy fields coherent for older helper scripts and logs.
+        self.max_evo_attempts = self.inner_iterations
+        self.max_rounds = (
+            (self.inner_iterations + self.inner_iteration_batch_size - 1)
+            // self.inner_iteration_batch_size
+        )
+
 @dataclass
 class MathEvalConfig:
     enabled: bool = False
     before_train: bool = False
+    every_n_outer_iterations: Optional[int] = None
     every_n_epochs: int = 1
     max_tokens: int = 4096
     temperature: float = 0.0
@@ -175,7 +220,7 @@ class MathEvalConfig:
     sample_seed: int = 42
     output_details: bool = True
     max_logged_failures: int = 20
-    # Per-epoch eval can be expensive; use -1 for full benchmark.
+    # Per-outer-iteration eval can be expensive; use -1 for full benchmark.
     fast_samples: dict = field(default_factory=lambda: {
         "math500": 100,
         "amc23": -1,
@@ -192,6 +237,12 @@ class MathEvalConfig:
         {"name": "minerva_math", "hf_id": "test-time-compute/test_minerva_math", "split": "test"},
         {"name": "olympiadbench", "hf_id": "test-time-compute/test_olympiadbench", "split": "test"},
     ])
+
+    def post_init(self):
+        if self.every_n_outer_iterations is None:
+            self.every_n_outer_iterations = self.every_n_epochs
+        else:
+            self.every_n_epochs = int(self.every_n_outer_iterations)
 
 @dataclass
 class PPOConfig:

@@ -1,21 +1,21 @@
 """
 RQ-Evolve Trainer: veRL RayPPOTrainer + MAP-Elites evolution.
 
-Method-aligned epoch flow (method.tex §coevolution):
-  매 Solver epoch 시작에서 _pre_epoch_hook()이 evolution을 수행.
+Method-aligned outer-iteration flow (method.tex §coevolution):
+  매 outer iteration 시작에서 _pre_outer_iteration_hook()이 evolution을 수행.
 
-  Epoch 0 .. N-1:
-    0. _pre_epoch_hook(epoch_idx) → _evolution_step():
+  Outer iteration 0 .. N-1:
+    0. _pre_outer_iteration_hook(outer_iteration_idx) → _outer_iteration_step():
        a. Champion re-evaluation: filled niche의 champion을 현재 Solver
           기준으로 R_Q 재측정 (self-invalidating archive)
-       b. Mutation rounds × max_rounds:
+       b. Inner iterations:
           - MAP-Elites parent 샘플링 → LLM mutation → multi-seed 자가 검증
           - G rollouts → response별 entropy 평균 → R_Q scoring
           - grid try_insert / evict
        c. _refresh_dataset(): H-priority + D-uniform + strict anti-reuse로
-          epoch dataset 재조립 → dataloader rebuild
-    1. Solver epoch: refresh된 dataset으로 rollout → reward → REINFORCE++
-    2. epoch 종료 시 math_eval 벤치마크 평가 (설정된 주기)
+          outer-iteration dataset 재조립 → dataloader rebuild
+    1. Solver update pass: refresh된 dataset으로 rollout → reward → REINFORCE++
+    2. outer iteration 종료 시 math_eval 벤치마크 평가 (설정된 주기)
 
   step-based _pre_actor_update_hook trigger는 제거됨.
 """
@@ -311,16 +311,16 @@ def _make_gen_batch(
 
 class RQEvolveTrainer(RayPPOTrainer):
     """
-    RayPPOTrainer + MAP-Elites evolution (Method-aligned epoch flow).
+    RayPPOTrainer + MAP-Elites evolution (Method-aligned outer-iteration flow).
 
     fit() 흐름:
-      epoch 0 .. N-1:
-        1. _pre_epoch_hook(epoch_idx) → _evolution_step():
+      outer iteration 0 .. N-1:
+        1. _pre_outer_iteration_hook(outer_iteration_idx) → _outer_iteration_step():
              a. Champion re-evaluation (self-invalidating archive)
-             b. Mutation rounds × max_rounds (G rollouts → entropy mean → scoring)
+             b. Inner iterations (G rollouts → entropy mean → scoring)
              c. _refresh_dataset() → dataloader rebuild
-        2. 이 epoch 의 batch 들을 순회 → Solver rollout → REINFORCE++ update
-        3. epoch 종료 시 math_eval 벤치마크 평가
+        2. 이 outer iteration 의 batch 들을 순회 → Solver rollout → REINFORCE++ update
+        3. outer iteration 종료 시 math_eval 벤치마크 평가
 
     로깅:
       - evo/* : grid 상태, champion 분포, accept rate, reeval stats (Tracker 경유)
@@ -333,15 +333,18 @@ class RQEvolveTrainer(RayPPOTrainer):
         *args,
         map_elites: MAPElitesGrid,
         dynamic_dataset: MapElitesDynamicDataset,
-        candidates_per_evo: int = 8,
-        max_rounds: int = 8,
+        inner_iterations: int | None = None,
+        inner_iteration_batch_size: int | None = None,
+        # Legacy aliases accepted for older call sites/configs.
+        candidates_per_evo: int | None = None,
+        max_rounds: int | None = None,
         num_rollouts: int = 16,
         uncertainty_metric: str = "h",
         instances_per_program: int = 3,
         in_depth_ratio: float = 0.5,
         crossover_ratio: float = 0.2,
         # --- Champion re-evaluation (Method-aligned self-invalidating archive) ---
-        # None (default) — re-evaluate every occupied champion each evolution step.
+        # None (default) — re-evaluate every occupied champion each outer iteration.
         # int > 0        — partial budget (debug/ablation, age-weighted sampling).
         # 0              — disabled (ablation only; stale R_Q allowed in archive).
         reeval_per_step: int | None = None,
@@ -356,7 +359,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         training_selection_mode: str = "h_priority_d_uniform",
         training_budget: int | None = None,
         strict_anti_reuse: bool = True,
-        # --- Epoch-start evolution hook ---
+        # --- Outer-iteration-start evolution hook ---
         evolve_before_train: bool = True,
         skip_initial_evolution_on_resume: bool = True,
         math_eval_dataloaders: dict | None = None,
@@ -365,8 +368,26 @@ class RQEvolveTrainer(RayPPOTrainer):
         super().__init__(*args, **kwargs)
         self.map_elites = map_elites
         self.dynamic_dataset = dynamic_dataset
-        self.candidates_per_evo = candidates_per_evo
-        self.max_rounds = max_rounds
+        if inner_iteration_batch_size is None:
+            inner_iteration_batch_size = (
+                candidates_per_evo if candidates_per_evo is not None else 8
+            )
+        inner_iteration_batch_size = max(1, int(inner_iteration_batch_size))
+        if inner_iterations is None:
+            if max_rounds is not None:
+                inner_iterations = int(max_rounds) * inner_iteration_batch_size
+            else:
+                inner_iterations = 64
+        inner_iterations = max(0, int(inner_iterations))
+
+        self.inner_iterations = inner_iterations
+        self.inner_iteration_batch_size = inner_iteration_batch_size
+        # Legacy attributes retained for old dashboards/scripts.
+        self.candidates_per_evo = inner_iteration_batch_size
+        self.max_rounds = (
+            (inner_iterations + inner_iteration_batch_size - 1)
+            // inner_iteration_batch_size
+        )
         self.num_rollouts = num_rollouts
         uncertainty_metric = _canonical_uncertainty_metric(uncertainty_metric)
         allowed_uncertainty = {
@@ -390,7 +411,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
         self.training_budget = int(training_budget)
         self.strict_anti_reuse = strict_anti_reuse
-        # epoch-hook flags (resume detection uses load_checkpoint_path presence)
+        # outer-iteration hook flags (resume detection uses load_checkpoint_path presence)
         self.evolve_before_train = bool(evolve_before_train)
         self.skip_initial_evolution_on_resume = bool(skip_initial_evolution_on_resume)
         self._is_resume = bool(
@@ -443,39 +464,43 @@ class RQEvolveTrainer(RayPPOTrainer):
         out = self.actor_rollout_wg.compute_log_probs(batch)
         return unpad_dataproto(out, pad)
 
-    def _pre_epoch_hook(self, epoch_idx: int) -> dict | None:
+    def _pre_outer_iteration_hook(self, outer_iteration_idx: int) -> dict | None:
         """
-        Method-aligned epoch-start hook.
+        Method-aligned outer-iteration-start hook.
 
-        fit()의 매 epoch 시작에서 호출되어 Questioner evolution 을 돌린다.
-        _evolution_step() 내부에서 champion re-evaluation → mutation rounds →
-        dataset refresh 가 일어나므로, epoch 의 첫 batch 는 refresh 된
-        archive-selected dataset 을 사용한다.
+        fit()의 매 outer iteration 시작에서 호출되어 Questioner evolution 을
+        돌린다. _outer_iteration_step() 내부에서 champion re-evaluation →
+        inner iterations → dataset refresh 가 일어나므로, 해당 outer
+        iteration 의 첫 batch 는 refresh 된 archive-selected dataset 을
+        사용한다.
 
-        Epoch 0 에서만 추가 분기:
+        Outer iteration 0 에서만 추가 분기:
           - evolve_before_train=false → skip
           - resume + skip_initial_evolution_on_resume=true → skip
             (checkpoint 는 이미 fit() 시작부에서 load 되었으므로, 원한다면
              resume 에서도 evolution 을 돌리는 것이 safe — skip 은 옵션)
         """
-        if epoch_idx == 0:
+        if outer_iteration_idx == 0:
             if not self.evolve_before_train:
-                logger.info("[Evolution] epoch 0: skipped (evolve_before_train=false)")
+                logger.info(
+                    "[Evolution] outer iteration 0: skipped "
+                    "(evolve_before_train=false)"
+                )
                 return None
             if self._is_resume and self.skip_initial_evolution_on_resume:
                 logger.info(
-                    "[Evolution] epoch 0: skipped "
+                    "[Evolution] outer iteration 0: skipped "
                     "(resume + skip_initial_evolution_on_resume=true)"
                 )
                 return None
 
-        logger.info(f"[Evolution] Epoch {epoch_idx} start")
-        evo_metrics = self._evolution_step()
+        logger.info(f"[Evolution] Outer iteration {outer_iteration_idx} start")
+        evo_metrics = self._outer_iteration_step()
 
         # 핵심 지표 요약 출력 (console에서 한눈에 파악)
         print(
             f"\n{'='*60}\n"
-            f"[Evolution Summary] epoch={epoch_idx}\n"
+            f"[Evolution Summary] outer_iteration={outer_iteration_idx}\n"
             f"  Reeval:   {evo_metrics['reeval_count']} updated, "
             f"{evo_metrics['reeval_evicted']} evicted "
             f"(exec_fail={evo_metrics.get('reeval_exec_fail_evicted', 0)}), "
@@ -484,6 +509,9 @@ class RQEvolveTrainer(RayPPOTrainer):
             f"  Mutation: {evo_metrics['attempted']} attempted, "
             f"{evo_metrics['inserted']} inserted "
             f"({evo_metrics['accept_rate']:.0%} accept)\n"
+            f"  Inner:    {evo_metrics['inner_iterations']} iterations "
+            f"in {evo_metrics['inner_iteration_batches']} batches "
+            f"(batch_size={evo_metrics['inner_iteration_batch_size']})\n"
             f"  Grid: {evo_metrics['grid_champions']}/{evo_metrics['total_niches']} niches filled "
             f"({evo_metrics['grid_coverage']:.0%} coverage), "
             f"H2+={evo_metrics['hard_champions']}, "
@@ -500,8 +528,12 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         return evo_metrics
 
+    def _pre_epoch_hook(self, epoch_idx: int) -> dict | None:
+        """Legacy hook name retained for older trainer loops."""
+        return self._pre_outer_iteration_hook(epoch_idx)
+
     def _pre_train_hook(self) -> dict | None:
-        """Optionally run math benchmark eval before any epoch/evolution."""
+        """Optionally run math benchmark eval before any outer iteration/evolution."""
         cfg = getattr(self.config, "math_eval", None)
         if cfg is None or not getattr(cfg, "enabled", False):
             return None
@@ -510,32 +542,54 @@ class RQEvolveTrainer(RayPPOTrainer):
         if not self.math_eval_dataloaders:
             logger.warning("[MathEval] before_train requested but no benchmark dataloaders are available")
             return None
-        return self._validate_math_benchmarks(epoch_idx=-1, phase="before_train")
+        return self._validate_math_benchmarks(
+            outer_iteration_idx=-1, phase="before_train"
+        )
 
-    def _post_epoch_hook(self, epoch_idx: int) -> dict | None:
-        """Run external math benchmark eval after an epoch of Solver updates."""
+    def _post_outer_iteration_hook(self, outer_iteration_idx: int) -> dict | None:
+        """Run external math benchmark eval after one outer iteration."""
         cfg = getattr(self.config, "math_eval", None)
         if cfg is None or not getattr(cfg, "enabled", False):
             return None
         if not self.math_eval_dataloaders:
             logger.warning("[MathEval] enabled but no benchmark dataloaders are available")
             return None
-        every = int(getattr(cfg, "every_n_epochs", 1) or 1)
+        every = int(
+            getattr(
+                cfg,
+                "every_n_outer_iterations",
+                getattr(cfg, "every_n_epochs", 1),
+            )
+            or 1
+        )
         if every <= 0:
             return None
-        epoch_no = epoch_idx + 1
-        if epoch_no % every != 0:
+        outer_iteration_no = outer_iteration_idx + 1
+        if outer_iteration_no % every != 0:
             return None
-        return self._validate_math_benchmarks(epoch_idx, phase="epoch")
+        return self._validate_math_benchmarks(
+            outer_iteration_idx, phase="outer_iteration"
+        )
 
-    def _validate_math_benchmarks(self, epoch_idx: int, phase: str = "epoch") -> dict:
+    def _post_epoch_hook(self, epoch_idx: int) -> dict | None:
+        """Legacy hook name retained for older trainer loops."""
+        return self._post_outer_iteration_hook(epoch_idx)
+
+    def _validate_math_benchmarks(
+        self, outer_iteration_idx: int, phase: str = "outer_iteration",
+    ) -> dict:
         """Evaluate current policy on configured math benchmarks via veRL/vLLM."""
         cfg = self.config.math_eval
-        epoch_no = epoch_idx + 1 if epoch_idx >= 0 else 0
+        outer_iteration_no = (
+            outer_iteration_idx + 1 if outer_iteration_idx >= 0 else 0
+        )
         metrics: dict[str, float] = {}
         details_payload = {
-            "epoch": epoch_idx,
-            "epoch_no": epoch_no,
+            "outer_iteration": outer_iteration_idx,
+            "outer_iteration_no": outer_iteration_no,
+            # Legacy fields retained for existing analysis scripts.
+            "epoch": outer_iteration_idx,
+            "epoch_no": outer_iteration_no,
             "phase": phase,
             "global_step": int(getattr(self, "global_step", 0) or 0),
             "benchmarks": {},
@@ -545,9 +599,9 @@ class RQEvolveTrainer(RayPPOTrainer):
         competition = {"amc23", "aime24", "aime25", "olympiadbench"}
 
         logger.info(
-            "[MathEval] phase=%s epoch=%s step=%s benchmarks=%s",
+            "[MathEval] phase=%s outer_iteration=%s step=%s benchmarks=%s",
             phase,
-            epoch_no,
+            outer_iteration_no,
             getattr(self, "global_step", "?"),
             ",".join(sorted(self.math_eval_dataloaders)),
         )
@@ -647,9 +701,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         if getattr(cfg, "output_details", True):
             path = save_math_eval_details(
                 self.config.trainer.default_local_dir,
-                epoch=epoch_no,
                 global_step=int(getattr(self, "global_step", 0) or 0),
                 payload=details_payload,
+                outer_iteration=outer_iteration_no,
+                epoch=outer_iteration_no,
             )
             metrics["math_eval/details_written"] = 1.0
             logger.info("[MathEval] details saved: %s", path)
@@ -660,7 +715,7 @@ class RQEvolveTrainer(RayPPOTrainer):
     # ------------------------------------------------------------------
 
     def _start_evolution_event_log(self) -> None:
-        """Open a per-evolution JSONL event stream for live MAP visualization."""
+        """Open a per-outer-iteration JSONL event stream for live MAP visualization."""
         import os
 
         self._evolution_event_seq += 1
@@ -676,10 +731,15 @@ class RQEvolveTrainer(RayPPOTrainer):
         )
         self._latest_event_path = os.path.join(event_dir, "latest_events.jsonl")
         header = {
-            "event": "evolution_start",
+            "event": "outer_iteration_start",
             "event_seq": 0,
+            "outer_iteration_index": self._evolution_event_seq,
+            # Legacy key for existing visualization scripts.
             "evolution_index": self._evolution_event_seq,
             "global_step": step,
+            "inner_iterations": self.inner_iterations,
+            "inner_iteration_batch_size": self.inner_iteration_batch_size,
+            # Legacy keys for existing visualization scripts.
             "max_rounds": self.max_rounds,
             "candidates_per_evo": self.candidates_per_evo,
         }
@@ -695,6 +755,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         event = dict(event)
         event.setdefault("global_step", getattr(self, "global_step", 0))
+        event.setdefault("outer_iteration_index", self._evolution_event_seq)
         event.setdefault("evolution_index", self._evolution_event_seq)
         event["event_seq"] = getattr(self, "_last_event_seq", 0) + 1
         self._last_event_seq = event["event_seq"]
@@ -884,19 +945,22 @@ class RQEvolveTrainer(RayPPOTrainer):
             return float(sum(valid_hs) / len(valid_hs))
         return float(max(span_means))
 
-    def _evolution_step(self) -> dict:
+    def _outer_iteration_step(self) -> dict:
         """
-        Fixed-budget evolution (FunSearch 스타일).
-        매 step 고정 라운드 수(max_rounds)만큼 탐색. 조기 종료 없음.
+        One fixed-budget outer iteration.
+        ``inner_iterations`` times, mutate/evaluate one candidate program P'.
+        Inner iterations are batched for throughput; there is no early stop.
 
         순서:
           1. (옵션 A) 기존 champion 재평가 — stale R_Q 갱신
-          2. Mutation 라운드 max_rounds 회
+          2. Inner iterations: Mutate → VerifyAndEvaluate → TryInsert
           3. Dataset refresh
         """
         logger.info(
-            f"[Evolution] step at global_step={getattr(self, 'global_step', '?')} "
-            f"(max_rounds={self.max_rounds}, candidates_per_round={self.candidates_per_evo})"
+            f"[Evolution] outer iteration at global_step="
+            f"{getattr(self, 'global_step', '?')} "
+            f"(inner_iterations={self.inner_iterations}, "
+            f"inner_iteration_batch_size={self.inner_iteration_batch_size})"
         )
         self._last_event_seq = 0
         self._start_evolution_event_log()
@@ -934,15 +998,27 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         total_attempted = 0
         total_inserted = 0
+        inner_iteration_batches = 0
 
-        for round_num in range(1, self.max_rounds + 1):
+        for inner_start in range(
+            1, self.inner_iterations + 1, self.inner_iteration_batch_size
+        ):
+            inner_iteration_batches += 1
+            batch_size = min(
+                self.inner_iteration_batch_size,
+                self.inner_iterations - inner_start + 1,
+            )
+            inner_end = inner_start + batch_size - 1
             hard = self.map_elites.count_hard_champions(min_h_bin=2)
             logger.info(
-                f"[Evolution] Round {round_num}/{self.max_rounds}: "
-                f"{self.candidates_per_evo} candidates (H2+={hard})"
+                f"[Evolution] Inner iterations {inner_start}-{inner_end}/"
+                f"{self.inner_iterations} (batch_size={batch_size}, H2+={hard})"
             )
 
-            attempted, inserted = self._evolution_round(self.candidates_per_evo, round_num)
+            attempted, inserted = self._inner_iteration_batch(
+                batch_size=batch_size,
+                inner_iteration_start=inner_start,
+            )
             total_attempted += attempted
             total_inserted += inserted
 
@@ -956,7 +1032,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         h_scores = [getattr(c, "h_score", 0.0) for c in champions if c.rq_score]
 
         # Frontier-status breakdown (archive material vs. training-eligible).
-        # frontier_status is set by _evolution_round (new candidates) and
+        # frontier_status is set by _inner_iteration_batch (new candidates) and
         # _reevaluate_champions (updated champions). Champions without the tag
         # (e.g. bootstrap before first reeval) fall through to `frontier`.
         too_hard = too_easy = frontier_cnt = zero_rq = 0
@@ -973,11 +1049,15 @@ class RQEvolveTrainer(RayPPOTrainer):
         refresh_stats = getattr(self, "_last_refresh_stats", {}) or {}
 
         result = {
-            # Evolution round stats
+            # Inner-iteration stats
             "attempted": total_attempted,
             "inserted": total_inserted,
             "accept_rate": total_inserted / max(total_attempted, 1),
-            "rounds": round_num,
+            "inner_iterations": self.inner_iterations,
+            "inner_iteration_batches": inner_iteration_batches,
+            "inner_iteration_batch_size": self.inner_iteration_batch_size,
+            # Legacy key for older dashboards.
+            "rounds": inner_iteration_batches,
             # Grid state
             "grid_coverage": stats["coverage"],
             "grid_mean_rq": stats["mean_rq"],
@@ -1035,8 +1115,12 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         return result
 
+    def _evolution_step(self) -> dict:
+        """Legacy method name retained for older code paths."""
+        return self._outer_iteration_step()
+
     def _save_evolution_snapshot(self, evo_metrics: dict):
-        """매 evolution step마다 grid 상태 + 챔피언 정보를 JSON으로 저장."""
+        """매 outer iteration마다 grid 상태 + 챔피언 정보를 JSON으로 저장."""
         import json
         import os
         from datetime import datetime
@@ -1097,6 +1181,9 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         snapshot = {
             "global_step": step,
+            "outer_iteration_index": self._evolution_event_seq,
+            # Legacy key for existing analysis scripts.
+            "evolution_index": self._evolution_event_seq,
             "timestamp": datetime.now().isoformat(),
             "metrics": evo_metrics,
             "grid": grid_snapshot,
@@ -1148,6 +1235,9 @@ class RQEvolveTrainer(RayPPOTrainer):
         refresh_stats = getattr(self, "_last_refresh_stats", {}) or {}
         snapshot = {
             "global_step": step,
+            "outer_iteration_index": self._evolution_event_seq,
+            # Legacy key for existing analysis scripts.
+            "evolution_index": self._evolution_event_seq,
             "timestamp": datetime.now().isoformat(),
             "training_selection_mode": self.training_selection_mode,
             "training_budget": self.training_budget,
@@ -1272,7 +1362,7 @@ class RQEvolveTrainer(RayPPOTrainer):
           어렵다. Solver 가 학습되면서 이미 마스터한 champion 이 계속
           dataset 에 재주입되어 learnability plateau 를 유발한다.
 
-          이 메서드는 매 evolution step 앞에서:
+          이 메서드는 매 outer iteration 앞에서:
             - age-weighted 로 champion 샘플링 (오래 재평가 안 된 것 우선)
             - fresh seed 로 instance 재생성
             - 현재 solver 로 p_hat / H 측정 → R_Q 갱신
@@ -1366,7 +1456,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         pad_id = self.tokenizer.pad_token_id or eos_id
         temperature = self.config.worker.rollout.temperature
 
-        # Solver prompt 구성 (기존 _evolution_round 와 동일)
+        # Solver prompt 구성 (기존 inner-iteration scoring 과 동일)
         solver_texts = []
         for _, inst, _ in pairs:
             msgs = [
@@ -1532,13 +1622,23 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
         return _metrics()
 
-    def _evolution_round(self, batch_size: int, round_num: int) -> tuple[int, int]:
+    def _inner_iteration_batch(
+        self, batch_size: int, inner_iteration_start: int,
+    ) -> tuple[int, int]:
         """
-        단일 라운드: batch_size개 candidate mutation → rollout → entropy → grid insert.
+        Batched inner iterations.
+
+        논문 표기상 inner iteration 하나는 candidate program P' 하나의
+        mutation → rollout → entropy → grid insert 이다. 구현에서는
+        throughput을 위해 여러 inner iteration을 한 번에 batch 처리한다.
         _refresh_dataset()는 호출하지 않음 (caller가 최종 1회 호출).
 
         Returns: (attempted, inserted)
         """
+        inner_iteration_end = inner_iteration_start + batch_size - 1
+        legacy_batch_index = (
+            (inner_iteration_start - 1) // self.inner_iteration_batch_size
+        ) + 1
         eos_id = self.tokenizer.eos_token_id or self.tokenizer.pad_token_id
         pad_id = self.tokenizer.pad_token_id or eos_id
         temperature = self.config.worker.rollout.temperature
@@ -1607,8 +1707,10 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         if not mutation_prompts:
             self._record_evolution_event({
-                "event": "round_empty",
-                "round": round_num,
+                "event": "inner_iteration_batch_empty",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "reason": "no_parent",
             })
             return 0, 0
@@ -1627,8 +1729,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         except Exception as e:
             logger.warning(f"[Evolution] batch mutation failed: {e}")
             self._record_evolution_event({
-                "event": "round_failed",
-                "round": round_num,
+                "event": "inner_iteration_batch_failed",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "phase": "mutation_generate",
                 "error": str(e),
             })
@@ -1637,16 +1741,19 @@ class RQEvolveTrainer(RayPPOTrainer):
         resp_ids = mut_output.batch.get("responses")
         if resp_ids is None:
             self._record_evolution_event({
-                "event": "round_failed",
-                "round": round_num,
+                "event": "inner_iteration_batch_failed",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "phase": "mutation_generate",
                 "error": "responses missing",
             })
             return 0, 0
 
         # Decode + execute (CPU)
-        children = []  # (child, inst, op, mutation_output, source_code)
+        children = []  # (child, inst, op, mutation_output, source_code, inner_iteration)
         for i, (_, op, parent, parent_b, recovery) in enumerate(mutation_prompts):
+            inner_iteration = inner_iteration_start + i
             code_text = self.tokenizer.decode(
                 resp_ids[i].tolist(), skip_special_tokens=True
             )
@@ -1654,7 +1761,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             if not source_code:
                 self._record_evolution_event({
                     "event": "candidate_failed",
-                    "round": round_num,
+                    "round": legacy_batch_index,
+                    "inner_iteration": inner_iteration,
                     "candidate_index": i,
                     "op": op,
                     "parent_id": parent.program_id,
@@ -1684,7 +1792,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             if inst is None:
                 self._record_evolution_event({
                     "event": "candidate_failed",
-                    "round": round_num,
+                    "round": legacy_batch_index,
+                    "inner_iteration": inner_iteration,
                     "candidate_index": i,
                     "op": op,
                     "parent_id": parent.program_id,
@@ -1713,7 +1822,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             if concept_op_reason:
                 self._record_evolution_event({
                     "event": "candidate_failed",
-                    "round": round_num,
+                    "round": legacy_batch_index,
+                    "inner_iteration": inner_iteration,
                     "candidate_index": i,
                     "op": op,
                     "parent_id": parent.program_id,
@@ -1731,8 +1841,9 @@ class RQEvolveTrainer(RayPPOTrainer):
                 continue
             self._record_evolution_event({
                 "event": "candidate_verified",
-                "round": round_num,
-                "candidate_index": len(children),
+                "round": legacy_batch_index,
+                "inner_iteration": inner_iteration,
+                "candidate_index": i,
                 "op": op,
                 "parent_id": parent.program_id,
                 "parent_b_id": parent_b.program_id if parent_b is not None else None,
@@ -1745,12 +1856,14 @@ class RQEvolveTrainer(RayPPOTrainer):
                 **self._event_text_fields("mutation_output", code_text, limit=8000),
                 **self._event_text_fields("source_code", source_code, limit=12000),
             })
-            children.append((child, inst, op, code_text, source_code))
+            children.append((child, inst, op, code_text, source_code, inner_iteration))
 
         if not children:
             self._record_evolution_event({
-                "event": "round_empty",
-                "round": round_num,
+                "event": "inner_iteration_batch_empty",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "reason": "no_verified_children",
                 "mutation_prompts": len(mutation_prompts),
             })
@@ -1763,7 +1876,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         # actor forward로 full-vocab entropy를 계산한다. p_hat과 U가 같은
         # rollout set에서 추정되므로 probe 특례가 사라진다.
         solver_texts = []
-        for _, inst, _, _, _ in children:
+        for _, inst, _, _, _, _ in children:
             msgs = [{"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": inst.problem}]
             if self.tokenizer.chat_template:
@@ -1773,7 +1886,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 solver_texts.append(f"system: {SYSTEM_PROMPT}\nuser: {inst.problem}")
 
         n_children = len(children)
-        inst_answers = [inst.answer for _, inst, _, _, _ in children]
+        inst_answers = [inst.answer for _, inst, _, _, _, _ in children]
         n_eval_rollouts = max(1, int(self.num_rollouts))
 
         # ---- (a) Generate G rollouts at rollout temperature ------------
@@ -1791,8 +1904,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         except Exception as e:
             logger.warning(f"[Evolution] rollout failed: {e}")
             self._record_evolution_event({
-                "event": "round_failed",
-                "round": round_num,
+                "event": "inner_iteration_batch_failed",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "phase": "rollout",
                 "error": str(e),
             })
@@ -1802,8 +1917,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         response_mask = rollout_output.batch.get("response_mask")
         if rollout_resp_ids is None or response_mask is None:
             self._record_evolution_event({
-                "event": "round_failed",
-                "round": round_num,
+                "event": "inner_iteration_batch_failed",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "phase": "rollout",
                 "error": "responses or response_mask missing",
             })
@@ -1817,8 +1934,10 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
             logger.warning(f"[Evolution] {err}")
             self._record_evolution_event({
-                "event": "round_failed",
-                "round": round_num,
+                "event": "inner_iteration_batch_failed",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "phase": "rollout",
                 "error": err,
             })
@@ -1847,8 +1966,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         except Exception as e:
             logger.warning(f"[Evolution] entropy forward failed: {e}")
             self._record_evolution_event({
-                "event": "round_failed",
-                "round": round_num,
+                "event": "inner_iteration_batch_failed",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "phase": "entropy_forward",
                 "error": str(e),
             })
@@ -1858,8 +1979,10 @@ class RQEvolveTrainer(RayPPOTrainer):
         if entropies is None:
             logger.warning("[Evolution] actor did not return entropies")
             self._record_evolution_event({
-                "event": "round_failed",
-                "round": round_num,
+                "event": "inner_iteration_batch_failed",
+                "round": legacy_batch_index,
+                "inner_iteration_start": inner_iteration_start,
+                "inner_iteration_end": inner_iteration_end,
                 "phase": "entropy_forward",
                 "error": "entropies missing",
             })
@@ -1912,7 +2035,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         attempted = n_children
         inserted = 0
         for ci in range(n_children):
-            child, inst, op, code_text, source_code = children[ci]
+            child, inst, op, code_text, source_code, inner_iteration = children[ci]
             h_bar = h_per_child[ci]
             flags = flags_per_child[ci]
             pred_answers = predictions_per_child[ci]
@@ -1961,7 +2084,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             first_response = decoded_per_child[ci][0] if decoded_per_child[ci] else ""
             self._record_evolution_event({
                 "event": "candidate_scored",
-                "round": round_num,
+                "round": legacy_batch_index,
+                "inner_iteration": inner_iteration,
                 "candidate_index": ci,
                 "op": op,
                 "child_id": child.program_id,
@@ -2009,6 +2133,11 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         return attempted, inserted
 
+    def _evolution_round(self, batch_size: int, round_num: int) -> tuple[int, int]:
+        """Legacy method name retained for older tests/scripts."""
+        inner_iteration_start = ((round_num - 1) * batch_size) + 1
+        return self._inner_iteration_batch(batch_size, inner_iteration_start)
+
     # ------------------------------------------------------------------
     # Dataset refresh from MAP-Elites champions
     # ------------------------------------------------------------------
@@ -2047,7 +2176,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         store zero-R_Q programs, while training stays on the frontier.
 
         p_hat missing (e.g. seed bootstrap before any reeval) → treated as
-        frontier so the very first epoch's dataset isn't silently emptied.
+        frontier so the very first outer iteration's dataset isn't silently emptied.
         """
         p = getattr(champ, "p_hat", None)
         if p is None:
@@ -2105,7 +2234,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         non_frontier_skipped = 0  # reporting-only counter
 
         # Non-strict anti-reuse: clear the used-seed registry so the same
-        # (program_id, seed) pair may recur across refreshes (epochs).
+        # (program_id, seed) pair may recur across outer iterations.
         # Strict mode keeps used_seeds so seeds monotonically advance.
         if not self.strict_anti_reuse:
             self.used_seeds.clear()
@@ -2260,8 +2389,8 @@ class RQEvolveTrainer(RayPPOTrainer):
         self._rebuild_dataloader()
         new_size = len(self.dynamic_dataset.snapshot())
         batch = self.config.data.rollout_batch_size
-        steps_per_epoch = new_size // batch
-        dropped = new_size - steps_per_epoch * batch
+        steps_per_outer_iteration = new_size // batch
+        dropped = new_size - steps_per_outer_iteration * batch
 
         # Archive-wide frontier accounting (reporting only).
         all_champs = self.map_elites.get_all_champions()
@@ -2282,7 +2411,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         logger.info(
             f"[Evolution] Dataset refreshed ({self.training_selection_mode}): "
             f"{old_size} → {new_size} problems, budget={self.training_budget}, "
-            f"sweeps={sweep}, steps_per_epoch={steps_per_epoch}, "
+            f"sweeps={sweep}, steps_per_outer_iteration={steps_per_outer_iteration}, "
             f"archive={len(all_champs)} champs "
             f"(frontier={frontier_champs}), "
             f"non_frontier_skipped_visits={non_frontier_skipped}, "
@@ -2293,32 +2422,32 @@ class RQEvolveTrainer(RayPPOTrainer):
             logger.error(
                 f"[Evolution] Dataset is EMPTY after refresh — no frontier "
                 f"champion produced a valid instance. Training will yield 0 "
-                f"steps this epoch. Likely causes: all champions are extreme-p "
+                f"steps this outer iteration. Likely causes: all champions are extreme-p "
                 f"(p=0 or p=1), or frontier champions all exec-failed, or the "
                 f"archive itself is empty. Investigate reeval / mutation logs."
             )
         elif dropped > 0:
             logger.warning(
                 f"[Evolution] drop_last=True will drop {dropped} examples per "
-                f"epoch (budget={self.training_budget} not divisible by "
+                f"outer iteration (budget={self.training_budget} not divisible by "
                 f"rollout_batch_size={batch})"
             )
         if 0 < new_size < batch:
             logger.warning(
                 f"[Evolution] dataset_size={new_size} < rollout_batch_size="
-                f"{batch}; drop_last=True will yield 0 training steps this epoch"
+                f"{batch}; drop_last=True will yield 0 training steps this outer iteration"
             )
 
     def _rebuild_dataloader(self):
         """dynamic_dataset 변경 후 train_dataloader를 재구성.
 
-        현재 epoch의 iterator는 이미 생성되어 있으므로 즉시 반영되지 않지만,
+        현재 outer iteration의 iterator는 이미 생성되어 있으므로 즉시 반영되지 않지만,
         num_workers=0 + __getitem__의 thread-safe update 덕분에
         데이터 내용 자체는 즉시 반영된다.
-        다음 epoch부터는 새 dataloader의 sampler 범위가 적용된다.
+        다음 outer iteration부터는 새 dataloader의 sampler 범위가 적용된다.
         """
         # shuffle MUST be honored — _refresh_dataset builds new_problems in
-        # H-priority order, so without shuffle, every epoch's early batches
+        # H-priority order, so without shuffle, every outer iteration's early batches
         # would be high-H biased relative to the intended training distribution.
         self.train_dataloader = StatefulDataLoader(
             dataset=self.dynamic_dataset,

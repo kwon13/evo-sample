@@ -253,10 +253,13 @@ class RayPPOTrainer:
         ):
             raise ValueError("GRPO and RLOO algorithm need `config.worker.rollout.n > 1`.")
 
+        total_outer_iterations = int(
+            getattr(config.trainer, "total_outer_iterations", config.trainer.total_epochs)
+        )
         if config.trainer.max_steps is not None:
             self.training_steps = config.trainer.max_steps
         else:
-            self.training_steps = len(train_dataloader) * config.trainer.total_epochs
+            self.training_steps = len(train_dataloader) * total_outer_iterations
 
         config.worker.actor.optim.training_steps = self.training_steps
         config.worker.critic.optim.training_steps = self.training_steps
@@ -496,25 +499,39 @@ class RayPPOTrainer:
             if pre_train_metrics:
                 self.logger.log(data=pre_train_metrics, step=self.global_step)
 
-        for epoch_idx in tqdm(range(self.config.trainer.total_epochs), desc="Epoch", position=0):
-            # Stop BEFORE the epoch hook fires. Without this guard, max_steps
-            # is honored inside the inner loop but the _pre_epoch_hook would
-            # still run once per leftover epoch (expensive evolution that
+        total_outer_iterations = int(
+            getattr(
+                self.config.trainer,
+                "total_outer_iterations",
+                self.config.trainer.total_epochs,
+            )
+        )
+        for outer_iteration_idx in tqdm(
+            range(total_outer_iterations), desc="Outer Iteration", position=0
+        ):
+            # Stop BEFORE the outer-iteration hook fires. Without this guard, max_steps
+            # is honored inside the Solver update loop but a legacy
+            # _pre_epoch_hook would
+            # still run once per leftover outer iteration (expensive evolution that
             # immediately breaks at the first batch).
             if self.global_step >= self.training_steps:
                 break
 
-            epoch_start_step = self.global_step
+            outer_iteration_start_step = self.global_step
 
-            # Method-aligned epoch order: evolution → training-data selection →
-            # Solver update. RQEvolveTrainer overrides _pre_epoch_hook to run
-            # _evolution_step() before each epoch's dataloader iterator is built,
-            # so the new epoch sees the refreshed archive.
-            if hasattr(self, '_pre_epoch_hook'):
-                epoch_evo_metrics = self._pre_epoch_hook(epoch_idx)
-                if epoch_evo_metrics:
+            # Method-aligned outer-iteration order:
+            # RefreshChampions → inner iterations → training-data selection →
+            # Solver update. RQEvolveTrainer overrides
+            # _pre_outer_iteration_hook to refresh the archive before this
+            # iteration's dataloader iterator is built.
+            pre_outer_hook = getattr(self, "_pre_outer_iteration_hook", None)
+            if pre_outer_hook is None:
+                pre_outer_hook = getattr(self, "_pre_epoch_hook", None)
+            if pre_outer_hook is not None:
+                outer_evo_metrics = pre_outer_hook(outer_iteration_idx)
+                if outer_evo_metrics:
                     self.logger.log(
-                        data={f"evo/{k}": v for k, v in epoch_evo_metrics.items()},
+                        data={f"evo/{k}": v for k, v in outer_evo_metrics.items()},
                         step=self.global_step,
                     )
             for batch_dict in tqdm(self.train_dataloader, desc="Running step", position=1):
@@ -628,8 +645,9 @@ class RayPPOTrainer:
                         critic_metrics = reduce_metrics(critic_output.non_tensor_batch)
                         metrics.update(critic_metrics)
 
-                    # Evolution now runs once per epoch via _pre_epoch_hook()
-                    # above (Method-aligned order). The legacy step-based
+                    # Evolution now runs once per outer iteration via
+                    # _pre_outer_iteration_hook() above (Method-aligned order).
+                    # The legacy step-based
                     # _pre_actor_update_hook() is intentionally removed here.
 
                     # update actor
@@ -669,8 +687,8 @@ class RayPPOTrainer:
 
             if (
                 self.val_reward_fn is not None
-                and self.config.trainer.val_every_epoch
-                and self.global_step > epoch_start_step
+                and self.config.trainer.val_every_outer_iteration
+                and self.global_step > outer_iteration_start_step
                 and last_val_step != self.global_step
             ):
                 val_metrics = self._validate()
@@ -679,19 +697,23 @@ class RayPPOTrainer:
                 val_score = val_metrics.get("val/reward_score", None)
                 if val_score is not None:
                     print(
-                        f"[Validation] epoch={epoch_idx} step={self.global_step}  "
+                        f"[Validation] outer_iteration={outer_iteration_idx} "
+                        f"step={self.global_step}  "
                         f"reward_score={val_score:.4f}"
                     )
 
-            if hasattr(self, "_post_epoch_hook") and self.global_step > epoch_start_step:
-                post_epoch_metrics = self._post_epoch_hook(epoch_idx)
-                if post_epoch_metrics:
-                    self.logger.log(data=post_epoch_metrics, step=self.global_step)
+            post_outer_hook = getattr(self, "_post_outer_iteration_hook", None)
+            if post_outer_hook is None:
+                post_outer_hook = getattr(self, "_post_epoch_hook", None)
+            if post_outer_hook is not None and self.global_step > outer_iteration_start_step:
+                post_outer_metrics = post_outer_hook(outer_iteration_idx)
+                if post_outer_metrics:
+                    self.logger.log(data=post_outer_metrics, step=self.global_step)
 
         val_enabled = (
             self.config.trainer.val_before_train
             or self.config.trainer.val_freq > 0
-            or self.config.trainer.val_every_epoch
+            or self.config.trainer.val_every_outer_iteration
             or self.config.trainer.val_only
         )
         if self.val_reward_fn is not None and val_enabled:

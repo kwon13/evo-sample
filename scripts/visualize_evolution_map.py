@@ -122,9 +122,13 @@ def load_event_streams(events_dir: Path | None) -> list[dict[str, Any]]:
         if not events:
             continue
 
-        header = events[0] if events[0].get("event") == "evolution_start" else {}
+        header = (
+            events[0]
+            if events[0].get("event") in {"outer_iteration_start", "evolution_start"}
+            else {}
+        )
         match = re.search(r"events_evo_(\d+)_step_(\d+)", path.stem)
-        evo_idx = header.get("evolution_index")
+        evo_idx = header.get("outer_iteration_index", header.get("evolution_index"))
         step = header.get("global_step")
         if match:
             evo_idx = evo_idx if evo_idx is not None else int(match.group(1))
@@ -236,10 +240,13 @@ def _summarize_events(streams: list[dict[str, Any]]) -> dict[str, Any]:
     timeline = []
     for event in raw_events:
         event_type = event.get("event", "")
-        if event_type == "evolution_start":
+        if event_type in {"outer_iteration_start", "evolution_start"}:
             continue
         timeline.append({
             "seq": int(event.get("event_seq") or len(timeline) + 1),
+            "inner_iteration": event.get("inner_iteration"),
+            "inner_iteration_start": event.get("inner_iteration_start"),
+            "inner_iteration_end": event.get("inner_iteration_end"),
             "round": event.get("round"),
             "event": event_type,
             "status": event.get("status"),
@@ -682,15 +689,15 @@ function renderStep(eventLimit) {{
     c => `${{c.inserted}}/${{c.count}}`,
     c => eventColor(c, maxEventCount),
     c => `H${{c.h}} D${{c.d}}\\nevents=${{c.count}} inserted=${{c.inserted}} rejected=${{c.rejected}}\\nops=${{Object.entries(c.ops || {{}}).map(([k,v]) => `${{k}}:${{v}}`).join(', ') || '·'}}\\n\\n` +
-      (c.last_events || []).map(e => `#${{e.seq}} r${{e.round ?? '·'}} ${{e.op || e.event}} ${{e.status || ''}}${{e.reservoir_saved ? ' reservoir' : ''}}\\nchild=${{e.child_short || '·'}} parent=${{e.parent_short || '·'}}\\nRQ=${{fmt(e.rq, 4)}} p=${{fmt(e.p, 3)}} H=${{fmt(e.H, 3)}} tokens=${{e.response_tokens ?? '·'}} ent=[${{fmt(e.entropy_min, 3)}}, ${{fmt(e.entropy_max, 3)}}] std=${{fmt(e.entropy_std, 3)}}\\npred=${{e.probe_prediction || '·'}} correct=${{e.probe_correct ?? '·'}}\\nmutation: ${{shortText(e.mutation_output || '')}}\\nprobe: ${{shortText(e.probe_response || '')}}\\nQ: ${{e.problem || ''}}`).join('\\n\\n')
+      (c.last_events || []).map(e => `#${{e.seq}} inner=${{e.inner_iteration ?? e.inner_iteration_start ?? e.round ?? '·'}} ${{e.op || e.event}} ${{e.status || ''}}${{e.reservoir_saved ? ' reservoir' : ''}}\\nchild=${{e.child_short || '·'}} parent=${{e.parent_short || '·'}}\\nRQ=${{fmt(e.rq, 4)}} p=${{fmt(e.p, 3)}} H=${{fmt(e.H, 3)}} tokens=${{e.response_tokens ?? '·'}} ent=[${{fmt(e.entropy_min, 3)}}, ${{fmt(e.entropy_max, 3)}}] std=${{fmt(e.entropy_std, 3)}}\\npred=${{e.probe_prediction || '·'}} correct=${{e.probe_correct ?? '·'}}\\nmutation: ${{shortText(e.mutation_output || '')}}\\nprobe: ${{shortText(e.probe_response || '')}}\\nQ: ${{e.problem || ''}}`).join('\\n\\n')
   ) : '<span class="muted">No candidate event log for this step.</span>';
   const rows = ev.timeline.slice(-140);
   document.getElementById('eventTable').innerHTML = rows.length ? (
     `<div class="muted">Showing last ${{rows.length}} of ${{ev.timeline.length}} visible events. Move the event slider to replay scoring order.</div>` +
-    '<table class="list"><tr><th>#</th><th>round</th><th>op</th><th>status</th><th>cell</th><th>RQ / p / H</th><th>entropy</th><th>mutation output</th><th>probe</th><th>parent → child</th><th>reservoir</th><th>previous</th><th>problem</th></tr>' +
+    '<table class="list"><tr><th>#</th><th>inner</th><th>op</th><th>status</th><th>cell</th><th>RQ / p / H</th><th>entropy</th><th>mutation output</th><th>probe</th><th>parent → child</th><th>reservoir</th><th>previous</th><th>problem</th></tr>' +
     rows.map(e => `<tr>` +
       `<td>${{e.seq}}</td>` +
-      `<td>${{e.round ?? '·'}}</td>` +
+      `<td>${{e.inner_iteration ?? e.inner_iteration_start ?? e.round ?? '·'}}</td>` +
       `<td>${{esc(e.op || e.event || '·')}}</td>` +
       `<td><span class="${{statusClass(e.status, e.event)}}">${{esc(e.status || e.event || '·')}}</span></td>` +
       `<td>${{e.h === null || e.h === undefined ? '·' : `H${{e.h}} D${{e.d}}`}}</td>` +
@@ -769,7 +776,7 @@ def print_summary(payload: dict[str, Any], output_path: Path) -> None:
     programs = latest["dataset"].get("programs", [])
     print(f"Wrote {output_path}")
     print(
-        f"Loaded {len(payload['steps'])} evolution step(s); "
+        f"Loaded {len(payload['steps'])} outer-iteration snapshot(s); "
         f"latest global_step={latest['global_step']}"
     )
     print(

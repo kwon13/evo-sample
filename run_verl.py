@@ -292,15 +292,21 @@ class RQTaskRunner:
             # RQ-specific
             map_elites=map_elites,
             dynamic_dataset=dynamic_dataset,
-            # Epoch-start evolution hook (Method-aligned). evolution_pct /
-            # evolution_freq are no longer consulted — kept in YAML for
-            # backward compatibility but not passed to the trainer.
+            # Outer-iteration-start evolution hook (Method-aligned). Legacy
+            # evolution_pct / evolution_freq are no longer consulted.
             evolve_before_train=rq_cfg_get("evolve_before_train", True),
             skip_initial_evolution_on_resume=rq_cfg_get(
                 "skip_initial_evolution_on_resume", True
             ),
-            candidates_per_evo=rq_cfg_get("candidates_per_evo", 8),
-            max_rounds=rq_cfg_get("max_rounds", 8),
+            inner_iterations=rq_cfg_get(
+                "inner_iterations",
+                rq_cfg_get("max_rounds", 8)
+                * rq_cfg_get("candidates_per_evo", 8),
+            ),
+            inner_iteration_batch_size=rq_cfg_get(
+                "inner_iteration_batch_size",
+                rq_cfg_get("candidates_per_evo", 8),
+            ),
             num_rollouts=rq_cfg_get("num_rollouts", 10),
             uncertainty_metric=rq_cfg_get("uncertainty_metric", "h"),
             instances_per_program=instances_per_program,
@@ -332,19 +338,20 @@ class RQTaskRunner:
         trainer.init_workers()
         print("[Runner] workers initialized")
 
-        # Initial Questioner evolution is now run by trainer._pre_epoch_hook()
-        # at epoch 0 inside fit() — after checkpoint load, so resume uses the
-        # checkpointed policy rather than the base model. Controlled by
+        # Initial Questioner evolution is now run by
+        # trainer._pre_outer_iteration_hook() at outer iteration 0 inside
+        # fit() — after checkpoint load, so resume uses the checkpointed
+        # policy rather than the base model. Controlled by
         # rq.evolve_before_train and rq.skip_initial_evolution_on_resume
         # (both read during trainer construction).
         #
         # Note: Method requires max_steps to be set explicitly when evolving
-        # each epoch, because training_steps is computed once from the bootstrap
-        # dataloader and propagated to worker-side LR schedulers during
-        # init_workers(). Fail loudly on max_steps=None.
+        # each outer iteration, because training_steps is computed once from
+        # the bootstrap dataloader and propagated to worker-side LR schedulers
+        # during init_workers(). Fail loudly on max_steps=None.
         if getattr(config.trainer, "max_steps", None) is None:
             raise RuntimeError(
-                "[Runner] max_steps is None. Epoch-based evolution needs an "
+                "[Runner] max_steps is None. Outer-iteration evolution needs an "
                 "explicit max_steps because actor/critic optim.training_steps "
                 "are fixed from the bootstrap dataloader during trainer "
                 "construction and cannot be updated after init_workers(). "

@@ -6,25 +6,22 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│              Outer Loop: Solver 학습                      │
+│              Outer iteration: 공진화 단위                  │
 │                                                          │
 │   dynamic_dataset의 문제들로 REINFORCE++ 학습             │
 │   (매 step: rollout → reward → advantage → actor update) │
 │                                                          │
 │   ┌──────────────────────────────────────────┐           │
-│   │  evolution_freq마다 Inner Loop 실행       │           │
+│   │  outer iteration 시작마다 inner iterations│           │
 │   │                                          │           │
-│   │  1. 부모 프로그램 선택 (ε-greedy + UCB)   │           │
-│   │  2. LLM mutation (코드 변형)              │           │
-│   │  3. 자가 검증 (multi-seed + SymPy)        │           │
-│   │  4. Solver rollout → p_hat 추정           │           │
-│   │  5. Entropy 측정 → H_bar                  │           │
-│   │  6. R_Q = p(1-p) · H_bar 계산             │           │
-│   │  7. MAP-Elites grid 갱신                  │           │
-│   │  8. dataset 교체 → dataloader 재구성      │           │
+│   │  1. RefreshChampions                      │           │
+│   │  2. 각 inner iteration에서 문제 생성       │           │
+│   │     Mutate → VerifyAndEvaluate → TryInsert│           │
+│   │  3. SampleFrontierData                    │           │
+│   │  4. dataset 교체 → dataloader 재구성       │           │
 │   └──────────────────────────────────────────┘           │
 │                                                          │
-│   → 다음 step은 진화된 문제로 학습                        │
+│   → 이후 Solver update는 갱신된 문제로 학습                │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -159,17 +156,23 @@ while True:
     if hard >= target_hard: break      # ← Step 5부터 즉시 종료
     if attempted >= max_attempts: break
 
-# 현재: 고정 8라운드
-for round_num in range(1, max_rounds + 1):  # 항상 8라운드 실행
-    attempted, inserted = _evolution_round(candidates_per_evo)
+# 현재: 고정 inner iterations
+for inner_iteration in range(1, inner_iterations + 1):
+    candidate = mutate(sample_parent(archive))
+    evaluation = verify_and_evaluate(candidate, solver, G)
+    if evaluation.accepted:
+        try_insert(archive, candidate, evaluation.u, evaluation.rq)
 ```
 
-매 evolution step마다 `8 rounds × 8 candidates = 64 attempts`를 보장한다.
+매 outer iteration마다 `inner_iterations=64` attempts를 보장한다. 실제
+구현은 throughput을 위해 `inner_iteration_batch_size=8`개 inner iteration을
+한 번에 batch 처리한다.
 
 
-## 7. 진화 라운드의 상세 과정
+## 7. Inner iteration의 상세 과정
 
-각 라운드(`_evolution_round`)는 다음 4단계를 거친다:
+각 inner iteration은 다음 4단계를 거친다. 구현 함수
+`_inner_iteration_batch()`는 이 inner iteration들을 묶어서 실행한다.
 
 ### Phase 1: Mutation (LLM 코드 변형)
 
