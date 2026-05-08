@@ -164,12 +164,23 @@ class vLLMRollout(BaseRollout):
                 {"prompt_token_ids": list(raw_prompt_ids)} for raw_prompt_ids in non_tensor_batch.pop("raw_prompt_ids")
             ]
 
-        # users can customize different sampling_params at different run
-        with self.update_sampling_params(**prompts.meta_info):
+        # users can customize different sampling_params at different run.
+        # Cap max_tokens at config.response_length so DP workers always produce
+        # tensors with the same dim-1; otherwise pad_2d_list_to_length grows
+        # past response_length and DataProto.concat fails on torch.cat.
+        meta_info = dict(prompts.meta_info)
+        if "max_tokens" in meta_info:
+            meta_info["max_tokens"] = min(
+                int(meta_info["max_tokens"]), int(self.config.response_length)
+            )
+        with self.update_sampling_params(**meta_info):
             completions: List[RequestOutput] = self.inference_engine.generate(
                 prompts=vllm_inputs, sampling_params=self.sampling_params, use_tqdm=False
             )
             response_ids = [output.token_ids for completion in completions for output in completion.outputs]
+            # Hard-truncate to response_length and then pad up to response_length
+            # so the result is always a fixed (B, response_length) tensor.
+            response_ids = [list(r)[: self.config.response_length] for r in response_ids]
             response_ids = VF.pad_2d_list_to_length(
                 response_ids, self.pad_token_id, max_length=self.config.response_length
             ).to(input_ids.device)

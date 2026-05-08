@@ -90,6 +90,9 @@ math_eval:
   enabled: true
   before_train: true
   every_n_outer_iterations: 1
+  # vLLMRollout.generate_sequences clamps max_tokens to data.max_response_length,
+  # so this is an upper bound on what we'd LIKE to generate during eval. The
+  # actual cap is min(this, max_response_length).
   max_tokens: 8192
   temperature: 0.0
   top_p: 1.0
