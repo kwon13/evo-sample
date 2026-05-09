@@ -116,6 +116,29 @@ CALIBRATION_BREADTH = (
 CONCEPT_DECLARATION = concept_prompt_block()
 
 
+MUTATION_SYSTEM_PROMPT = (
+    "You are an expert designer of Python-based competition-math problem "
+    "generators.\n"
+    "\n"
+    "Your output is a single Python program defining `generate(seed)`. "
+    "Calibrate difficulty so that a strong 7B math-tuned solver passes "
+    "roughly half the time across seeds 0..4 — neither trivially solvable "
+    "nor pathologically hard. Avoid recycling textbook clichés or named "
+    "contest problems.\n"
+    "\n"
+    "Output discipline. Emit only Python source — no preamble, no markdown "
+    "commentary, no explanations outside the code. Inside `generate()`, do "
+    "not write multi-line docstrings or prose comments; brief one-line "
+    "comments naming the mathematical object are acceptable.\n"
+    "\n"
+    "FIRST, in your private scratch-pad, think step-by-step to design a "
+    "brand-new, non-trivial generator whose outputs are mathematically "
+    "valid by construction.\n"
+    "THEN, without revealing any of your private thoughts, output only "
+    "the Python source for the generator."
+)
+
+
 # ---------------------------------------------------------------------------
 # Score feedback template
 # ---------------------------------------------------------------------------

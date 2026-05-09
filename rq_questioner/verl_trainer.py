@@ -55,6 +55,7 @@ from evaluation.math_benchmarks import grade_math_response, save_math_eval_detai
 
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
+    MUTATION_SYSTEM_PROMPT,
     build_score_feedback, build_few_shot_examples, build_execution_feedback,
     parent_concept_fields, choose_prefill_concept, build_mutation_prefill,
     SOLVER_SYSTEM_PROMPT,
@@ -220,19 +221,24 @@ def _format_mutation_prompt(tokenizer, prompt_text: str, suffix: str) -> str:
     """Wrap a mutation prompt in chat format while keeping the assistant prefill.
 
     Layout:
+      - system turn: MUTATION_SYSTEM_PROMPT (induces internal deliberation,
+        suppresses visible chain-of-thought; the prefill restricts visible
+        output to code, this guides the unseen forward-pass planning)
       - user turn: instructions, parent code, rubric (= prompt_text)
       - assistant turn (partial, not closed): code-fence + prefill body (= suffix)
 
     Uses `continue_final_message=True` so the assistant turn stays open and the
-    model continues directly from the prefill. Falls back to raw concatenation
-    when the tokenizer has no chat_template or does not support the option,
-    preserving previous behavior.
+    model continues directly from the prefill. If the tokenizer rejects either
+    the system role or the option, falls back to raw concatenation with the
+    system prompt prepended so the guidance is preserved.
     """
+    fallback = MUTATION_SYSTEM_PROMPT + "\n\n" + prompt_text + suffix
     chat_template = getattr(tokenizer, "chat_template", None)
     if not chat_template:
-        return prompt_text + suffix
+        return fallback
 
     messages = [
+        {"role": "system", "content": MUTATION_SYSTEM_PROMPT},
         {"role": "user", "content": prompt_text},
         {"role": "assistant", "content": suffix.lstrip("\n")},
     ]
@@ -244,7 +250,7 @@ def _format_mutation_prompt(tokenizer, prompt_text: str, suffix: str) -> str:
             continue_final_message=True,
         )
     except (TypeError, ValueError):
-        return prompt_text + suffix
+        return fallback
 
 
 def _make_gen_batch(

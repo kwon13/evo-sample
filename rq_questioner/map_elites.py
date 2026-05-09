@@ -504,7 +504,15 @@ class MAPElitesGrid:
         return norm_rqs + exploration
 
     def _material_ucb_scores(self, entries: list) -> np.ndarray:
-        """Rank-based UCB over champion and non-champion material together."""
+        """Rank-based UCB over champion and non-champion material together.
+
+        Exploration count is per-niche (`niche.selection_count`), not
+        per-program. Per-program counts always start at 0 for fresh
+        children, so a per-program bonus would give every newborn an
+        infinite exploration score and collapse selection back into the
+        dominant niche. Niche-level counts make repeated visits to the
+        same niche genuinely costly and spread sampling across the grid.
+        """
         N = self.total_selections + 1
         rqs = np.array(
             [
@@ -514,7 +522,7 @@ class MAPElitesGrid:
             dtype=float,
         )
         counts = np.array(
-            [self._program_selection_count(program) for _, _, program, _ in entries],
+            [niche.selection_count for _, niche, _, _ in entries],
             dtype=float,
         )
 

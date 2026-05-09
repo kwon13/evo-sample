@@ -2,6 +2,7 @@ from .mutation import (
     MUTATE_DEPTH,
     MUTATE_BREADTH,
     MUTATE_CROSSOVER,
+    MUTATION_SYSTEM_PROMPT,
     SINGLE_ANSWER_RULE,
     SCORE_FEEDBACK,
     score_diagnosis,
