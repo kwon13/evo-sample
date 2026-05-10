@@ -454,6 +454,29 @@ class RayPPOTrainer:
         else:
             print(f"No dataloader state found at {dataloader_path}, will start from scratch.")
 
+    def _cumulative_trajectory_metrics(self) -> Dict[str, float]:
+        """Cumulative training-progress accounting on two axes.
+
+        cumulative_unique_prompts:
+            global_step × actor.global_batch_size — distinct prompts the
+            policy has been updated on so far.
+        cumulative_update_trajectories:
+            cumulative_unique_prompts × rollout.n — total rollouts (group
+            members across all prompts) consumed by gradient updates.
+
+        Logged alongside step metrics, math benchmark metrics, and the
+        evolution hook so downstream figures can plot against either the
+        gradient-step axis or the trajectory-budget axis.
+        """
+        step = int(getattr(self, "global_step", 0) or 0)
+        prompts_per_step = int(self.config.worker.actor.global_batch_size)
+        rollouts_per_prompt = int(self.config.worker.rollout.n)
+        unique_prompts = step * prompts_per_step
+        return {
+            "cumulative_unique_prompts": float(unique_prompts),
+            "cumulative_update_trajectories": float(unique_prompts * rollouts_per_prompt),
+        }
+
     def _balance_batch(self, batch: DataProto, metrics: Dict[str, Any], logging_prefix: str = "global_seqlen") -> None:
         """Reorder the data on single controller such that each dp rank gets similar total tokens"""
         attention_mask = batch.batch["attention_mask"]
@@ -497,6 +520,7 @@ class RayPPOTrainer:
         if hasattr(self, "_pre_train_hook"):
             pre_train_metrics = self._pre_train_hook()
             if pre_train_metrics:
+                pre_train_metrics.update(self._cumulative_trajectory_metrics())
                 self.logger.log(data=pre_train_metrics, step=self.global_step)
 
         total_outer_iterations = int(
@@ -682,6 +706,7 @@ class RayPPOTrainer:
                 metrics.update(compute_data_metrics(batch=batch, use_critic=self.use_critic))
                 metrics.update(compute_timing_metrics(batch=batch, timing_raw=timing_raw))
                 metrics.update(compute_throughout_metrics(batch=batch, timing_raw=timing_raw, num_gpus=num_gpus))
+                metrics.update(self._cumulative_trajectory_metrics())
 
                 self.logger.log(data=metrics, step=self.global_step)
 
@@ -708,6 +733,7 @@ class RayPPOTrainer:
             if post_outer_hook is not None and self.global_step > outer_iteration_start_step:
                 post_outer_metrics = post_outer_hook(outer_iteration_idx)
                 if post_outer_metrics:
+                    post_outer_metrics.update(self._cumulative_trajectory_metrics())
                     self.logger.log(data=post_outer_metrics, step=self.global_step)
 
         val_enabled = (

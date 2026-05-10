@@ -20,6 +20,7 @@ Method-aligned outer-iteration flow (method.tex §coevolution):
   step-based _pre_actor_update_hook trigger는 제거됨.
 """
 
+import os
 import re
 import sys
 import uuid
@@ -51,7 +52,12 @@ from .code_utils import (
     lint_problem_instance,
 )
 from .concepts import validate_concept_decl
-from evaluation.math_benchmarks import grade_math_response, save_math_eval_details
+from evaluation.math_benchmarks import (
+    call_gpt_judge,
+    extract_math_answer,
+    grade_math_response,
+    save_math_eval_details,
+)
 
 from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
@@ -643,9 +649,23 @@ class RQEvolveTrainer(RayPPOTrainer):
             ",".join(sorted(self.math_eval_dataloaders)),
         )
 
+        # GPT-4o re-check config (R-Zero results_recheck.py port). Off by
+        # default; see configs/rq_config_*.yaml `math_eval.gpt_judge`.
+        gpt_cfg = getattr(cfg, "gpt_judge", None)
+        gpt_enabled = bool(getattr(gpt_cfg, "enabled", False)) if gpt_cfg else False
+        gpt_failures_total = 0  # tracks per-call failures for math_eval/gpt_judge_failures
+        gpt_promotions_total = 0  # items lifted from 0 → 1 by GPT
+        gpt_calls_total = 0  # unique (question, response) pairs sent
+
+        # R-Zero generate.py:25 — stop on EOS, no other stop tokens.
+        eos_token_id = getattr(self.tokenizer, "eos_token_id", None)
+        stop_token_ids = [int(eos_token_id)] if eos_token_id is not None else None
+
         for name, dataloader in self.math_eval_dataloaders.items():
             total = correct = extracted = boxed = 0
             failures = []
+            # Per-item records for the optional GPT re-check pass below.
+            records: list[dict[str, Any]] = []
             for batch_dict in dataloader:
                 test_batch = DataProto.from_single_dict(batch_dict)
                 if "multi_modal_data" in test_batch.non_tensor_batch.keys():
@@ -668,6 +688,8 @@ class RQEvolveTrainer(RayPPOTrainer):
                     "min_pixels": self.config.data.min_pixels,
                     "max_pixels": self.config.data.max_pixels,
                 })
+                if stop_token_ids is not None:
+                    gen_batch.meta_info["stop_token_ids"] = stop_token_ids
                 gen_batch, pad_size = pad_dataproto_to_divisor(
                     gen_batch, self.actor_rollout_wg.world_size
                 )
@@ -688,18 +710,81 @@ class RQEvolveTrainer(RayPPOTrainer):
                     correct += int(bool(grade["correct"]))
                     extracted += int(bool(grade["extracted"]))
                     boxed += int(bool(grade["boxed"]))
-                    if (
-                        not grade["correct"]
-                        and len(failures) < int(getattr(cfg, "max_logged_failures", 20))
-                    ):
-                        failures.append({
-                            "index": int(indices[i]) if str(indices[i]).isdigit() else str(indices[i]),
-                            "problem": str(problems[i])[:1200],
-                            "ground_truth": str(gt),
-                            "prediction": grade["pred"],
-                            "extract_method": grade["extract_method"],
-                            "response": response[:2000],
-                        })
+                    records.append({
+                        "index": int(indices[i]) if str(indices[i]).isdigit() else str(indices[i]),
+                        "problem": str(problems[i]),
+                        "ground_truth": str(gt),
+                        "response": response,
+                        "prediction": grade["pred"],
+                        "extract_method": grade["extract_method"],
+                        "extracted": bool(grade["extracted"]),
+                        "boxed": bool(grade["boxed"]),
+                        "score": 1.0 if grade["correct"] else 0.0,
+                        "score_source": "math_verify",
+                    })
+
+            # ----------------------------------------------------------
+            # GPT-4o re-check (R-Zero results_recheck.py).
+            #
+            # Items math_verify scored 0 are sent to GPT for an equivalence
+            # check. Same (question, response) pair → one GPT call cached
+            # across the ×32-inflated AIME/AMC duplicates.
+            # ----------------------------------------------------------
+            if gpt_enabled:
+                api_key = os.environ.get(
+                    str(getattr(gpt_cfg, "api_key_env", "OPENAI_API_KEY")),
+                )
+                model = str(getattr(gpt_cfg, "model", "gpt-4o"))
+                retry_max = int(getattr(gpt_cfg, "retry_max", 3))
+                backoff = list(
+                    getattr(gpt_cfg, "retry_backoff_seconds", [1, 5, 30]) or [1, 5, 30]
+                )
+                cache: dict[tuple[str, str], bool] = {}
+                for rec in records:
+                    if rec["score"] >= 0.5:
+                        continue
+                    key = (rec["problem"], rec["response"])
+                    if key in cache:
+                        if cache[key]:
+                            rec["score"] = 1.0
+                            rec["score_source"] = "gpt_judge"
+                            gpt_promotions_total += 1
+                        continue
+                    gpt_calls_total += 1
+                    result = call_gpt_judge(
+                        ground_truth=rec["ground_truth"],
+                        extracted_answer=rec["prediction"] or rec["response"],
+                        model=model,
+                        api_key=api_key,
+                        retry_max=retry_max,
+                        retry_backoff_seconds=backoff,
+                    )
+                    if result.error is not None:
+                        gpt_failures_total += 1
+                        cache[key] = False
+                        continue
+                    cache[key] = bool(result.yes)
+                    if result.yes:
+                        rec["score"] = 1.0
+                        rec["score_source"] = "gpt_judge"
+                        gpt_promotions_total += 1
+
+            # Recompute correct count using final per-item scores (math_verify
+            # + GPT promotions) and emit failures for the JSON dump.
+            correct = sum(1 for r in records if r["score"] >= 0.5)
+            for rec in records:
+                if rec["score"] >= 0.5:
+                    continue
+                if len(failures) >= int(getattr(cfg, "max_logged_failures", 20)):
+                    break
+                failures.append({
+                    "index": rec["index"],
+                    "problem": str(rec["problem"])[:1200],
+                    "ground_truth": rec["ground_truth"],
+                    "prediction": rec["prediction"],
+                    "extract_method": rec["extract_method"],
+                    "response": rec["response"][:2000],
+                })
 
             acc = correct / total if total else 0.0
             extract_rate = extracted / total if total else 0.0
@@ -719,6 +804,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 "extract_rate": extract_rate,
                 "boxed_rate": boxed_rate,
                 "failures": failures,
+                "gpt_judge_enabled": gpt_enabled,
             }
             logger.info(
                 "[MathEval] %-15s pass@1=%6.2f%% (%d/%d), extract=%5.1f%% boxed=%5.1f%%",
@@ -735,6 +821,10 @@ class RQEvolveTrainer(RayPPOTrainer):
             float(np.mean(competition_accs)) if competition_accs else 0.0
         )
         metrics["math_eval/before_train"] = 1.0 if phase == "before_train" else 0.0
+        metrics["math_eval/gpt_judge_enabled"] = 1.0 if gpt_enabled else 0.0
+        metrics["math_eval/gpt_judge_calls"] = float(gpt_calls_total)
+        metrics["math_eval/gpt_judge_promotions"] = float(gpt_promotions_total)
+        metrics["math_eval/gpt_judge_failures"] = float(gpt_failures_total)
         if getattr(cfg, "output_details", True):
             path = save_math_eval_details(
                 self.config.trainer.default_local_dir,

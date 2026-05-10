@@ -90,42 +90,45 @@ math_eval:
   enabled: true
   before_train: true
   every_n_outer_iterations: 1
-  # vLLMRollout.generate_sequences clamps max_tokens to data.max_response_length,
-  # so this is an upper bound on what we'd LIKE to generate during eval. The
-  # actual cap is min(this, max_response_length).
-  max_tokens: 8192
+  # R-Zero generate.py uses max_tokens=4096 with temperature=0.0,
+  # stop_token_ids=[eos_token_id], top_p=1.0. The vLLMRollout clamps to
+  # data.max_response_length so the effective cap is min(4096, response_length).
+  max_tokens: 4096
   temperature: 0.0
   top_p: 1.0
   batch_size: 128
   sample_seed: 42
   output_details: true
   max_logged_failures: 20
+  # R-Zero never sub-samples math benchmarks at eval time. The loader forces
+  # full set internally; entries here are kept for explicit debugging only.
   fast_samples:
-    math500: 100
+    math500: -1
     amc23: -1
     aime24: -1
     aime25: -1
-    minerva_math: 100
-    olympiadbench: 100
+    minerva_math: -1
+    olympiadbench: -1
+  # Sources are determined by `name` (see evaluation/math_benchmarks.py
+  # _load_benchmark_rows). The legacy hf_id/split fields are no longer
+  # consulted but the schema accepts them.
   benchmarks:
     - name: math500
-      hf_id: test-time-compute/test_MATH
-      split: test
     - name: amc23
-      hf_id: test-time-compute/test_amc23
-      split: test
     - name: aime24
-      hf_id: test-time-compute/test_aime24
-      split: test
     - name: aime25
-      hf_id: test-time-compute/aime_2025
-      split: test
     - name: minerva_math
-      hf_id: test-time-compute/test_minerva_math
-      split: test
     - name: olympiadbench
-      hf_id: test-time-compute/test_olympiadbench
-      split: test
+  # GPT-4o re-check (R-Zero results_recheck.py port).
+  # enabled=false: math_verify is the sole grader (training-time default).
+  # Set true in a standalone post-training eval to promote items whose
+  # extracted answer math_verify rejected but GPT-4o judges equivalent.
+  gpt_judge:
+    enabled: false
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    retry_max: 3
+    retry_backoff_seconds: [1, 5, 30]
 
 rq:
   seed_programs_dir: ./seed_programs

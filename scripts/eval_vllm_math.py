@@ -187,15 +187,25 @@ def _validate_vllm_model_path(model: str) -> None:
 
 
 def _build_prompt(tokenizer, problem: str, system_prompt: str) -> str:
+    """R-Zero-aligned prompt builder (R-Zero/evaluation/generate.py:29-33)."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": problem},
     ]
     if getattr(tokenizer, "chat_template", None):
         return tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, tokenize=False
+            messages,
+            add_generation_prompt=True,
+            tokenize=False,
+            add_special_tokens=True,
         )
-    return f"system: {system_prompt}\nuser: {problem}\nassistant:"
+    # Base-model fallback (R-Zero generate.py:33): system prompt is repeated
+    # once at the end of the user turn.
+    return (
+        f"system: {system_prompt}\n"
+        f"user: {problem}\n"
+        f"{system_prompt}"
+    )
 
 
 def _chunks(items: list[Any], size: int):
@@ -265,7 +275,9 @@ def _summarize(rows: list[dict[str, Any]], n: int) -> dict[str, Any]:
     }
 
 
-def _make_sampling_params(args: argparse.Namespace):
+def _make_sampling_params(args: argparse.Namespace, tokenizer=None):
+    """R-Zero-aligned SamplingParams (generate.py:22-26): max_tokens=4096,
+    temperature=0.0, stop_token_ids=[eos]."""
     from vllm import SamplingParams
 
     kwargs = {
@@ -275,6 +287,8 @@ def _make_sampling_params(args: argparse.Namespace):
         "n": args.n,
         "seed": args.seed,
     }
+    if tokenizer is not None and getattr(tokenizer, "eos_token_id", None) is not None:
+        kwargs["stop_token_ids"] = [int(tokenizer.eos_token_id)]
     try:
         return SamplingParams(**kwargs)
     except TypeError as exc:
@@ -322,7 +336,7 @@ def evaluate(args: argparse.Namespace, cfg: Any) -> dict[str, Any]:
         max_model_len=args.max_model_len,
         enforce_eager=args.enforce_eager,
     )
-    sampling_params = _make_sampling_params(args)
+    sampling_params = _make_sampling_params(args, tokenizer=tokenizer)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

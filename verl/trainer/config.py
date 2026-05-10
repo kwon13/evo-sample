@@ -208,11 +208,28 @@ class RQConfig:
         )
 
 @dataclass
+class GPTJudgeConfig:
+    """GPT-4o re-check stage (R-Zero results_recheck.py port).
+
+    enabled=False keeps math_verify as the sole grader (training-time default).
+    enabled=True turns on a second pass that calls OpenAI's chat completions
+    on items math_verify scored < 0.5, dedup'd by (question, response). The
+    'Yes' fraction is added back as a score promotion.
+    """
+    enabled: bool = False
+    model: str = "gpt-4o"
+    api_key_env: str = "OPENAI_API_KEY"
+    retry_max: int = 3
+    retry_backoff_seconds: list = field(default_factory=lambda: [1, 5, 30])
+
+
+@dataclass
 class MathEvalConfig:
     enabled: bool = False
     before_train: bool = False
     every_n_outer_iterations: Optional[int] = None
     every_n_epochs: int = 1
+    # R-Zero generate.py uses max_tokens=4096 with stop_token_ids=[eos].
     max_tokens: int = 4096
     temperature: float = 0.0
     top_p: float = 1.0
@@ -220,23 +237,28 @@ class MathEvalConfig:
     sample_seed: int = 42
     output_details: bool = True
     max_logged_failures: int = 20
-    # Per-outer-iteration eval can be expensive; use -1 for full benchmark.
+    # R-Zero never sub-samples math benchmarks at eval time. The loader now
+    # forces -1 internally; this knob is kept only for explicit debugging.
     fast_samples: dict = field(default_factory=lambda: {
-        "math500": 100,
+        "math500": -1,
         "amc23": -1,
         "aime24": -1,
         "aime25": -1,
-        "minerva_math": 100,
-        "olympiadbench": 100,
+        "minerva_math": -1,
+        "olympiadbench": -1,
     })
+    # The hf_id/split fields are ignored by the new loader (sources are
+    # determined by `name` to match R-Zero) but kept here to preserve the
+    # YAML schema and avoid downstream config breakage.
     benchmarks: list = field(default_factory=lambda: [
-        {"name": "math500", "hf_id": "test-time-compute/test_MATH", "split": "test"},
-        {"name": "amc23", "hf_id": "test-time-compute/test_amc23", "split": "test"},
-        {"name": "aime24", "hf_id": "test-time-compute/test_aime24", "split": "test"},
-        {"name": "aime25", "hf_id": "test-time-compute/aime_2025", "split": "test"},
-        {"name": "minerva_math", "hf_id": "test-time-compute/test_minerva_math", "split": "test"},
-        {"name": "olympiadbench", "hf_id": "test-time-compute/test_olympiadbench", "split": "test"},
+        {"name": "math500"},
+        {"name": "amc23"},
+        {"name": "aime24"},
+        {"name": "aime25"},
+        {"name": "minerva_math"},
+        {"name": "olympiadbench"},
     ])
+    gpt_judge: GPTJudgeConfig = field(default_factory=GPTJudgeConfig)
 
     def post_init(self):
         if self.every_n_outer_iterations is None:

@@ -77,6 +77,9 @@ math_eval:
   enabled: true
   before_train: true
   every_n_outer_iterations: 1
+  # R-Zero generate.py: max_tokens=4096, temperature=0.0, top_p=1.0,
+  # stop_token_ids=[eos_token_id]. The vLLMRollout clamps max_tokens to
+  # data.max_response_length so the effective cap is min(4096, response_length).
   max_tokens: 4096
   temperature: 0.0
   top_p: 1.0
@@ -84,6 +87,8 @@ math_eval:
   sample_seed: 42
   output_details: true
   max_logged_failures: 20
+  # R-Zero never sub-samples math benchmarks at eval time. Loader forces
+  # full set internally; entries here exist only for explicit debugging.
   fast_samples:
     math500: -1
     amc23: -1
@@ -91,25 +96,25 @@ math_eval:
     aime25: -1
     minerva_math: -1
     olympiadbench: -1
+  # Sources are determined by `name` (see evaluation/math_benchmarks.py
+  # _load_benchmark_rows). The legacy hf_id/split fields are no longer used.
   benchmarks:
     - name: math500
-      hf_id: test-time-compute/test_MATH
-      split: test
     - name: amc23
-      hf_id: test-time-compute/test_amc23
-      split: test
     - name: aime24
-      hf_id: test-time-compute/test_aime24
-      split: test
     - name: aime25
-      hf_id: test-time-compute/aime_2025
-      split: test
     - name: minerva_math
-      hf_id: test-time-compute/test_minerva_math
-      split: test
     - name: olympiadbench
-      hf_id: test-time-compute/test_olympiadbench
-      split: test
+  # GPT-4o re-check (R-Zero results_recheck.py port).
+  # enabled=false: math_verify is the sole grader (training-time default).
+  # Set true in a standalone post-training eval to promote items whose
+  # extracted answer math_verify rejected but GPT-4o judges equivalent.
+  gpt_judge:
+    enabled: false
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    retry_max: 3
+    retry_backoff_seconds: [1, 5, 30]
 
 rq:
   seed_programs_dir: ./seed_programs

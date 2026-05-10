@@ -16,3 +16,10 @@ flash-attn==2.7.4.post1
 pandas
 ray
 codetiming
+# Math benchmark grading + GPT-4o re-check (R-Zero alignment).
+math-verify==0.7.0
+latex2sympy2_extended==1.10.1
+pylatexenc==2.10
+antlr4-python3-runtime==4.9.3
+openai>=1.0.0
+requests>=2.28.0
