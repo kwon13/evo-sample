@@ -1125,8 +1125,22 @@ class RQEvolveTrainer(RayPPOTrainer):
             "dataset_non_frontier_skipped_visits": refresh_stats.get(
                 "non_frontier_skipped_visits", 0
             ),
+            "dataset_quarantined_skipped_visits": refresh_stats.get(
+                "quarantined_skipped_visits", 0
+            ),
             "dataset_duplicate_signature_skipped_visits": refresh_stats.get(
                 "duplicate_signature_skipped_visits", 0
+            ),
+            # Validity quarantine: champions excluded from training/few-shot
+            # because their multi-seed validity check failed. Tracks both
+            # the count of unique quarantined champions (archive-wide) and
+            # the count after frontier band filter (the actually-usable
+            # training pool).
+            "archive_quarantined_champions": refresh_stats.get(
+                "quarantined_champions", 0
+            ),
+            "archive_valid_frontier_champions": refresh_stats.get(
+                "valid_frontier_champions", 0
             ),
             # Champion re-evaluation (self-invalidating archive)
             "reeval_count": reeval_metrics["reevaluated"],
@@ -1284,6 +1298,18 @@ class RQEvolveTrainer(RayPPOTrainer):
             "dataset_size": len(problems),
             "archive_champions": archive_champs,
             "frontier_champions": frontier_champs,
+            "quarantined_champions": refresh_stats.get(
+                "quarantined_champions", 0
+            ),
+            "valid_frontier_champions": refresh_stats.get(
+                "valid_frontier_champions", 0
+            ),
+            "non_frontier_skipped_visits": refresh_stats.get(
+                "non_frontier_skipped_visits", 0
+            ),
+            "quarantined_skipped_visits": refresh_stats.get(
+                "quarantined_skipped_visits", 0
+            ),
             "duplicate_signature_skipped_visits": refresh_stats.get(
                 "duplicate_signature_skipped_visits", 0
             ),
@@ -2231,6 +2257,29 @@ class RQEvolveTrainer(RayPPOTrainer):
         low, high = self.frontier_p_hat_range
         return float(low) < float(p) < float(high)
 
+    def _is_quarantined(self, champ) -> bool:
+        """Exclude broken champions from training data and few-shot.
+
+        A champion is quarantined when it fails the multi-seed validity
+        check (any of seeds 0..4 produces a broken-looking instance, or
+        all 5 seeds yield identical answers). The check is cached on
+        ``champ.metadata['validity_check']`` keyed by current ``rq_score``
+        so re-evaluation invalidates it. Quarantined champions remain in
+        the archive (so reeval can update them and mutation can still try
+        to repair them) but are blocked from contributing training
+        examples or appearing in few-shot examples.
+        """
+        from prompts.mutation import champion_passes_validity
+        try:
+            return not champion_passes_validity(champ)
+        except Exception as exc:
+            logger.warning(
+                f"[Quarantine] validity check raised for "
+                f"{getattr(champ, 'program_id', '?')}: {exc!r}; "
+                f"treating as quarantined to be safe"
+            )
+            return True
+
     def _refresh_dataset(self):
         """MAP-Elites 챔피언 → dynamic_dataset 교체 → dataloader 재구성.
 
@@ -2279,6 +2328,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         new_problems: list[dict] = []
         sweep = 0
         non_frontier_skipped = 0  # reporting-only counter
+        quarantined_skipped = 0   # broken champions excluded by validity check
 
         # Non-strict anti-reuse: clear the used-seed registry so the same
         # (program_id, seed) pair may recur across outer iterations.
@@ -2338,6 +2388,9 @@ class RQEvolveTrainer(RayPPOTrainer):
             # training_budget.
             champions = self.map_elites.get_all_champions()
             for champ in champions:
+                if self._is_quarantined(champ):
+                    quarantined_skipped += 1
+                    continue
                 if not self._is_frontier_champion(champ):
                     non_frontier_skipped += 1
                     continue
@@ -2380,6 +2433,13 @@ class RQEvolveTrainer(RayPPOTrainer):
                         if niche is None or niche.champion is None:
                             continue
                         champ = niche.champion
+                        if self._is_quarantined(champ):
+                            # Broken champion — multi-seed validity check
+                            # rejected at least one seed. Excluded from
+                            # training but kept in archive for repair via
+                            # mutation. Counted per-sweep-visit.
+                            quarantined_skipped += 1
+                            continue
                         if not self._is_frontier_champion(champ):
                             # Extreme-p champion — archive material only,
                             # not training data. Counted per-sweep-visit, so
@@ -2439,13 +2499,21 @@ class RQEvolveTrainer(RayPPOTrainer):
         steps_per_outer_iteration = new_size // batch
         dropped = new_size - steps_per_outer_iteration * batch
 
-        # Archive-wide frontier accounting (reporting only).
+        # Archive-wide frontier + quarantine accounting (reporting only).
         all_champs = self.map_elites.get_all_champions()
         frontier_champs = sum(1 for c in all_champs if self._is_frontier_champion(c))
+        quarantined_champs = sum(1 for c in all_champs if self._is_quarantined(c))
+        valid_frontier_champs = sum(
+            1 for c in all_champs
+            if self._is_frontier_champion(c) and not self._is_quarantined(c)
+        )
         self._last_refresh_stats = {
             "archive_champions": len(all_champs),
             "frontier_champions": frontier_champs,
+            "quarantined_champions": quarantined_champs,
+            "valid_frontier_champions": valid_frontier_champs,
             "non_frontier_skipped_visits": non_frontier_skipped,
+            "quarantined_skipped_visits": quarantined_skipped,
             "duplicate_signature_skipped_visits": duplicate_signature_skipped,
         }
 
@@ -2460,8 +2528,10 @@ class RQEvolveTrainer(RayPPOTrainer):
             f"{old_size} → {new_size} problems, budget={self.training_budget}, "
             f"sweeps={sweep}, steps_per_outer_iteration={steps_per_outer_iteration}, "
             f"archive={len(all_champs)} champs "
-            f"(frontier={frontier_champs}), "
+            f"(frontier={frontier_champs}, quarantined={quarantined_champs}, "
+            f"valid_frontier={valid_frontier_champs}), "
             f"non_frontier_skipped_visits={non_frontier_skipped}, "
+            f"quarantined_skipped_visits={quarantined_skipped}, "
             f"duplicate_signature_skipped_visits={duplicate_signature_skipped}, "
             f"dataloader rebuilt"
         )

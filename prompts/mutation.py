@@ -22,6 +22,9 @@ Design goals (revised):
 """
 
 from __future__ import annotations
+
+import re
+
 from rq_questioner.concepts import concept_prompt_block
 from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.program import ProblemProgram
@@ -95,9 +98,22 @@ DEPTH_BY_EXAMPLE = (
     "  \"x^2 + p*x + 12 = 0 has roots whose reciprocals sum to 7/12; "
     "find p\"   ->   answer: -7\n"
     "\n"
+    "Invalid child (rejected — inconsistent givens):\n"
+    "  \"x^2 + 5x + 6 = 0 has roots whose product is 12; find sum.\"\n"
+    "  Vieta forces product = 6, contradicting the stated 12.\n"
+    "\n"
+    "Invalid child (rejected — under-specified object):\n"
+    "  \"A quadratic has root 3; find the other root.\"\n"
+    "  Infinitely many quadratics fit; no unique answer.\n"
+    "\n"
+    "Invalid child (rejected — degenerate parameters):\n"
+    "  \"x^2 + 0*x + 0 = 0; find sum of roots.\"\n"
+    "  Sum is 0 trivially; no Vieta reasoning required.\n"
+    "\n"
     "The deep child requires Vieta's formulas plus a one-line "
     "reciprocal identity. The shallow child only requires reading off "
-    "a coefficient.\n"
+    "a coefficient. The three invalid children are rejected even at "
+    "matching pass rate because they fail mathematical validity.\n"
     "\n"
 )
 
@@ -113,6 +129,60 @@ CALIBRATION_BREADTH = (
     "\n"
 )
 
+VALIDITY_CONTRACT = (
+    "Validity contract (mandatory).\n"
+    "\n"
+    "Inside generate(seed), REJECT any random parameter combination that "
+    "produces a mathematically invalid, contradictory, under-specified, "
+    "or degenerate-trivial problem. Use rejection sampling or "
+    "deterministic construction — never emit such a problem.\n"
+    "\n"
+    "Forbidden parameter patterns and required fixes:\n"
+    "\n"
+    "  1. INCONSISTENT GIVENS — declared invariants must hold.\n"
+    "     BAD : sample g, a, b independently then state \"gcd(a,b)=g\" "
+    "without enforcing g|a and g|b.\n"
+    "     FIX : sample coprime k1, k2 then set a = g*k1, b = g*k2; or "
+    "compute g = math.gcd(a, b) deterministically and state that value.\n"
+    "\n"
+    "  2. IMPOSSIBLE COUNTING — count is 0 or 1 by parity / pigeonhole.\n"
+    "     BAD : \"derangements of n with exactly n-1 fixed points\" "
+    "(forces 0 by parity), \"exactly n fixed points\" (always 1).\n"
+    "     FIX : restrict the count parameter k to 0..n-2 and forbid "
+    "k = n-1 and k = n.\n"
+    "\n"
+    "  3. CONTRADICTORY CONSTRAINTS — extra clauses unsatisfiable.\n"
+    "     BAD : \"three positive integers 1, 19, 19 with 1 > 19 and "
+    "19 > 19; find their mean\".\n"
+    "     FIX : never bolt on numeric inequalities you did not verify "
+    "against the chosen values; if you state x > y, x must exceed y.\n"
+    "\n"
+    "  4. DEGENERATE INPUTS — n = 0, 1, 2 of a quantity that needs >= 3.\n"
+    "     BAD : \"sum of first 1 terms of a geometric sequence\", "
+    "\"product over a single element\".\n"
+    "     FIX : sample n from a domain-appropriate minimum (n >= 3 for "
+    "sequences and counting; n >= 4 for non-trivial recursions).\n"
+    "\n"
+    "  5. UNDER-SPECIFIED OBJECT — missing data needed for unique answer.\n"
+    "     BAD : \"triangle with sides 6 and 7, find the area\" — needs "
+    "either the third side, an included angle, or a triangle type "
+    "(right / equilateral / isosceles).\n"
+    "     FIX : provide enough data for a unique solution by construction.\n"
+    "\n"
+    "  6. ANSWER UNRELATED TO STATEMENT — solver gets it right by chance.\n"
+    "     BAD : statement claims gcd(a,b)=g but the answer recipe ignores "
+    "g entirely; statement claims a sequence is geometric but the answer "
+    "is computed assuming arithmetic.\n"
+    "     FIX : derive the answer from exactly the parameters and "
+    "relations stated in the problem text.\n"
+    "\n"
+    "Self-check before returning. From ONLY the rendered problem text "
+    "(not the source code), can you reach the stated answer with a clean "
+    "derivation? If not, the parameters are inconsistent or the problem "
+    "is under-specified — regenerate.\n"
+    "\n"
+)
+
 CONCEPT_DECLARATION = concept_prompt_block()
 
 
@@ -125,6 +195,13 @@ MUTATION_SYSTEM_PROMPT = (
     "roughly half the time across seeds 0..4 — neither trivially solvable "
     "nor pathologically hard. Avoid recycling textbook clichés or named "
     "contest problems.\n"
+    "\n"
+    "Mathematical validity is non-negotiable. See the Validity contract in "
+    "the user message: every emitted (problem, answer) pair must be "
+    "internally consistent, fully specified, and non-degenerate. Use "
+    "rejection sampling or deterministic construction to enforce "
+    "invariants — do not let randomness produce contradictory or "
+    "impossible problems.\n"
     "\n"
     "Output discipline. Emit only Python source — no preamble, no markdown "
     "commentary, no explanations outside the code. Inside `generate()`, do "
@@ -183,6 +260,7 @@ MUTATE_DEPTH = (
     + CONCEPT_DECLARATION
     + HARD_CONTRACT
     + TEXT_HYGIENE
+    + VALIDITY_CONTRACT
 )
 
 MUTATE_BREADTH = (
@@ -207,6 +285,7 @@ MUTATE_BREADTH = (
     + CONCEPT_DECLARATION
     + HARD_CONTRACT
     + TEXT_HYGIENE
+    + VALIDITY_CONTRACT
 )
 
 MUTATE_CROSSOVER = (
@@ -233,6 +312,7 @@ MUTATE_CROSSOVER = (
     + CONCEPT_DECLARATION
     + HARD_CONTRACT
     + TEXT_HYGIENE
+    + VALIDITY_CONTRACT
 )
 
 
@@ -244,8 +324,23 @@ SINGLE_ANSWER_RULE = HARD_CONTRACT
 # Diagnostic / feedback helpers
 # ---------------------------------------------------------------------------
 
-def score_diagnosis(p_hat: float, h_score: float) -> tuple[str, str]:
+_TRIVIAL_ANSWERS = {"0", "1", "-0", "-1", "0.0", "1.0", "-0.0", "-1.0"}
+
+
+def score_diagnosis(
+    p_hat: float,
+    h_score: float,
+    *,
+    parent_answer: str | None = None,
+) -> tuple[str, str]:
     """Verbose diagnosis + action text for a parent's (p_hat, H).
+
+    ``parent_answer`` is the rendered seed=0 answer string; when supplied,
+    a trivial 0/1 answer in the mid-p band is flagged as a likely-broken
+    problem (impossible counting, contradictory constraint, empty set).
+    This catches the failure mode where the answer is mechanically 0 or 1
+    by construction and p_hat ~ 0.5 looks healthy from the band check
+    alone.
 
     Action wording avoids the meta-vocabulary forbidden by TEXT_HYGIENE
     (parametric, case analysis, dimension lift, hidden identity, axis)
@@ -299,6 +394,19 @@ def score_diagnosis(p_hat: float, h_score: float) -> tuple[str, str]:
             "float rounding, mod-1 tricks); prefer cleaner statements"
         )
 
+    if parent_answer is not None:
+        a_norm = str(parent_answer).strip()
+        if a_norm in _TRIVIAL_ANSWERS and 0.3 <= p_hat <= 0.7:
+            diag += "; SUSPECT broken (trivial 0/1 answer in mid-p band)"
+            action += (
+                "; verify the problem has a unique non-trivial solution. "
+                "If the answer is mechanically 0 or 1 by construction "
+                "(impossible counting, contradictory constraint, empty "
+                "set), redesign the parameter ranges to exclude that "
+                "case and pick parameters where the answer is "
+                "non-trivially derived from the stated quantities"
+            )
+
     return diag, action
 
 
@@ -306,11 +414,192 @@ def build_score_feedback(parent: ProblemProgram) -> str:
     p_hat = getattr(parent, "p_hat", 0.5)
     h_score = getattr(parent, "h_score", 1.0)
     rq_score = getattr(parent, "rq_score", 0.0)
-    diag, action = score_diagnosis(p_hat, h_score)
+    parent_answer: str | None = None
+    try:
+        inst = parent.execute(seed=0, timeout=3.0)
+        if inst is not None:
+            parent_answer = str(inst.answer)
+    except Exception:
+        parent_answer = None
+    diag, action = score_diagnosis(p_hat, h_score, parent_answer=parent_answer)
     return SCORE_FEEDBACK.format(
         p_hat=p_hat, h_score=h_score, rq_score=rq_score,
         diagnosis=diag, action=action,
     )
+
+
+# ---------------------------------------------------------------------------
+# Validity heuristics — block broken champions from few-shot / training
+# ---------------------------------------------------------------------------
+
+def looks_broken(problem: str, answer: str) -> bool:
+    """Heuristic detector for broken-problem patterns observed in archive
+    contamination. Conservative by design — only flags patterns we have
+    direct evidence for.
+
+    False positive = champion excluded from few-shot / training; recoverable
+    once mutations replace it.
+    False negative = contamination propagates; this is the worse failure
+    mode, but the conservative scope keeps the heuristic honest.
+
+    Patterns covered:
+      1. Trivial 0/1 answer with impossible-counting language.
+      2. Self-contradicting numeric inequality clause (n > n, x > y when
+         x <= y is in the same sentence).
+      3. GCD/LCM consistency — gcd claim with values that don't satisfy it.
+      4. Under-specified geometry (triangle area without 3rd side / angle).
+      5. Malformed LaTeX (\\frac with run-on digits).
+      6. Degenerate sequence count ("first 1 term", "first 2 terms").
+    """
+    p = (problem or "").lower().strip()
+    a = str(answer or "").strip()
+
+    # 1. Trivial 0/1 answer paired with impossible-counting language
+    if a in _TRIVIAL_ANSWERS:
+        if "exactly" in p and ("fixed point" in p or "their original" in p):
+            return True
+        if re.search(r"first\s+1\s+term", p):
+            return True
+        if "single element" in p and "product" in p:
+            return True
+
+    # 2. Self-contradicting inequality, e.g. "19 > 19"
+    if re.search(r"\b(\d+)\s*>\s*\1\b", p):
+        return True
+    # "ensure 1 > 19" (left <= right)
+    for m in re.finditer(r"\b(\d+)\s*>\s*(\d+)\b", p):
+        try:
+            if int(m.group(1)) <= int(m.group(2)):
+                return True
+        except ValueError:
+            continue
+
+    # 3. GCD/LCM consistency — if the text states gcd value with explicit
+    # numbers and g does not divide both a and b, it is broken. Covers
+    # "gcd(a,b) = g", "gcd of A and B is g", and parenthetical-abbreviation
+    # form "greatest common divisor (GCD) is g".
+    if "gcd" in p or "greatest common divisor" in p:
+        gcd_patterns = [
+            r"gcd\s*\([^)]*\)\s*(?:=|is|equals)\s*(\d+)",
+            r"gcd\s+(?:of\s+)?[^.]{0,80}?\bis\s+(\d+)",
+            r"greatest\s+common\s+divisor[^.]{0,80}?\bis\s+(\d+)",
+        ]
+        for pat in gcd_patterns:
+            m = re.search(pat, p)
+            if not m:
+                continue
+            try:
+                g_n = int(m.group(1))
+            except ValueError:
+                continue
+            nums = [int(x) for x in re.findall(r"\b\d+\b", p[: m.start()])]
+            if len(nums) >= 2 and g_n > 0:
+                a_n, b_n = nums[-2], nums[-1]
+                if a_n > 0 and b_n > 0 and (a_n % g_n != 0 or b_n % g_n != 0):
+                    return True
+            break
+
+    # 4. Under-specified triangle area
+    if "triangle" in p and "area" in p:
+        has_extra_info = bool(
+            re.search(r"\b(angle|included|right\s+triangle|equilateral|"
+                      r"isosceles|heron|altitude|height|perimeter|hypotenuse|"
+                      r"third\s+side)\b", p)
+        )
+        if not has_extra_info:
+            sides_match = re.search(
+                r"sides?\s+(?:of\s+(?:length|lengths?)\s+)?"
+                r"(\d+)\s*(?:,|and)\s*(\d+)(?:\s*(?:,|and)\s*(\d+))?",
+                p,
+            )
+            if sides_match and not sides_match.group(3):
+                return True
+
+    # 5. Malformed LaTeX (e.g. \frac25002 — should be \frac{2500}{2})
+    if re.search(r"\\frac\d{4,}", p):
+        return True
+
+    # 6. Degenerate sequence count
+    if re.search(r"sum\s+of\s+(?:the\s+)?first\s+(\d+)\s+terms?", p):
+        m = re.search(r"sum\s+of\s+(?:the\s+)?first\s+(\d+)\s+terms?", p)
+        try:
+            if m and int(m.group(1)) <= 2:
+                return True
+        except ValueError:
+            pass
+
+    return False
+
+
+def champion_passes_validity(
+    champ: ProblemProgram,
+    *,
+    seeds: tuple[int, ...] = (0, 1, 2, 3, 4),
+    use_cache: bool = True,
+) -> bool:
+    """Multi-seed validity check. Reject the champion if ANY seed produces
+    a broken-looking instance, OR if all seeds yield identical answers
+    (seed-independent generator).
+
+    Strict policy — even one broken seed is enough to reject. Per the user
+    review: false positives are recoverable, contamination propagation is
+    not.
+
+    Caching:
+      Result is stored on ``champ.metadata['validity_check']`` keyed by
+      the champion's current ``rq_score``. When re-evaluation updates
+      rq_score the cache invalidates and we re-execute the seeds.
+    """
+    if champ is None:
+        return False
+
+    rq_now = getattr(champ, "rq_score", None)
+    if rq_now is None:
+        rq_now = 0.0
+
+    meta = getattr(champ, "metadata", None) or {}
+    cache = meta.get("validity_check") if use_cache else None
+    if cache is not None and cache.get("rq_score_at_check") == rq_now:
+        return bool(cache.get("passed"))
+
+    answers: list[str] = []
+    broken_seeds: list[int] = []
+    exec_failed_seeds: list[int] = []
+    for s in seeds:
+        try:
+            inst = champ.execute(seed=s, timeout=3.0)
+        except Exception:
+            exec_failed_seeds.append(s)
+            continue
+        if inst is None:
+            exec_failed_seeds.append(s)
+            continue
+        ans = str(inst.answer or "").strip()
+        if not ans:
+            broken_seeds.append(s)
+            continue
+        if looks_broken(inst.problem or "", ans):
+            broken_seeds.append(s)
+            continue
+        answers.append(ans)
+
+    n_total = len(seeds)
+    n_broken = len(broken_seeds) + len(exec_failed_seeds)
+    seed_independent = (len(answers) >= 2 and len(set(answers)) == 1)
+    passed = (n_broken == 0) and not seed_independent and len(answers) == n_total
+
+    if champ.metadata is None:
+        champ.metadata = {}
+    champ.metadata["validity_check"] = {
+        "passed": passed,
+        "broken_seeds": broken_seeds,
+        "exec_failed_seeds": exec_failed_seeds,
+        "seed_independent": seed_independent,
+        "n_valid": len(answers),
+        "n_total": n_total,
+        "rq_score_at_check": rq_now,
+    }
+    return passed
 
 
 def build_few_shot_examples(
@@ -318,13 +607,16 @@ def build_few_shot_examples(
     top_k: int = 3,
     min_rq: float = 0.25,
 ) -> str:
-    """Top-RQ champions as few-shot, with reward-hack filtering.
+    """Top-RQ champions as few-shot, with multi-seed validity filtering.
 
-    Champions that match a banned anti-pattern or that execute into
-    an anti-patterned rendered problem are excluded so the mutator
-    does not learn to imitate them. If no clean champion is found,
-    we emit an explicit "examples unavailable" note instead of
-    silently leaking a dirty archive into the prompt.
+    A champion is excluded from few-shot if any of seeds 0..4 produces
+    a broken-looking instance, or if all 5 seeds yield identical answers
+    (seed-independent generator). This blocks contamination — once a
+    broken champion enters the archive, it must NOT be paraded as a
+    high-quality example for the mutator to imitate.
+
+    If no clean champion is found, emit an explicit "examples
+    unavailable" note rather than silently leaking dirty examples.
     """
     champions = grid.get_all_champions()
     if not champions:
@@ -333,6 +625,8 @@ def build_few_shot_examples(
     clean = []
     for champ in champions:
         if (champ.rq_score or 0.0) < min_rq:
+            continue
+        if not champion_passes_validity(champ):
             continue
         inst = champ.execute(seed=0, timeout=3.0)
         rendered = inst.problem if inst else ""
@@ -344,7 +638,7 @@ def build_few_shot_examples(
         return (
             "High-quality examples.\n"
             "\n"
-            "No reward-hack-free champions are available yet. Design "
+            "No validity-passing champions are available yet. Design "
             "from the rubric alone and do not imitate the parent's "
             "shape.\n"
             "\n"
