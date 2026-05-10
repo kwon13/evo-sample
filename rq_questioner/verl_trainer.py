@@ -657,6 +657,20 @@ class RQEvolveTrainer(RayPPOTrainer):
         gpt_promotions_total = 0  # items lifted from 0 → 1 by GPT
         gpt_calls_total = 0  # unique (question, response) pairs sent
 
+        # Strict validation: gpt_judge.enabled=true requires the API key to be
+        # set. We fail fast (RuntimeError) rather than silently degrading to
+        # math_verify only — silent fallback would produce numbers that look
+        # GPT-judged but aren't, which silently breaks R-Zero parity.
+        if gpt_enabled:
+            env_name = str(getattr(gpt_cfg, "api_key_env", "OPENAI_API_KEY"))
+            if not os.environ.get(env_name):
+                raise RuntimeError(
+                    f"[MathEval] gpt_judge.enabled=true but {env_name} is "
+                    f"unset/empty. Set the env var (e.g. via .env) or set "
+                    f"math_eval.gpt_judge.enabled=false to disable the "
+                    f"GPT-4o re-check stage."
+                )
+
         # R-Zero generate.py:25 — stop on EOS, no other stop tokens.
         eos_token_id = getattr(self.tokenizer, "eos_token_id", None)
         stop_token_ids = [int(eos_token_id)] if eos_token_id is not None else None
