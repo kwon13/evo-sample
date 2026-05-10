@@ -2,7 +2,7 @@ data:
   train_files: ""
   max_prompt_length: 4096
   max_response_length: 6144
-  rollout_batch_size: 32
+  rollout_batch_size: 64
   shuffle: true
 
 algorithm:
@@ -21,9 +21,7 @@ worker:
   hybrid_engine: true
   actor:
     strategy: fsdp
-    global_batch_size: 32
-    # n=16 rollouts/prompt → one training step processes 32 × 16 = 512 trajectories.
-    # G=8 대비 trajectories 2배. micro_batch_size 추가 조정이 필요할 수 있음.
+    global_batch_size: 64
     micro_batch_size_per_device_for_update: 4
     micro_batch_size_per_device_for_experience: 2
     use_torch_compile: false
@@ -130,6 +128,7 @@ math_eval:
     api_key_env: OPENAI_API_KEY
     retry_max: 3
     retry_backoff_seconds: [1, 5, 30]
+    max_workers: 8  # ThreadPoolExecutor size for parallel GPT-4o calls
 
 rq:
   seed_programs_dir: ./seed_programs

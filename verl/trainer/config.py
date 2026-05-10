@@ -214,13 +214,15 @@ class GPTJudgeConfig:
     enabled=False keeps math_verify as the sole grader (training-time default).
     enabled=True turns on a second pass that calls OpenAI's chat completions
     on items math_verify scored < 0.5, dedup'd by (question, response). The
-    'Yes' fraction is added back as a score promotion.
+    'Yes' fraction is added back as a score promotion. Unique calls run
+    through a ThreadPoolExecutor of `max_workers` size for ~10x latency win.
     """
     enabled: bool = False
     model: str = "gpt-4o"
     api_key_env: str = "OPENAI_API_KEY"
     retry_max: int = 3
     retry_backoff_seconds: list = field(default_factory=lambda: [1, 5, 30])
+    max_workers: int = 8
 
 
 @dataclass

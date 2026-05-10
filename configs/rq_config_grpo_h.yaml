@@ -125,6 +125,7 @@ math_eval:
     api_key_env: OPENAI_API_KEY
     retry_max: 3
     retry_backoff_seconds: [1, 5, 30]
+    max_workers: 8  # ThreadPoolExecutor size for parallel GPT-4o calls
 
 rq:
   seed_programs_dir: ./seed_programs

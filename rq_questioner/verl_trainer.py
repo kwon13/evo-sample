@@ -726,11 +726,14 @@ class RQEvolveTrainer(RayPPOTrainer):
             # ----------------------------------------------------------
             # GPT-4o re-check (R-Zero results_recheck.py).
             #
-            # Items math_verify scored 0 are sent to GPT for an equivalence
-            # check. Same (question, response) pair → one GPT call cached
-            # across the ×32-inflated AIME/AMC duplicates.
+            # Items math_verify scored 0 are dedup'd by (question, response)
+            # — ×32-inflated AIME/AMC duplicates collapse to one unique key
+            # — and the unique calls run through a ThreadPoolExecutor of
+            # cfg.gpt_judge.max_workers size for ~8x latency win.
             # ----------------------------------------------------------
             if gpt_enabled:
+                from concurrent.futures import ThreadPoolExecutor
+
                 api_key = os.environ.get(
                     str(getattr(gpt_cfg, "api_key_env", "OPENAI_API_KEY")),
                 )
@@ -739,19 +742,20 @@ class RQEvolveTrainer(RayPPOTrainer):
                 backoff = list(
                     getattr(gpt_cfg, "retry_backoff_seconds", [1, 5, 30]) or [1, 5, 30]
                 )
-                cache: dict[tuple[str, str], bool] = {}
+                max_workers = max(1, int(getattr(gpt_cfg, "max_workers", 8)))
+
+                # Pass 1: collect unique (problem, response) keys to query.
+                unique: dict[tuple[str, str], dict] = {}
                 for rec in records:
                     if rec["score"] >= 0.5:
                         continue
                     key = (rec["problem"], rec["response"])
-                    if key in cache:
-                        if cache[key]:
-                            rec["score"] = 1.0
-                            rec["score_source"] = "gpt_judge"
-                            gpt_promotions_total += 1
-                        continue
-                    gpt_calls_total += 1
-                    result = call_gpt_judge(
+                    if key not in unique:
+                        unique[key] = rec
+
+                def _judge_one(item):
+                    key, rec = item
+                    return key, call_gpt_judge(
                         ground_truth=rec["ground_truth"],
                         extracted_answer=rec["prediction"] or rec["response"],
                         model=model,
@@ -759,12 +763,24 @@ class RQEvolveTrainer(RayPPOTrainer):
                         retry_max=retry_max,
                         retry_backoff_seconds=backoff,
                     )
-                    if result.error is not None:
-                        gpt_failures_total += 1
-                        cache[key] = False
+
+                cache: dict[tuple[str, str], bool] = {}
+                if unique:
+                    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                        for key, result in ex.map(_judge_one, unique.items()):
+                            gpt_calls_total += 1
+                            if result.error is not None:
+                                gpt_failures_total += 1
+                                cache[key] = False
+                            else:
+                                cache[key] = bool(result.yes)
+
+                # Pass 2: apply cache to all records (×32 duplicates included).
+                for rec in records:
+                    if rec["score"] >= 0.5:
                         continue
-                    cache[key] = bool(result.yes)
-                    if result.yes:
+                    key = (rec["problem"], rec["response"])
+                    if cache.get(key):
                         rec["score"] = 1.0
                         rec["score_source"] = "gpt_judge"
                         gpt_promotions_total += 1
