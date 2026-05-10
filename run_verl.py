@@ -21,6 +21,14 @@ _PROJECT_ROOT = str(Path(__file__).parent.resolve())
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
+# Load OPENAI_API_KEY / HF_TOKEN / WANDB_API_KEY from .env (project root)
+# before any module that reads os.environ. python-dotenv is a hard dep.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(_PROJECT_ROOT) / ".env", override=False)
+except ImportError:
+    pass
+
 import ray
 import torch
 from omegaconf import OmegaConf
@@ -156,6 +164,15 @@ def build_seed_dataset(seeds, instances_per_program) -> MapElitesDynamicDataset:
 @ray.remote(num_cpus=1)
 class RQTaskRunner:
     def run(self, config):
+        # Ray actors run in a fresh process — re-load .env so the trainer
+        # (which runs inside this actor) sees OPENAI_API_KEY / HF_TOKEN /
+        # WANDB_API_KEY without depending on Ray runtime_env propagation.
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(Path(_PROJECT_ROOT) / ".env", override=False)
+        except ImportError:
+            pass
+
         print("=" * 60)
         print("RQ-Evolve Training")
         print("=" * 60)
@@ -382,16 +399,22 @@ def main():
     # Ray init
     if not ray.is_initialized():
         project_root = str(Path(__file__).parent.resolve())
-        runtime_env = {
-            "env_vars": {
-                "TOKENIZERS_PARALLELISM": "true",
-                "NCCL_DEBUG": "WARN",
-                "VLLM_LOGGING_LEVEL": "WARN",
-                "TORCH_NCCL_AVOID_RECORD_STREAMS": "1",
-                "PYTHONPATH": f"{project_root}:" + os.environ.get("PYTHONPATH", ""),
-            }
+        env_vars = {
+            "TOKENIZERS_PARALLELISM": "true",
+            "NCCL_DEBUG": "WARN",
+            "VLLM_LOGGING_LEVEL": "WARN",
+            "TORCH_NCCL_AVOID_RECORD_STREAMS": "1",
+            "PYTHONPATH": f"{project_root}:" + os.environ.get("PYTHONPATH", ""),
         }
-        ray.init(address='local', runtime_env=runtime_env, num_cpus=32)
+        # Forward secrets that the math eval / wandb / HF need into Ray
+        # actors. The driver loaded these from .env at module top; Ray
+        # actors don't auto-inherit os.environ, so explicit forwarding via
+        # runtime_env.env_vars is required.
+        for key in ("OPENAI_API_KEY", "HF_TOKEN", "WANDB_API_KEY"):
+            val = os.environ.get(key)
+            if val:
+                env_vars[key] = val
+        ray.init(address='local', runtime_env={"env_vars": env_vars}, num_cpus=32)
 
     print("Starting RQ-Evolve Runner...")
     runner = RQTaskRunner.remote()
