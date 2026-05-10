@@ -4,10 +4,12 @@ Custom reward function for veRL GRPO training.
 veRL calls this function for each generated response to compute the reward.
 Signature must be: compute_score(data_source, solution_str, ground_truth, extra_info)
 
-Reward scheme (following R-Zero / veRL conventions):
+Reward scheme (binary verifier — boxed-format partial credit removed):
   - 1.0 if extracted answer matches ground truth
-  - 0.1 if response contains \\boxed{} but answer is wrong (format reward)
-  - 0.0 if no \\boxed{} found (format penalty)
+  - 0.0 otherwise (whether or not \\boxed{} is present)
+
+The `format` field returned alongside the reward is a logging-only diagnostic
+(boxed-presence rate); it does not enter the training signal.
 """
 
 import re
@@ -85,32 +87,31 @@ def _match(pred: str, gt: str) -> bool:
 
 
 def _score_single(solution_str: str, ground_truth: str) -> float:
-    """단일 응답 채점: 1.0 (정답), 0.1 (boxed 있지만 오답), 0.0 (boxed 없음)"""
+    """단일 응답 채점: 1.0 (정답), 0.0 (오답 — boxed 유무 무관)."""
     predicted = _extract_boxed(solution_str)
     if predicted is None:
         return 0.0
     if _match(predicted, ground_truth):
         return 1.0
-    return 0.1
+    return 0.0
 
 
 def compute_score(response_str_list: list[str], ground_truth_list: list[str]) -> list[dict]:
     """
     verl 0.3.1 BatchRewardFunction 형식.
 
-    Args:
-        response_str_list: 모델 응답 텍스트 리스트
-        ground_truth_list: 정답 리스트
-
     Returns:
         list of {"overall": float, "accuracy": float, "format": float}
+        - overall = accuracy (binary reward: 1.0 정답, 0.0 그 외)
+        - format = boxed-presence (logging-only; reward 신호 아님)
     """
     results = []
     for resp, gt in zip(response_str_list, ground_truth_list):
         score = _score_single(resp, gt)
+        boxed_present = _extract_boxed(resp) is not None
         results.append({
             "overall": score,
             "accuracy": 1.0 if score == 1.0 else 0.0,
-            "format": 1.0 if score > 0.0 else 0.0,
+            "format": 1.0 if boxed_present else 0.0,
         })
     return results

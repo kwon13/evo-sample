@@ -42,9 +42,6 @@ class RolloutConfig:
     multi_turn_turn2_system: Optional[str] = None
     multi_turn_turn2_user: Optional[str] = None
     multi_turn_turn2_user: Optional[str] = None
-    solver_sampling_n: int = 1
-    solver_temperature: float = 0.8
-    verifier_temperature: float = 0.0
     """auto keys"""
     prompt_length: int = field(default=-1, init=False)
     response_length: int = field(default=-1, init=False)

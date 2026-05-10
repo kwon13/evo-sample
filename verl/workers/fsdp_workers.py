@@ -589,8 +589,9 @@ class FSDPWorker(Worker):
         if self._use_param_offload:
             load_fsdp_model(self.fsdp_module)
 
-        # Use the temperature from data.meta_info if provided (e.g., solver uses solver_temperature),
-        # otherwise fall back to the default rollout temperature.
+        # Use the temperature from data.meta_info if provided (callers may
+        # override per-batch), otherwise fall back to the default rollout
+        # temperature.
         if "temperature" not in data.meta_info or data.meta_info["temperature"] is None:
             data.meta_info["temperature"] = self.config.rollout.temperature
         calculate_entropy = bool(data.meta_info.get("calculate_entropy", False))
