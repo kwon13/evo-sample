@@ -22,7 +22,7 @@ worker:
   actor:
     strategy: fsdp
     global_batch_size: 64
-    micro_batch_size_per_device_for_update: 8
+    micro_batch_size_per_device_for_update: 4
     micro_batch_size_per_device_for_experience: 2
     use_torch_compile: false
     fsdp:

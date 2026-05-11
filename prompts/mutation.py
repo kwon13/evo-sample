@@ -44,32 +44,37 @@ HARD_CONTRACT = (
     "functools, random) and sympy. Every seed in 0..4 must terminate "
     "quickly and produce a valid output.\n"
     "\n"
-    "Answer format — STRICT. The answer string must parse as one of:\n"
+    "Answer format. The answer string must parse as one of:\n"
     "  (1) a plain integer (e.g. \"17\", \"-42\"),\n"
     "  (2) a sympy.Rational / Fraction (e.g. str(sympy.Rational(2, 3))),\n"
-    "  (3) an exact symbolic expression with no Float\n"
-    "      (e.g. str(sympy.sqrt(154)), str(sympy.Rational(1,2) + sympy.sqrt(3))).\n"
+    "  (3) an exact symbolic expression\n"
+    "      (e.g. str(sympy.sqrt(154)), str(sympy.Rational(1,2) + sympy.sqrt(3))),\n"
+    "  (4) a finite decimal with at most ~8 informative digits after the point\n"
+    "      (e.g. \"0.5\", \"1.25\", \"13.0948\") — acceptable when the answer\n"
+    "      is naturally a short decimal; the verifier accepts these.\n"
     "\n"
-    "Decimal-literal answers and float-only constructions are REJECTED "
-    "by the verifier — the linter rejects answers whose string contains a\n"
-    "decimal point unless that decimal point appears inside an exact symbolic\n"
-    "expression. Do NOT round, truncate, or call float() on the final answer.\n"
+    "Decimals with EXCESSIVE precision (more than ~8 digits past the point) "
+    "are rejected as float-noise — the verifier flags answers like "
+    "\"12.4096736459123987\" as over-precise. If you need to emit a long "
+    "decimal because the underlying value is irrational, prefer the exact "
+    "symbolic form (sqrt, Rational, etc.) instead. If you keep the decimal, "
+    "state \"round to N decimal places\" in the problem text so the rounding "
+    "policy is explicit.\n"
     "\n"
-    "  BAD:  return problem, str(0.16552117772)         # raw float\n"
-    "  BAD:  return problem, \"12.4096736459\"           # rounded surd\n"
-    "  BAD:  return problem, str(round(math.sqrt(2), 4)) # decimal truncation\n"
+    "  BAD:  return problem, str(0.16552117772)         # 10+ digits, no rounding stated\n"
+    "  BAD:  return problem, \"12.4096736459\"           # 10 digits, no rounding stated\n"
     "  BAD:  return problem, \"approximately 7\"          # word\n"
-    "  BAD:  return problem, str(float(sympy.sqrt(2)))   # float-cast a surd\n"
-    "  GOOD: return problem, str(sympy.Rational(2, 3))\n"
-    "  GOOD: return problem, str(sympy.sqrt(154))\n"
-    "  GOOD: return problem, str(sympy.Rational(1,2) + sympy.sqrt(3))\n"
+    "  OK:   return problem, \"0.5\"                       # short clean decimal\n"
+    "  OK:   return problem, \"1.25\"\n"
+    "  OK:   return problem, \"13.0948\"  with \"round to 4 decimal places\" in problem\n"
+    "  BEST: return problem, str(sympy.Rational(1, 2))\n"
+    "  BEST: return problem, str(sympy.sqrt(154))\n"
     "  GOOD: return problem, \"17\"\n"
     "\n"
-    "Before returning, verify that sympy.sympify(answer) succeeds and "
-    "that the result contains no Float atoms (use sympy.nsimplify or "
-    "sympy.Rational if you must convert a fraction). When the problem "
-    "geometry produces an irrational length or angle, KEEP it in radical / "
-    "trig form rather than evaluating it numerically.\n"
+    "Before returning, verify that sympy.sympify(answer) succeeds. Prefer "
+    "exact symbolic forms (Rational, sqrt, pi, trig functions) over decimals "
+    "whenever the underlying quantity is exact — exact forms grade more "
+    "robustly across solver outputs.\n"
     "\n"
 )
 
@@ -630,7 +635,12 @@ def looks_broken(problem: str, answer: str) -> bool:
         if re.search(gcd_value_pat, p) and re.search(lcm_value_pat, p):
             return True
 
-    # 8. Hint-leak property names — telling solver the trick by word
+    # 8. Hint-leak property names — telling solver the trick by word.
+    # Each phrase only fires when it actually short-circuits reasoning.
+    # "is a primitive root" was previously here but removed: in modular
+    # arithmetic problems (e.g. kth_root_mod_prime) naming the primitive
+    # root is a NECESSARY structural premise, not a hint leak. Same for
+    # "is a prime" in legitimate Legendre / quadratic-residue setups.
     HINT_LEAK_PHRASES = (
         "coprime",
         "are reciprocals",
@@ -638,32 +648,36 @@ def looks_broken(problem: str, answer: str) -> bool:
         "is a perfect square",
         "are a pythagorean",
         "form a pythagorean",
-        "is a primitive root",
-        "is a prime number",  # only flag when paired with gcd-style trivial answer
     )
     for phrase in HINT_LEAK_PHRASES:
-        if phrase not in p:
-            continue
-        # Skip "is a prime number" unless the answer is gcd/lcm-trivial
-        if phrase == "is a prime number" and not (
-            "gcd" in p or "lcm" in p or "greatest common" in p
-        ):
-            continue
-        return True
-
-    # 9. Variable degeneracy — same number assigned to two distinct variables.
-    # Match patterns like "a = 7 and b = 7", "a=7, b=7, c=7".
-    var_assign_matches = re.findall(
-        r"\b([a-z])\s*=\s*(-?\d+(?:\.\d+)?)\b", p
-    )
-    if len(var_assign_matches) >= 2:
-        var_values = {}
-        for var, val in var_assign_matches:
-            var_values.setdefault(var, val)
-        vals = list(var_values.values())
-        # Flag only when 2+ DISTINCT variables share the same value
-        if len(var_values) >= 2 and len(set(vals)) < len(vals):
+        if phrase in p:
             return True
+
+    # 9. Variable degeneracy — same number assigned to two distinct variables
+    # in a context where the resulting symmetry trivializes the concept.
+    # Narrowed to mean / AM-GM / arithmetic-mean style problems where a=b
+    # makes the answer equal to a; symmetric / equilateral / repeated-
+    # coefficient problems (Vieta with double roots, Heron with isosceles,
+    # symmetric polynomial identities) are legitimate and not blocked.
+    _DEGENERACY_TRIGGERS = (
+        "arithmetic mean",
+        "geometric mean",
+        "harmonic mean",
+        "average of",
+        "am-gm",
+        "am gm",
+    )
+    if any(trig in p for trig in _DEGENERACY_TRIGGERS):
+        var_assign_matches = re.findall(
+            r"\b([a-z])\s*=\s*(-?\d+(?:\.\d+)?)\b", p
+        )
+        if len(var_assign_matches) >= 2:
+            var_values = {}
+            for var, val in var_assign_matches:
+                var_values.setdefault(var, val)
+            vals = list(var_values.values())
+            if len(var_values) >= 2 and len(set(vals)) < len(vals):
+                return True
 
     # 10. Degenerate triangle / polygon geometry
     if "triangle" in p:
