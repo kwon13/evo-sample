@@ -22,7 +22,7 @@ worker:
   actor:
     strategy: fsdp
     global_batch_size: 64
-    micro_batch_size_per_device_for_update: 4
+    micro_batch_size_per_device_for_update: 8
     micro_batch_size_per_device_for_experience: 2
     use_torch_compile: false
     fsdp:
@@ -144,7 +144,7 @@ rq:
   # metrics are h and h_span_max.
   # H=[0, 1.2]: 이전 grpo_h run 분석 결과 p99=0.76, 99% 이상 데이터가 1.2 이내.
   # n_h_bins=10 유지 시 bin width = 0.12 (이전 0.2 대비 finer resolution).
-  h_range: [0.0, 0.4]
+  h_range: [0.0, 0.6]
   # Outer iteration budget: each inner iteration mutates, verifies,
   # evaluates, and tries to insert one candidate program. The batch size is
   # only a throughput knob; it does not change the algorithmic budget.

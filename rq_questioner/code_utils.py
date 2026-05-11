@@ -211,6 +211,61 @@ def lint_generator_source(source_code: str) -> list[str]:
     return reasons
 
 
+_SYMBOLIC_HINT_TOKENS = (
+    "sqrt", "pi", "exp", "log", "ln", "sin", "cos", "tan", "atan", "asin",
+    "acos", "rational", "frac", "/", "i*", "*i", "**", "^",
+)
+
+
+def _answer_is_disallowed_float(answer: str) -> bool:
+    """Detect raw decimal-literal answers (rejected by HARD_CONTRACT).
+
+    Accepts:
+      - integers ("17", "-42")
+      - sympy Rational / Fraction ("2/3", "-7/8")
+      - symbolic expressions containing sympy / radical / trig markers
+        (these may legitimately render to text like "sqrt(154)" or
+        "pi/3" and have NO decimal point, so they pass).
+      - exact symbolic expressions that combine integers with a decimal
+        ONLY when the decimal appears inside a function call / radical
+        (e.g. "sqrt(2.0)" is unusual; we still reject pure float).
+
+    Rejects:
+      - strings containing a decimal point that parse as a finite float
+        (e.g. "0.17", "12.4096", "-1.2374874348...").
+      - scientific notation literals ("1.5e-3").
+    """
+    s = (answer or "").strip()
+    if not s:
+        return False
+    # Bare integer (optionally signed)
+    if re.fullmatch(r"[+-]?\d+", s):
+        return False
+    # Fraction / Rational form a/b
+    if re.fullmatch(r"[+-]?\d+\s*/\s*[+-]?\d+", s):
+        return False
+    # Symbolic-expression heuristic: presence of a math function or radical
+    # suggests an exact form even if a decimal slips in for a constant.
+    s_lower = s.lower()
+    has_symbolic = any(tok in s_lower for tok in _SYMBOLIC_HINT_TOKENS)
+    # Has a literal decimal point?
+    has_dot = "." in s
+    if not has_dot:
+        # No decimal point — accept (covers exact symbolic with no float).
+        return False
+    if has_symbolic:
+        # Decimal inside an exact symbolic expression: accept conservatively.
+        # The mutation prompt asks for exact forms, but rejecting all decimals
+        # inside e.g. "Rational(1, 2)" via string-match would over-reject.
+        return False
+    # Decimal without symbolic marker — check if it parses as a finite float.
+    try:
+        float(s)
+    except (ValueError, TypeError):
+        return False
+    return True
+
+
 def lint_problem_instance(inst: ProblemInstance) -> list[str]:
     """Reject common verifier-surviving but training-poor problem patterns."""
     reasons: list[str] = []
@@ -225,5 +280,11 @@ def lint_problem_instance(inst: ProblemInstance) -> list[str]:
         reasons.append("non-scalar answer")
     if "," in answer or ";" in answer or re.search(r"\s+and\s+", answer_l):
         reasons.append("multi-part answer")
+    # Reject decimal-literal answers per HARD_CONTRACT. Float answers
+    # cause math_verify mismatches (rounding noise) and teach the solver
+    # a numerical-precision habit that hurts on benchmark problems where
+    # expected answers are integer / fractional / symbolic.
+    if _answer_is_disallowed_float(answer):
+        reasons.append("raw float answer (decimal literal without symbolic form)")
 
     return reasons

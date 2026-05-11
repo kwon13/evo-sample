@@ -259,6 +259,22 @@ def _format_mutation_prompt(tokenizer, prompt_text: str, suffix: str) -> str:
         return fallback
 
 
+def _instance_signature(problem: str, answer: str) -> str:
+    """Normalized (problem, answer) signature for emission-time dedup.
+
+    Hashed so the in-memory set stays compact even with thousands of
+    training examples. Normalization collapses repeated whitespace and
+    strips outer padding so cosmetic differences (e.g. trailing newline)
+    do not produce distinct signatures.
+    """
+    import hashlib
+
+    norm_problem = " ".join(str(problem or "").strip().split())
+    norm_answer = " ".join(str(answer or "").strip().split())
+    payload = f"{norm_problem}\x1f{norm_answer}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def _make_gen_batch(
     tokenizer,
     prompts_text: list[str],
@@ -1251,6 +1267,12 @@ class RQEvolveTrainer(RayPPOTrainer):
             "dataset_duplicate_signature_skipped_visits": refresh_stats.get(
                 "duplicate_signature_skipped_visits", 0
             ),
+            "dataset_duplicate_instance_skipped_visits": refresh_stats.get(
+                "duplicate_instance_skipped_visits", 0
+            ),
+            "dataset_unique_instances": refresh_stats.get(
+                "unique_instances_emitted", 0
+            ),
             # Validity quarantine: champions excluded from training/few-shot
             # because their multi-seed validity check failed. Tracks both
             # the count of unique quarantined champions (archive-wide) and
@@ -1280,6 +1302,32 @@ class RQEvolveTrainer(RayPPOTrainer):
             "dataset_size": len(self.dynamic_dataset.snapshot()),
             "event_log_file": self._current_event_path,
         }
+
+        # Dataset-level s (p_hat) / u (h_score) distribution.
+        # The dataset snapshot stores per-instance p_hat and h_score
+        # (added during _refresh_dataset). When training-time s/u
+        # diverges from champion-level s/u — e.g. dataset is dominated
+        # by a few champions whose p_hat is far from the archive
+        # average — that signals a sampling imbalance worth diagnosing.
+        ds_snapshot = self.dynamic_dataset.snapshot()
+        ds_s = [
+            r.get("p_hat") for r in ds_snapshot
+            if r.get("p_hat") is not None
+        ]
+        ds_u = [
+            r.get("h_score") for r in ds_snapshot
+            if r.get("h_score") is not None
+        ]
+        if ds_s:
+            result["dataset_s_mean"] = float(np.mean(ds_s))
+            result["dataset_s_std"] = float(np.std(ds_s))
+            result["dataset_s_min"] = float(np.min(ds_s))
+            result["dataset_s_max"] = float(np.max(ds_s))
+        if ds_u:
+            result["dataset_u_mean"] = float(np.mean(ds_u))
+            result["dataset_u_std"] = float(np.std(ds_u))
+            result["dataset_u_min"] = float(np.min(ds_u))
+            result["dataset_u_max"] = float(np.max(ds_u))
 
         # Grid 스냅샷 JSON 저장 (시각화는 별도 스크립트로)
         self._save_evolution_snapshot(result)
@@ -2462,7 +2510,14 @@ class RQEvolveTrainer(RayPPOTrainer):
         # space itself is unbounded (see _next_unused_seed docstring).
         emitted_per_program: dict[str, int] = {}
         emitted_signature_owner: dict[str, str] = {}
+        # Per-instance (problem, answer) text signatures emitted this refresh.
+        # Different generators (even with different program_ids) can render
+        # identical instance text under unlucky seed combinations; this set
+        # blocks them so the dataset never contains duplicate (problem,answer)
+        # pairs even when strict_anti_reuse is enforced only on (pid, seed).
+        emitted_instance_signatures: set[str] = set()
         duplicate_signature_skipped = 0
+        duplicate_instance_skipped = 0
 
         def _try_emit(champ, h_bin, d_bin) -> tuple[bool, bool]:
             """Try to emit one instance from ``champ``.
@@ -2472,7 +2527,7 @@ class RQEvolveTrainer(RayPPOTrainer):
               advanced — ``champ.execute`` was called (used to distinguish
                          transient seed failures from genuinely empty state).
             """
-            nonlocal duplicate_signature_skipped
+            nonlocal duplicate_signature_skipped, duplicate_instance_skipped
             pid = champ.program_id
             if emitted_per_program.get(pid, 0) >= self.instances_per_program:
                 return False, False
@@ -2489,11 +2544,21 @@ class RQEvolveTrainer(RayPPOTrainer):
             self.used_seeds.setdefault(pid, set()).add(seed)
             if inst is None:
                 return False, True
+            # Per-instance dedup: hash the rendered (problem, answer) so
+            # we never emit two identical training examples in one refresh
+            # — even from different generators or seeds.
+            inst_sig = _instance_signature(inst.problem, inst.answer)
+            if inst_sig in emitted_instance_signatures:
+                duplicate_instance_skipped += 1
+                return False, True
+            emitted_instance_signatures.add(inst_sig)
             new_problems.append({
                 "problem": inst.problem,
                 "answer": inst.answer,
                 "program_id": pid,
                 "rq_score": champ.rq_score,
+                "p_hat": getattr(champ, "p_hat", None),
+                "h_score": getattr(champ, "h_score", None),
                 "h_bin": h_bin,
                 "d_bin": d_bin,
                 "seed": seed,
@@ -2635,6 +2700,8 @@ class RQEvolveTrainer(RayPPOTrainer):
             "non_frontier_skipped_visits": non_frontier_skipped,
             "quarantined_skipped_visits": quarantined_skipped,
             "duplicate_signature_skipped_visits": duplicate_signature_skipped,
+            "duplicate_instance_skipped_visits": duplicate_instance_skipped,
+            "unique_instances_emitted": len(emitted_instance_signatures),
         }
 
         # Persist the actual training problem list alongside the grid snapshot.

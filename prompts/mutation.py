@@ -44,16 +44,32 @@ HARD_CONTRACT = (
     "functools, random) and sympy. Every seed in 0..4 must terminate "
     "quickly and produce a valid output.\n"
     "\n"
-    "Answer format — examples:\n"
-    "  BAD:  return problem, str(0.16552117772)        (raw float — rejected)\n"
-    "  BAD:  return problem, \"12.4096736459\"          (rounded surd — rejected)\n"
-    "  BAD:  return problem, \"approximately 7\"        (word — rejected)\n"
+    "Answer format — STRICT. The answer string must parse as one of:\n"
+    "  (1) a plain integer (e.g. \"17\", \"-42\"),\n"
+    "  (2) a sympy.Rational / Fraction (e.g. str(sympy.Rational(2, 3))),\n"
+    "  (3) an exact symbolic expression with no Float\n"
+    "      (e.g. str(sympy.sqrt(154)), str(sympy.Rational(1,2) + sympy.sqrt(3))).\n"
+    "\n"
+    "Decimal-literal answers and float-only constructions are REJECTED "
+    "by the verifier — the linter rejects answers whose string contains a\n"
+    "decimal point unless that decimal point appears inside an exact symbolic\n"
+    "expression. Do NOT round, truncate, or call float() on the final answer.\n"
+    "\n"
+    "  BAD:  return problem, str(0.16552117772)         # raw float\n"
+    "  BAD:  return problem, \"12.4096736459\"           # rounded surd\n"
+    "  BAD:  return problem, str(round(math.sqrt(2), 4)) # decimal truncation\n"
+    "  BAD:  return problem, \"approximately 7\"          # word\n"
+    "  BAD:  return problem, str(float(sympy.sqrt(2)))   # float-cast a surd\n"
     "  GOOD: return problem, str(sympy.Rational(2, 3))\n"
     "  GOOD: return problem, str(sympy.sqrt(154))\n"
+    "  GOOD: return problem, str(sympy.Rational(1,2) + sympy.sqrt(3))\n"
     "  GOOD: return problem, \"17\"\n"
     "\n"
     "Before returning, verify that sympy.sympify(answer) succeeds and "
-    "that the result contains no Float.\n"
+    "that the result contains no Float atoms (use sympy.nsimplify or "
+    "sympy.Rational if you must convert a fraction). When the problem "
+    "geometry produces an irrational length or angle, KEEP it in radical / "
+    "trig form rather than evaluating it numerically.\n"
     "\n"
 )
 
@@ -77,11 +93,12 @@ TEXT_HYGIENE = (
 QUALITY_BAR = (
     "Quality bar.\n"
     "\n"
-    "Target a pass rate around 0.5 with entropy in the 2 to 4 range. "
     "The problem should center on one coherent mathematical object "
     "and require at least three reasoning stages. Difficulty must "
     "come from genuine technique uncertainty, not from ambiguous "
-    "wording.\n"
+    "wording. Aim for the difficulty calibration described in the "
+    "system instructions — do not target a specific numerical "
+    "uncertainty or pass-rate value in the problem design.\n"
     "\n"
 )
 
@@ -110,10 +127,38 @@ DEPTH_BY_EXAMPLE = (
     "  \"x^2 + 0*x + 0 = 0; find sum of roots.\"\n"
     "  Sum is 0 trivially; no Vieta reasoning required.\n"
     "\n"
+    "Invalid child (rejected — hint leak via constraint word):\n"
+    "  \"For coprime integers a=63, b=52, find gcd(a,b) + lcm(a,b).\"\n"
+    "  The word \"coprime\" tells the solver gcd=1, collapsing the GCD\n"
+    "  reasoning stage. Do NOT name properties (coprime, perfect square,\n"
+    "  prime, palindrome) that the solver is supposed to discover.\n"
+    "\n"
+    "Invalid child (rejected — hint leak via trick name):\n"
+    "  \"The roots of 4x^2 + x + 4 = 0 are reciprocals; find their product.\"\n"
+    "  Telling the solver the roots are reciprocals reveals product=1\n"
+    "  immediately. Do NOT name the identity / trick the solver should use.\n"
+    "\n"
+    "Invalid child (rejected — variable degeneracy):\n"
+    "  \"Given two positive integers a=7 and b=7, find their arithmetic mean.\"\n"
+    "  a=b makes the mean trivially equal to a; the AM concept is unused.\n"
+    "  Sample distinct, non-trivial parameters by construction.\n"
+    "\n"
+    "Invalid child (rejected — degenerate geometry):\n"
+    "  \"A triangle has angles 0°, 90°, 90° and a side of length 90; find its area.\"\n"
+    "  A 0° angle does not form a triangle; the answer is mechanically 0.\n"
+    "  Constrain sampled angles to a non-degenerate range (each strictly\n"
+    "  between 0 and 180, summing to 180).\n"
+    "\n"
+    "Invalid child (rejected — both gcd AND lcm stated in problem):\n"
+    "  \"gcd(2,9)=1 and lcm(2,9)=18. Find gcd(a,b) + lcm(a,b).\"\n"
+    "  Both quantities the solver should compute are given as premises;\n"
+    "  the task degenerates to arithmetic addition.\n"
+    "\n"
     "The deep child requires Vieta's formulas plus a one-line "
     "reciprocal identity. The shallow child only requires reading off "
-    "a coefficient. The three invalid children are rejected even at "
-    "matching pass rate because they fail mathematical validity.\n"
+    "a coefficient. Invalid children are rejected even at matching "
+    "pass rate because they fail mathematical validity, hint-leak, or "
+    "degenerate parameter selection.\n"
     "\n"
 )
 
@@ -176,10 +221,40 @@ VALIDITY_CONTRACT = (
     "     FIX : derive the answer from exactly the parameters and "
     "relations stated in the problem text.\n"
     "\n"
+    "  7. HINT LEAK BY NAMING THE PROPERTY — the discriminating fact is "
+    "given away.\n"
+    "     BAD : \"For coprime integers a, b ...\", \"The roots are "
+    "reciprocals of each other ...\", \"Since (a, b, c) is a Pythagorean "
+    "triple ...\", \"Given that x is a perfect square ...\".\n"
+    "     FIX : let the solver discover the property. State only the "
+    "numeric or structural givens needed to reach the answer; never "
+    "name the trick or property by word.\n"
+    "\n"
+    "  8. BOTH PREMISE AND CONCLUSION STATED — task collapses to arithmetic.\n"
+    "     BAD : \"gcd(a,b)=1 and lcm(a,b)=18. Find gcd+lcm.\"\n"
+    "     FIX : state only inputs; never state derived quantities that "
+    "are themselves part of the answer chain.\n"
+    "\n"
+    "  9. VARIABLE COLLAPSE — sampling the same value for two different "
+    "variables.\n"
+    "     BAD : a, b sampled with a=b=7; \"committee of size n from "
+    "n people\".\n"
+    "     FIX : sample distinct values, or enforce a<b / "
+    "1<=k<=n-1 by construction.\n"
+    "\n"
+    " 10. DEGENERATE GEOMETRY — angles, sides, or counts that violate the "
+    "object's definition.\n"
+    "     BAD : triangle with a 0° angle, polygon with 2 vertices, "
+    "regular n-gon with n=2, \"diameter\" longer than the circle.\n"
+    "     FIX : constrain sampled parameters to the non-degenerate "
+    "interior of the object's definition (triangle angles strictly in "
+    "(0°, 180°) summing to 180°, polygon vertex count >= 3, etc.).\n"
+    "\n"
     "Self-check before returning. From ONLY the rendered problem text "
     "(not the source code), can you reach the stated answer with a clean "
-    "derivation? If not, the parameters are inconsistent or the problem "
-    "is under-specified — regenerate.\n"
+    "derivation that USES every stated quantity? If a stated quantity is "
+    "ignored, or if naming a property short-circuits the reasoning, the "
+    "problem is broken — regenerate.\n"
     "\n"
 )
 
@@ -221,15 +296,16 @@ MUTATION_SYSTEM_PROMPT = (
 # ---------------------------------------------------------------------------
 
 SCORE_FEEDBACK = (
-    "Parent performance.\n"
+    "Parent diagnosis.\n"
     "\n"
-    "  pass rate  p = {p_hat:.2f}    (ideal 0.50 — solver wins about half the time)\n"
-    "  entropy    H = {h_score:.2f}    (ideal 2.0 to 4.0; very high entropy "
-    "usually means the solver is confused, not thinking)\n"
-    "  R_Q          = {rq_score:.4f}  (higher is better)\n"
+    "{diagnosis}\n"
     "\n"
-    "Diagnosis: {diagnosis}\n"
     "Action: {action}\n"
+    "\n"
+    "Note. The diagnosis above is a qualitative label — do not target a "
+    "specific numerical pass rate, entropy value, or R_Q score when "
+    "designing the child. Focus on reasoning depth and validity; the "
+    "calibration takes care of itself when the problem is well-posed.\n"
     "\n"
 )
 
@@ -294,10 +370,10 @@ MUTATE_CROSSOVER = (
     "ideas — not a concatenation like \"compute X from A, then Y "
     "from B\".\n"
     "\n"
-    "Parent A (p={p_hat_a:.2f}, H={h_a:.2f}):\n"
+    "Parent A:\n"
     "```python\n{code_a}\n```\n"
     "\n"
-    "Parent B (p={p_hat_b:.2f}, H={h_b:.2f}):\n"
+    "Parent B:\n"
     "```python\n{code_b}\n```\n"
     "\n"
     "{few_shot}"
@@ -413,7 +489,6 @@ def score_diagnosis(
 def build_score_feedback(parent: ProblemProgram) -> str:
     p_hat = getattr(parent, "p_hat", 0.5)
     h_score = getattr(parent, "h_score", 1.0)
-    rq_score = getattr(parent, "rq_score", 0.0)
     parent_answer: str | None = None
     try:
         inst = parent.execute(seed=0, timeout=3.0)
@@ -421,11 +496,12 @@ def build_score_feedback(parent: ProblemProgram) -> str:
             parent_answer = str(inst.answer)
     except Exception:
         parent_answer = None
+    # Note: p_hat / h_score / rq_score are NOT interpolated into the rendered
+    # feedback; we deliberately suppress raw metric values to prevent the
+    # mutator from targeting them as reward-hack signals. Only the
+    # qualitative diagnosis label is shown.
     diag, action = score_diagnosis(p_hat, h_score, parent_answer=parent_answer)
-    return SCORE_FEEDBACK.format(
-        p_hat=p_hat, h_score=h_score, rq_score=rq_score,
-        diagnosis=diag, action=action,
-    )
+    return SCORE_FEEDBACK.format(diagnosis=diag, action=action)
 
 
 # ---------------------------------------------------------------------------
@@ -440,16 +516,27 @@ def looks_broken(problem: str, answer: str) -> bool:
     False positive = champion excluded from few-shot / training; recoverable
     once mutations replace it.
     False negative = contamination propagates; this is the worse failure
-    mode, but the conservative scope keeps the heuristic honest.
+    mode, but each pattern below has documented archive evidence.
 
     Patterns covered:
-      1. Trivial 0/1 answer with impossible-counting language.
-      2. Self-contradicting numeric inequality clause (n > n, x > y when
-         x <= y is in the same sentence).
-      3. GCD/LCM consistency — gcd claim with values that don't satisfy it.
-      4. Under-specified geometry (triangle area without 3rd side / angle).
-      5. Malformed LaTeX (\\frac with run-on digits).
-      6. Degenerate sequence count ("first 1 term", "first 2 terms").
+      Math validity (1st-order failures):
+        1. Trivial 0/1 answer with impossible-counting language.
+        2. Self-contradicting numeric inequality clause (n > n, x > y when
+           x <= y is in the same sentence).
+        3. GCD/LCM consistency — gcd claim with values that don't satisfy it.
+        4. Under-specified geometry (triangle area without 3rd side / angle).
+        5. Malformed LaTeX (\\frac with run-on digits).
+        6. Degenerate sequence count ("first 1 term", "first 2 terms").
+      Quality / hint-leak (2nd-order failures, added later):
+        7. Both gcd AND lcm given as premise (task collapses to arithmetic).
+        8. "coprime" / "are reciprocals" / "perfect square" hint words that
+           leak the discriminating property.
+        9. Variable degeneracy a=b (or n=k for committee-style).
+       10. Degenerate triangle (0° angle, 0-length side, n-gon with n<=2).
+       11. Committee of size n from n people (no choice involved); committee
+           of size 1 (trivially anyone).
+       12. "Given that <quantity> is X" pattern that states the very
+           quantity the solver should derive.
     """
     p = (problem or "").lower().strip()
     a = str(answer or "").strip()
@@ -475,9 +562,7 @@ def looks_broken(problem: str, answer: str) -> bool:
             continue
 
     # 3. GCD/LCM consistency — if the text states gcd value with explicit
-    # numbers and g does not divide both a and b, it is broken. Covers
-    # "gcd(a,b) = g", "gcd of A and B is g", and parenthetical-abbreviation
-    # form "greatest common divisor (GCD) is g".
+    # numbers and g does not divide both a and b, it is broken.
     if "gcd" in p or "greatest common divisor" in p:
         gcd_patterns = [
             r"gcd\s*\([^)]*\)\s*(?:=|is|equals)\s*(\d+)",
@@ -504,7 +589,7 @@ def looks_broken(problem: str, answer: str) -> bool:
         has_extra_info = bool(
             re.search(r"\b(angle|included|right\s+triangle|equilateral|"
                       r"isosceles|heron|altitude|height|perimeter|hypotenuse|"
-                      r"third\s+side)\b", p)
+                      r"third\s+side|vertices|coordinates|base)\b", p)
         )
         if not has_extra_info:
             sides_match = re.search(
@@ -526,6 +611,135 @@ def looks_broken(problem: str, answer: str) -> bool:
             if m and int(m.group(1)) <= 2:
                 return True
         except ValueError:
+            pass
+
+    # ---- 2nd-order quality patterns (hint leak / degeneracy) ---------------
+
+    # 7. Both gcd AND lcm stated as premise — task collapses
+    if (("gcd" in p or "greatest common divisor" in p)
+            and ("lcm" in p or "least common multiple" in p)):
+        # Two distinct "<noun> is/equals <number>" claims within one sentence
+        gcd_value_pat = (
+            r"(?:gcd|greatest common divisor)[^.]{0,80}?"
+            r"\b(?:is|equals|=)\s*(\d+)"
+        )
+        lcm_value_pat = (
+            r"(?:lcm|least common multiple)[^.]{0,80}?"
+            r"\b(?:is|equals|=)\s*(\d+)"
+        )
+        if re.search(gcd_value_pat, p) and re.search(lcm_value_pat, p):
+            return True
+
+    # 8. Hint-leak property names — telling solver the trick by word
+    HINT_LEAK_PHRASES = (
+        "coprime",
+        "are reciprocals",
+        "roots are reciprocal",
+        "is a perfect square",
+        "are a pythagorean",
+        "form a pythagorean",
+        "is a primitive root",
+        "is a prime number",  # only flag when paired with gcd-style trivial answer
+    )
+    for phrase in HINT_LEAK_PHRASES:
+        if phrase not in p:
+            continue
+        # Skip "is a prime number" unless the answer is gcd/lcm-trivial
+        if phrase == "is a prime number" and not (
+            "gcd" in p or "lcm" in p or "greatest common" in p
+        ):
+            continue
+        return True
+
+    # 9. Variable degeneracy — same number assigned to two distinct variables.
+    # Match patterns like "a = 7 and b = 7", "a=7, b=7, c=7".
+    var_assign_matches = re.findall(
+        r"\b([a-z])\s*=\s*(-?\d+(?:\.\d+)?)\b", p
+    )
+    if len(var_assign_matches) >= 2:
+        var_values = {}
+        for var, val in var_assign_matches:
+            var_values.setdefault(var, val)
+        vals = list(var_values.values())
+        # Flag only when 2+ DISTINCT variables share the same value
+        if len(var_values) >= 2 and len(set(vals)) < len(vals):
+            return True
+
+    # 10. Degenerate triangle / polygon geometry
+    if "triangle" in p:
+        # 0° or 180° anywhere in the text — even without word boundary
+        # because the unicode ° has no \b on its left.
+        if re.search(r"(?<!\d)0\s*(?:°|degrees?)", p):
+            return True
+        if re.search(r"(?<!\d)180\s*(?:°|degrees?)", p):
+            return True
+    if re.search(r"\b(?:polygon|n-gon)\b", p):
+        # n=2 vertices or sides
+        m = re.search(r"\b(\d+)[\-\s]+(?:vertex|vertices|sided|sides)\b", p)
+        if m:
+            try:
+                if int(m.group(1)) <= 2:
+                    return True
+            except ValueError:
+                pass
+
+    # 11. Committee size collapse — committee of size n from n people, or
+    # committee of size 0 / n with trivial answer.
+    # Two phrasing orders observed:
+    #   "committee of size K from a group of N people"
+    #   "in a group of N people, committee of size K"
+    if "committee" in p and "people" in p:
+        size_match = re.search(
+            r"committees?\s+of\s+size[s]?\s+(\d+)(?:\s+and\s+(\d+))?", p
+        )
+        group_match = re.search(r"group\s+of\s+(\d+)\s+people", p) \
+            or re.search(r"(\d+)\s+people", p)
+        if size_match and group_match:
+            try:
+                k = int(size_match.group(1))
+                n = int(group_match.group(1))
+                if k == n or k == 0:
+                    return True
+                # "two committees of sizes 7 and 1 from 8 people" = trivial
+                if size_match.group(2):
+                    k2 = int(size_match.group(2))
+                    if k + k2 == n and (k == 1 or k2 == 1):
+                        return True
+            except ValueError:
+                pass
+
+    # 12. "Given that <X> is <num>" pattern that states a derived quantity
+    # Examples: "given that their gcd is 27", "given that their sum is S"
+    # Catches the cases where the problem hands the solver the answer step.
+    if a in _TRIVIAL_ANSWERS or (a.replace(".", "").replace("-", "").isdigit()):
+        # If the answer literal appears verbatim in the problem (a known
+        # hint-leak failure mode), reject.
+        try:
+            a_int = int(float(a))
+            # Only flag for non-zero answer; 0 is too common to use as anchor
+            if abs(a_int) >= 2 and re.search(
+                rf"\b{re.escape(str(a_int))}\b", problem or ""
+            ):
+                # Avoid false positives: the answer must not be a stated
+                # parameter (e.g. "a=7" with answer 7 happens legitimately).
+                # Require the answer to appear ALSO outside any "x = N"
+                # assignment context.
+                stripped = re.sub(
+                    r"\b[a-z]\s*=\s*\d+", "", problem.lower()
+                )
+                if re.search(rf"\b{re.escape(str(a_int))}\b", stripped):
+                    # Even after stripping assignments, answer appears →
+                    # likely hint-leak. But only flag when paired with
+                    # other suspicious tokens to avoid massive FP rate.
+                    if any(
+                        tok in p for tok in (
+                            "given that",
+                            "such that the",
+                            "given the value",
+                        )
+                    ):
+                        return True
+        except (ValueError, OverflowError):
             pass
 
     return False

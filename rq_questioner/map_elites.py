@@ -259,6 +259,33 @@ class MAPElitesGrid:
         """하위 호환용. embedding 기반에서는 no-op."""
         return 0
 
+    def _purge_program_from_other_cells(
+        self,
+        program_id: str,
+        keep_cell: tuple[int, int],
+    ) -> int:
+        """Remove every reference to ``program_id`` from cells OTHER than
+        ``keep_cell``. Used to enforce archive-global uniqueness: a given
+        program may appear as champion in at most ONE cell, and may NOT
+        simultaneously sit in any other cell's reservoir.
+
+        Returns the number of references purged. Logging-only.
+        """
+        purged = 0
+        for key, niche in self.grid.items():
+            if key == keep_cell:
+                continue
+            if niche.champion is not None and niche.champion.program_id == program_id:
+                niche.champion = None
+                niche.champion_rq = -1.0
+                purged += 1
+            before = len(niche.candidates)
+            niche.candidates = [
+                c for c in niche.candidates if c.program_id != program_id
+            ]
+            purged += before - len(niche.candidates)
+        return purged
+
     def try_insert(
         self,
         program: ProblemProgram,
@@ -269,6 +296,14 @@ class MAPElitesGrid:
         """
         configured D-axis 기반으로 D bin 결정 후 삽입 시도.
         빈 niche이거나 기존 champion보다 R_Q가 높으면 삽입.
+
+        Archive-global uniqueness:
+          A given program_id may appear in at most ONE cell at a time
+          (champion OR reservoir, not both, not multiple cells). When a
+          program is promoted to champion in a new cell, all earlier
+          references in other cells are purged. This prevents archive
+          inflation where noisy H/D rebinning lets the same generator
+          occupy multiple grid cells simultaneously.
         """
         h_bin = self.h_to_bin(h_value)
         div_bin = self.program_to_div_bin(program, problem_text)
@@ -318,7 +353,36 @@ class MAPElitesGrid:
                         div_bin,
                         reason="displaced_champion",
                     )
+            # Archive-global uniqueness: clear this program from any other
+            # cell where it lingered (older champion seat after rebin, or
+            # reservoir membership from earlier rounds).
+            purged = self._purge_program_from_other_cells(
+                program.program_id, keep_cell=(h_bin, div_bin)
+            )
+            if purged > 0:
+                niche.history.append({
+                    "program_id": program.program_id,
+                    "event": "global_uniqueness_purge",
+                    "purged_count": purged,
+                })
             return True
+
+        # Reservoir entry — also enforce uniqueness: if this same program
+        # already sits as champion in another cell, do NOT add it as a
+        # reservoir candidate here (would be a duplicate occupancy).
+        for other_key, other_niche in self.grid.items():
+            if other_key == (h_bin, div_bin):
+                continue
+            if (other_niche.champion is not None
+                    and other_niche.champion.program_id == program.program_id):
+                # Already champion elsewhere — record and bail.
+                niche.history.append({
+                    "program_id": program.program_id,
+                    "rq": rq_score,
+                    "event": "reservoir_skipped_global_uniqueness",
+                    "champion_at": list(other_key),
+                })
+                return False
 
         self._add_candidate_to_reservoir(
             program,
@@ -414,6 +478,11 @@ class MAPElitesGrid:
             program.fitness = new_rq
             niche = self.grid[(old_h_bin, old_div_bin)]
             niche.champion_rq = new_rq
+            # Defensive: even on no-bin-change rebin, ensure global uniqueness
+            # (purges any stale reservoir membership of the same pid).
+            self._purge_program_from_other_cells(
+                program.program_id, keep_cell=(old_h_bin, old_div_bin)
+            )
             return False
 
         old_niche = self.grid.get((old_h_bin, old_div_bin))
