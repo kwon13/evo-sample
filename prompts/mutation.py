@@ -303,14 +303,23 @@ MUTATION_SYSTEM_PROMPT = (
 SCORE_FEEDBACK = (
     "Parent diagnosis.\n"
     "\n"
+    "  observed solver pass rate p = {p_hat:.2f}\n"
+    "  observed solver entropy   H = {h_score:.2f}\n"
+    "\n"
     "{diagnosis}\n"
     "\n"
     "Action: {action}\n"
     "\n"
-    "Note. The diagnosis above is a qualitative label — do not target a "
-    "specific numerical pass rate, entropy value, or R_Q score when "
-    "designing the child. Focus on reasoning depth and validity; the "
-    "calibration takes care of itself when the problem is well-posed.\n"
+    "Note on the metrics above. They describe the CURRENT solver's "
+    "behaviour on the parent generator — they are diagnostic, not a "
+    "target. Use them only to judge direction: e.g. p very high means "
+    "the parent is already mastered (make harder), p very low means "
+    "the parent is unreachable (preserve structure but reduce numeric "
+    "load), low H means the solver is over-confident (introduce a real "
+    "ambiguity). Do NOT design the child to hit a specific numerical p "
+    "or H value, and do NOT reference these numbers in the generated "
+    "code or problem text. The reward signal itself (R_Q) is "
+    "deliberately not shown to prevent reward-hacking.\n"
     "\n"
 )
 
@@ -375,10 +384,10 @@ MUTATE_CROSSOVER = (
     "ideas — not a concatenation like \"compute X from A, then Y "
     "from B\".\n"
     "\n"
-    "Parent A:\n"
+    "Parent A (solver p={p_hat_a:.2f}, H={h_a:.2f}):\n"
     "```python\n{code_a}\n```\n"
     "\n"
-    "Parent B:\n"
+    "Parent B (solver p={p_hat_b:.2f}, H={h_b:.2f}):\n"
     "```python\n{code_b}\n```\n"
     "\n"
     "{few_shot}"
@@ -501,12 +510,16 @@ def build_score_feedback(parent: ProblemProgram) -> str:
             parent_answer = str(inst.answer)
     except Exception:
         parent_answer = None
-    # Note: p_hat / h_score / rq_score are NOT interpolated into the rendered
-    # feedback; we deliberately suppress raw metric values to prevent the
-    # mutator from targeting them as reward-hack signals. Only the
-    # qualitative diagnosis label is shown.
+    # p_hat / h_score are interpolated (diagnostic direction signal — empirical
+    # ablation showed stripping them caused the archive to drift away from the
+    # frontier band: p_hat mean 0.43 → 0.63, frontier_fraction 60% → 29%
+    # at matched evo budget).
+    # rq_score is the reward-function value itself and is NOT interpolated;
+    # exposing it would let the mutator reward-hack the metric directly.
     diag, action = score_diagnosis(p_hat, h_score, parent_answer=parent_answer)
-    return SCORE_FEEDBACK.format(diagnosis=diag, action=action)
+    return SCORE_FEEDBACK.format(
+        p_hat=p_hat, h_score=h_score, diagnosis=diag, action=action,
+    )
 
 
 # ---------------------------------------------------------------------------
