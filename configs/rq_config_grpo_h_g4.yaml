@@ -1,29 +1,23 @@
 data:
   train_files: ""
   max_prompt_length: 4096
-  max_response_length: 6144
-  rollout_batch_size: 64
+  max_response_length: 4096
+  rollout_batch_size: 32
   shuffle: true
 
 algorithm:
-  # GRPO: group-relative policy optimization. Samples n rollouts per prompt,
-  # standardizes rewards within the group, no critic required.
-  # Requires worker.rollout.n > 1 (see ray_trainer.py:251).
   adv_estimator: grpo
   kl_penalty: low_var_kl
-  # GRPO 관행: KL term을 actor loss에 포함 + 작은 coefficient.
-  # REINFORCE++ 대비 kl_coef를 한 자릿수 낮춤 (GRPO는 ratio clipping이 없으므로
-  # KL가 policy drift의 주 안전장치).
-  kl_coef: 1.0e-2
+  kl_coef: 1.0e-3
   use_kl_loss: true
 
 worker:
   hybrid_engine: true
   actor:
     strategy: fsdp
-    global_batch_size: 64
-    micro_batch_size_per_device_for_update: 4
-    micro_batch_size_per_device_for_experience: 2
+    global_batch_size: 32
+    micro_batch_size_per_device_for_update: 2
+    micro_batch_size_per_device_for_experience: 4
     use_torch_compile: false
     fsdp:
       enable_full_shard: true
@@ -49,19 +43,15 @@ worker:
     name: vllm
     temperature: 0.8
     top_p: 0.95
-    # max_model_len = max_prompt_length + max_response_length = 4096 + 6144
-    max_model_len: 10240
-    # vLLM requires max_num_batched_tokens > max_prompt_length + max_response_length
-    # (strict >). Set to ~1.5x for batched throughput headroom.
-    max_num_batched_tokens: 16384
+    # max_model_len = max_prompt_length + max_response_length = 4096 + 4096
+    max_model_len: 8192
+    max_num_batched_tokens: 12288
     dtype: bfloat16
     tensor_parallel_size: 1
     enable_chunked_prefill: true
     enforce_eager: false
-    # G=16 rollouts/prompt for GRPO group. Memory 2배 trade-off로 group reward
-    # 표준편차 추정이 더 안정적.
-    n: 8
-    gpu_memory_utilization: 0.7
+    n: 4
+    gpu_memory_utilization: 0.85
     ignore_eos: false
     disable_log_stats: true
 
@@ -74,24 +64,21 @@ trainer:
   total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo_h_g8
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8
+  experiment_name: qwen3_4b_base_grpo_h_g4_fix
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g4_fix
   logger:
     - console
     - wandb
   n_gpus_per_node: 4
   nnodes: 1
-  save_freq: 32      # step 128, 256 저장 → 중간 1회 + final 1회
-  save_final_checkpoint: false  # save_freq 배수가 아닌 조기 종료 시 final save 생략
-  save_limit: 8       # 최근 2개 checkpoint만 유지 (오래된 것 자동 삭제)
+  save_freq: 16
+  save_final_checkpoint: true
+  save_limit: 16
 
 math_eval:
   enabled: true
-  before_train: true
-  every_n_outer_iterations: 5
-  # R-Zero generate.py uses max_tokens=4096 with temperature=0.0,
-  # stop_token_ids=[eos_token_id], top_p=1.0. The vLLMRollout clamps to
-  # data.max_response_length so the effective cap is min(4096, response_length).
+  before_train: false
+  every_n_outer_iterations: 6
   max_tokens: 4096
   temperature: 0.0
   top_p: 1.0
@@ -99,8 +86,6 @@ math_eval:
   sample_seed: 42
   output_details: true
   max_logged_failures: 20
-  # R-Zero never sub-samples math benchmarks at eval time. The loader forces
-  # full set internally; entries here are kept for explicit debugging only.
   fast_samples:
     math500: -1
     amc23: -1
@@ -108,9 +93,6 @@ math_eval:
     aime25: -1
     minerva_math: -1
     olympiadbench: -1
-  # Sources are determined by `name` (see evaluation/math_benchmarks.py
-  # _load_benchmark_rows). The legacy hf_id/split fields are no longer
-  # consulted but the schema accepts them.
   benchmarks:
     - name: math500
     - name: amc23
@@ -144,7 +126,7 @@ rq:
   # metrics are h and h_span_max.
   # H=[0, 1.2]: 이전 grpo_h run 분석 결과 p99=0.76, 99% 이상 데이터가 1.2 이내.
   # n_h_bins=10 유지 시 bin width = 0.12 (이전 0.2 대비 finer resolution).
-  h_range: [0.0, 0.6]
+  h_range: [0.0, 0.5]
   # Outer iteration budget: each inner iteration mutates, verifies,
   # evaluates, and tries to insert one candidate program. The batch size is
   # only a throughput knob; it does not change the algorithmic budget.
@@ -191,7 +173,7 @@ rq:
   # exec-failing ones.
   # L=[0.3, 0.7]: 이전 [0.1, 0.9] 대비 narrower band — Solver가 진짜 경계
   # (어렵지도 쉽지도 않은) 문제만 학습. Training set 크기는 줄어듦.
-  frontier_p_hat_range: [0.3, 0.7]
+  frontier_p_hat_range: [0.1, 0.9]
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
   # mode:
