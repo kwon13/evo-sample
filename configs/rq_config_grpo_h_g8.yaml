@@ -16,8 +16,8 @@ worker:
   actor:
     strategy: fsdp
     global_batch_size: 32
-    micro_batch_size_per_device_for_update: 2
-    micro_batch_size_per_device_for_experience: 4
+    micro_batch_size_per_device_for_update: 4
+    micro_batch_size_per_device_for_experience: 2
     use_torch_compile: false
     fsdp:
       enable_full_shard: true
@@ -50,8 +50,8 @@ worker:
     tensor_parallel_size: 1
     enable_chunked_prefill: true
     enforce_eager: false
-    n: 4
-    gpu_memory_utilization: 0.85
+    n: 8
+    gpu_memory_utilization: 0.8
     ignore_eos: false
     disable_log_stats: true
 
@@ -64,8 +64,8 @@ trainer:
   total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo_h_g4_fix
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g4_fix
+  experiment_name: qwen3_4b_base_grpo_h_g8_new
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_new
   logger:
     - console
     - wandb

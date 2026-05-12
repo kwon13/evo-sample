@@ -77,7 +77,7 @@ trainer:
   logger:
     - console
     - wandb
-  n_gpus_per_node: 2
+  n_gpus_per_node: 4
   nnodes: 1
   save_freq: 128      # step 128, 256 저장 → 중간 1회 + final 1회
   save_final_checkpoint: false  # save_freq 배수가 아닌 조기 종료 시 final save 생략
