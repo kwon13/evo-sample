@@ -30,7 +30,6 @@ HF_DIR="${CKPT_DIR}/hf_merged"
 
 REPO_ROOT="/data1/yhoon113/evo-sample"
 SCRIPTS="${REPO_ROOT}/scripts"
-CFG="${REPO_ROOT}/configs/rq_config_grpo.yaml"
 
 if [[ ! -d "${ACTOR_DIR}" ]]; then
   echo "[err] missing actor dir: ${ACTOR_DIR}" >&2
@@ -49,18 +48,6 @@ mkdir -p "${LOG_DIR}"
 export CUDA_VISIBLE_DEVICES="${GPU_IDX}"
 export TOKENIZERS_PARALLELISM=false
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
-
-if [[ -f "${REPO_ROOT}/.venv/bin/activate" ]]; then
-  # shellcheck disable=SC1091
-  source "${REPO_ROOT}/.venv/bin/activate"
-fi
-
-if [[ -f "${REPO_ROOT}/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "${REPO_ROOT}/.env"
-  set +a
-fi
 
 cd "${REPO_ROOT}"
 
@@ -82,8 +69,12 @@ echo "[eval] math benchmarks -> ${MATH_OUT}"
 python "${SCRIPTS}/eval_vllm_math.py" \
   --model "${HF_DIR}" \
   --tokenizer "${HF_DIR}" \
-  --config "${CFG}" \
+  --config "" \
   --output_dir "${MATH_OUT}" \
+  --batch_size 128 \
+  --max_tokens 4096 \
+  --temperature 0.0 \
+  --top_p 1.0 \
   --tensor_parallel_size 1 \
   --gpu_memory_utilization 0.85 \
   --max_model_len 8192 \
