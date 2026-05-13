@@ -16,8 +16,8 @@ worker:
   actor:
     strategy: fsdp
     global_batch_size: 32
-    micro_batch_size_per_device_for_update: 8
-    micro_batch_size_per_device_for_experience: 8
+    micro_batch_size_per_device_for_update: 4
+    micro_batch_size_per_device_for_experience: 4
     use_torch_compile: false
     fsdp:
       enable_full_shard: true
@@ -77,7 +77,7 @@ trainer:
 
 math_eval:
   enabled: true
-  before_train: true
+  before_train: false
   every_n_outer_iterations: 5
   max_tokens: 4096
   temperature: 0.0
