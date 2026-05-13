@@ -1,8 +1,8 @@
 data:
   train_files: ""
-  max_prompt_length: 4096
-  max_response_length: 4096
-  rollout_batch_size: 32
+  max_prompt_length: 6000
+  max_response_length: 6000
+  rollout_batch_size: 36
   shuffle: true
 
 algorithm:
@@ -15,9 +15,9 @@ worker:
   hybrid_engine: true
   actor:
     strategy: fsdp
-    global_batch_size: 32
-    micro_batch_size_per_device_for_update: 8
-    micro_batch_size_per_device_for_experience: 8
+    global_batch_size: 36
+    micro_batch_size_per_device_for_update: 6
+    micro_batch_size_per_device_for_experience: 6
     use_torch_compile: false
     fsdp:
       enable_full_shard: true
@@ -43,8 +43,8 @@ worker:
     name: vllm
     temperature: 0.8
     top_p: 0.95
-    # max_model_len = max_prompt_length + max_response_length = 4096 + 4096
-    max_model_len: 8192
+    # max_model_len = max_prompt_length + max_response_length = 6000 + 6000
+    max_model_len: 12000
     max_num_batched_tokens: 12288
     dtype: bfloat16
     tensor_parallel_size: 1
@@ -64,21 +64,21 @@ trainer:
   total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo_h_g8_fix
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_fix
+  experiment_name: qwen3_4b_base_grpo_h_g8_fix_prompt
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_fix_prompt
   logger:
     - console
     - wandb
   n_gpus_per_node: 4
   nnodes: 1
-  save_freq: 16
+  save_freq: 32
   save_final_checkpoint: true
   save_limit: 16
 
 math_eval:
   enabled: true
   before_train: false
-  every_n_outer_iterations: 6
+  every_n_outer_iterations: 5
   max_tokens: 4096
   temperature: 0.0
   top_p: 1.0
@@ -173,7 +173,7 @@ rq:
   # exec-failing ones.
   # L=[0.3, 0.7]: 이전 [0.1, 0.9] 대비 narrower band — Solver가 진짜 경계
   # (어렵지도 쉽지도 않은) 문제만 학습. Training set 크기는 줄어듦.
-  frontier_p_hat_range: [0.2, 0.8]
+  frontier_p_hat_range: [0.4, 0.8]
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
   # mode:
