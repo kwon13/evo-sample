@@ -1,8 +1,9 @@
+CONCEPT_GROUP = "combinatorics"
+CONCEPT_TYPE = "combinatorics.derangement_fixed_points"
+
 import math
 import random
 
-CONCEPT_GROUP = "combinatorics"
-CONCEPT_TYPE = "combinatorics.derangement_fixed_points"
 def _derangement(n):
     if n == 0:
         return 1

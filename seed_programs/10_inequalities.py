@@ -1,7 +1,8 @@
-import random
-
 CONCEPT_GROUP = "inequality"
 CONCEPT_TYPE = "inequality.am_gm_product"
+
+import random
+
 def generate(seed):
     rng = random.Random(seed)
 

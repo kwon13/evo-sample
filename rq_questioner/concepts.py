@@ -34,27 +34,23 @@ def concept_group_for_type(concept_type: str | None) -> str | None:
     return CONCEPT_TYPE_TO_GROUP.get(str(concept_type).strip())
 
 
-def validate_concept_decl(
-    concept_type: str | None,
-    concept_group: str | None,
-) -> list[str]:
-    reasons: list[str] = []
+def validate_concept_decl(concept_type, concept_group):
+    reasons = []
     if not concept_type:
         reasons.append("missing CONCEPT_TYPE")
         return reasons
-
-    expected_group = concept_group_for_type(concept_type)
-    if expected_group is None:
-        reasons.append(f"unknown CONCEPT_TYPE: {concept_type}")
-        return reasons
-
     if not concept_group:
         reasons.append("missing CONCEPT_GROUP")
-    elif concept_group not in CONCEPT_GROUPS:
+        return reasons
+    if concept_group not in CONCEPT_GROUPS:
         reasons.append(f"unknown CONCEPT_GROUP: {concept_group}")
-    elif concept_group != expected_group:
+        return reasons
+    # type은 free-form: group prefix만 일치하면 통과.
+    expected_prefix = concept_group + "."
+    if not concept_type.startswith(expected_prefix):
         reasons.append(
-            f"CONCEPT_GROUP mismatch: expected {expected_group}, got {concept_group}"
+            f"CONCEPT_TYPE prefix mismatch: '{concept_type}' must start with "
+            f"'{expected_prefix}' to match CONCEPT_GROUP '{concept_group}'"
         )
     return reasons
 

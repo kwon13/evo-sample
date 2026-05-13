@@ -1,7 +1,8 @@
-import random
-
 CONCEPT_GROUP = "sequence"
 CONCEPT_TYPE = "sequence.linear_recurrence"
+
+import random
+
 def generate(seed):
     rng = random.Random(seed)
 

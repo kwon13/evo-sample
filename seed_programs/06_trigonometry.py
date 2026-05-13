@@ -1,7 +1,8 @@
-import random
-
 CONCEPT_GROUP = "geometry"
 CONCEPT_TYPE = "geometry.trig_area"
+
+import random
+
 def generate(seed):
     rng = random.Random(seed)
 

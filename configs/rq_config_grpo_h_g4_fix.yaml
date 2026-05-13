@@ -1,7 +1,7 @@
 data:
   train_files: ""
-  max_prompt_length: 4096
-  max_response_length: 4096
+  max_prompt_length: 6000
+  max_response_length: 6000
   rollout_batch_size: 32
   shuffle: true
 
@@ -43,8 +43,8 @@ worker:
     name: vllm
     temperature: 0.8
     top_p: 0.95
-    # max_model_len = max_prompt_length + max_response_length = 4096 + 4096
-    max_model_len: 8192
+    # max_model_len = max_prompt_length + max_response_length = 6000 + 6000
+    max_model_len: 12000
     max_num_batched_tokens: 12288
     dtype: bfloat16
     tensor_parallel_size: 1
@@ -64,8 +64,8 @@ trainer:
   total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo_h_g4_fix
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g4_fix
+  experiment_name: qwen3_4b_base_grpo_h_g4_fix_prompt
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g4_fix_prompt
   logger:
     - console
     - wandb

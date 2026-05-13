@@ -1,8 +1,9 @@
+CONCEPT_GROUP = "geometry"
+CONCEPT_TYPE = "geometry.line_intersection_distance"
+
 import random
 import sympy
 
-CONCEPT_GROUP = "geometry"
-CONCEPT_TYPE = "geometry.line_intersection_distance"
 def generate(seed):
     rng = random.Random(seed)
 

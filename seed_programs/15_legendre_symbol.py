@@ -1,7 +1,8 @@
-import random
-
 CONCEPT_GROUP = "number_theory"
 CONCEPT_TYPE = "number_theory.legendre_symbol"
+
+import random
+
 def _legendre(a, p):
     """Euler's criterion. Returns -1, 0, or 1."""
     a = a % p

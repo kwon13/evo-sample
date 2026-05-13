@@ -1,0 +1,113 @@
+PARENT_PROGRAM_EXAMPLE_1:
+```python
+CONCEPT_GROUP = "number_theory"
+CONCEPT_TYPE = "number_theory.gcd_lcm_sync"
+
+"""Shallow gcd generator (parent shape).
+
+Single reasoning move: apply the Euclidean algorithm to two given
+integers and report the result. No identities, no modular reduction,
+no chaining — just one Euclid run.
+"""
+
+import random
+import sympy
+
+def generate(seed):
+    rng = random.Random(seed)
+    # Sample two coprime cofactors and a common factor so the gcd is
+    # exactly g by construction.
+    g = rng.randint(3, 15)
+    while True:
+        k1 = rng.randint(4, 20)
+        k2 = rng.randint(4, 20)
+        if sympy.gcd(k1, k2) == 1 and k1 != k2:
+            break
+    a, b = g * k1, g * k2
+    problem = f"Find the greatest common divisor of {a} and {b}."
+    return problem, str(sympy.Integer(g))
+```
+
+MUTATED_PROGRAM_EXAMPLE_1:
+```python
+CONCEPT_GROUP = "number_theory"
+CONCEPT_TYPE = "number_theory.gcd_lcm_sync"
+
+"""In-depth mutation child of a shallow gcd-sum generator.
+
+Parent shape (shallow): "gcd(a, b) = ?  with a, b given."
+Single reasoning move: run Euclid.
+
+This child requires four reasoning stages:
+  (1) recognize that gcd(F_m, F_n) = F_{gcd(m, n)}  (Fibonacci gcd identity),
+  (2) reduce gcd(m, n) by the Euclidean algorithm on the INDICES, not
+      the giant Fibonacci values themselves,
+  (3) compute the resulting small Fibonacci number,
+  (4) read it off modulo the stated prime so the final answer is a
+      clean residue rather than a multi-hundred-digit integer.
+
+Inverse construction. We sample indices m, n with a controlled gcd g,
+compute F_g exactly with sympy, then reduce modulo a prime p chosen so
+that F_g mod p is non-trivial (not 0, 1, or p-1). The problem text
+states only m, n, p and asks for gcd(F_m, F_n) mod p — the Fibonacci
+gcd identity is the discovery, not a hint.
+"""
+
+import random
+import sympy
+
+
+def generate(seed):
+    rng = random.Random(seed)
+
+    while True:
+        # Sample a target index-gcd g in a range that yields a Fibonacci
+        # number large enough to be non-trivial but small enough to fit
+        # the reasoning chain cleanly.
+        g = rng.randint(6, 14)
+
+        # Build m, n as g * k1, g * k2 with coprime cofactors. This
+        # guarantees gcd(m, n) = g by construction — no rejection on the
+        # index gcd is needed.
+        k1 = rng.randint(3, 9)
+        k2_pool = [k for k in range(3, 12) if sympy.gcd(k1, k) == 1 and k != k1]
+        if not k2_pool:
+            continue
+        k2 = rng.choice(k2_pool)
+        m, n = g * k1, g * k2
+
+        # Keep the indices within a band that fits in a problem statement
+        # without looking artificial.
+        if not (40 <= min(m, n) and max(m, n) <= 140):
+            continue
+
+        f_g = sympy.fibonacci(g)
+
+        # Pick a prime where F_g mod p is genuinely informative.
+        # Reject p that produces residue 0, 1, or p-1 (trick surfaces
+        # that let a solver guess without the identity), and require
+        # p < F_g so that the modular reduction actually shrinks the
+        # value — otherwise the residue equals F_g and stage (4) of
+        # the reasoning chain becomes vacuous.
+        p_candidates = list(sympy.primerange(20, max(int(f_g), 51)))
+        rng.shuffle(p_candidates)
+        chosen_p = None
+        for p in p_candidates:
+            if p >= int(f_g):
+                continue
+            r = f_g % p
+            if r not in (0, 1, p - 1) and r > 5:
+                chosen_p = p
+                break
+        if chosen_p is None:
+            continue
+
+        answer = f_g % chosen_p
+        break
+
+    problem = (
+        f"Let F_k denote the k-th Fibonacci number, with F_1 = F_2 = 1. "
+        f"Compute the remainder when gcd(F_{m}, F_{n}) is divided by {chosen_p}."
+    )
+    return problem, str(sympy.Integer(answer))
+```

@@ -24,9 +24,9 @@ Design goals (revised):
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from rq_questioner.concepts import concept_prompt_block
-from rq_questioner.map_elites import MAPElitesGrid
 from rq_questioner.program import ProblemProgram
 
 
@@ -34,265 +34,25 @@ from rq_questioner.program import ProblemProgram
 # Static rubric blocks (concatenated into every mutation template)
 # ---------------------------------------------------------------------------
 
-HARD_CONTRACT = (
-    "Hard contract.\n"
-    "\n"
-    "The function `generate(seed)` must return a tuple "
-    "`(problem_text: str, answer: str)`. Use inverse construction: "
-    "choose the answer first, then design the problem around it. You "
-    "may use only the standard library (math, fractions, itertools, "
-    "functools, random) and sympy. Every seed in 0..4 must terminate "
-    "quickly and produce a valid output.\n"
-    "\n"
-    "Answer format. The answer string must parse as one of:\n"
-    "  (1) a plain integer (e.g. \"17\", \"-42\"),\n"
-    "  (2) a sympy.Rational / Fraction (e.g. str(sympy.Rational(2, 3))),\n"
-    "  (3) an exact symbolic expression\n"
-    "      (e.g. str(sympy.sqrt(154)), str(sympy.Rational(1,2) + sympy.sqrt(3))),\n"
-    "  (4) a finite decimal with at most ~8 informative digits after the point\n"
-    "      (e.g. \"0.5\", \"1.25\", \"13.0948\") — acceptable when the answer\n"
-    "      is naturally a short decimal; the verifier accepts these.\n"
-    "\n"
-    "Decimals with EXCESSIVE precision (more than ~8 digits past the point) "
-    "are rejected as float-noise — the verifier flags answers like "
-    "\"12.4096736459123987\" as over-precise. If you need to emit a long "
-    "decimal because the underlying value is irrational, prefer the exact "
-    "symbolic form (sqrt, Rational, etc.) instead. If you keep the decimal, "
-    "state \"round to N decimal places\" in the problem text so the rounding "
-    "policy is explicit.\n"
-    "\n"
-    "  BAD:  return problem, str(0.16552117772)         # 10+ digits, no rounding stated\n"
-    "  BAD:  return problem, \"12.4096736459\"           # 10 digits, no rounding stated\n"
-    "  BAD:  return problem, \"approximately 7\"          # word\n"
-    "  OK:   return problem, \"0.5\"                       # short clean decimal\n"
-    "  OK:   return problem, \"1.25\"\n"
-    "  OK:   return problem, \"13.0948\"  with \"round to 4 decimal places\" in problem\n"
-    "  BEST: return problem, str(sympy.Rational(1, 2))\n"
-    "  BEST: return problem, str(sympy.sqrt(154))\n"
-    "  GOOD: return problem, \"17\"\n"
-    "\n"
-    "Before returning, verify that sympy.sympify(answer) succeeds. Prefer "
-    "exact symbolic forms (Rational, sqrt, pi, trig functions) over decimals "
-    "whenever the underlying quantity is exact — exact forms grade more "
-    "robustly across solver outputs.\n"
-    "\n"
-)
-
-TEXT_HYGIENE = (
-    "Text hygiene (strict).\n"
-    "\n"
-    "The rendered problem_text will be read by a student who has never "
-    "seen this rubric. It must not contain any of the following:\n"
-    "  - the words \"parametric\", \"non-parametric\", \"axis\", "
-    "\"hidden identity\", \"dimension lift\", \"case analysis\", "
-    "\"considered as\", or phrases like \"the problem is …\"\n"
-    "  - the closed-form solution formula, theorem name, recurrence "
-    "form, or derivation hints such as \"S = ...\" or \"C(n,k) = ...\"\n"
-    "  - meta-commentary about how the problem was constructed\n"
-    "\n"
-    "A problem that recites its own solution method is rejected "
-    "regardless of p or H.\n"
-    "\n"
-)
-
-QUALITY_BAR = (
-    "Quality bar.\n"
-    "\n"
-    "The problem should center on one coherent mathematical object "
-    "and require at least three reasoning stages. Difficulty must "
-    "come from genuine technique uncertainty, not from ambiguous "
-    "wording. Aim for the difficulty calibration described in the "
-    "system instructions — do not target a specific numerical "
-    "uncertainty or pass-rate value in the problem design.\n"
-    "\n"
-)
-
-DEPTH_BY_EXAMPLE = (
-    "Concrete depth example.\n"
-    "\n"
-    "Parent (p=0.85, too easy):\n"
-    "  \"x^2 - 5x + 6 = 0; find sum of roots\"   ->   answer: 5\n"
-    "\n"
-    "Shallow child (rejected — bigger numbers, no new reasoning):\n"
-    "  \"x^2 - 127x + 342 = 0; find sum of roots\"   ->   answer: 127\n"
-    "\n"
-    "Deep child (accepted — Vieta plus parameter recovery):\n"
-    "  \"x^2 + p*x + 12 = 0 has roots whose reciprocals sum to 7/12; "
-    "find p\"   ->   answer: -7\n"
-    "\n"
-    "Invalid child (rejected — inconsistent givens):\n"
-    "  \"x^2 + 5x + 6 = 0 has roots whose product is 12; find sum.\"\n"
-    "  Vieta forces product = 6, contradicting the stated 12.\n"
-    "\n"
-    "Invalid child (rejected — under-specified object):\n"
-    "  \"A quadratic has root 3; find the other root.\"\n"
-    "  Infinitely many quadratics fit; no unique answer.\n"
-    "\n"
-    "Invalid child (rejected — degenerate parameters):\n"
-    "  \"x^2 + 0*x + 0 = 0; find sum of roots.\"\n"
-    "  Sum is 0 trivially; no Vieta reasoning required.\n"
-    "\n"
-    "Invalid child (rejected — hint leak via constraint word):\n"
-    "  \"For coprime integers a=63, b=52, find gcd(a,b) + lcm(a,b).\"\n"
-    "  The word \"coprime\" tells the solver gcd=1, collapsing the GCD\n"
-    "  reasoning stage. Do NOT name properties (coprime, perfect square,\n"
-    "  prime, palindrome) that the solver is supposed to discover.\n"
-    "\n"
-    "Invalid child (rejected — hint leak via trick name):\n"
-    "  \"The roots of 4x^2 + x + 4 = 0 are reciprocals; find their product.\"\n"
-    "  Telling the solver the roots are reciprocals reveals product=1\n"
-    "  immediately. Do NOT name the identity / trick the solver should use.\n"
-    "\n"
-    "Invalid child (rejected — variable degeneracy):\n"
-    "  \"Given two positive integers a=7 and b=7, find their arithmetic mean.\"\n"
-    "  a=b makes the mean trivially equal to a; the AM concept is unused.\n"
-    "  Sample distinct, non-trivial parameters by construction.\n"
-    "\n"
-    "Invalid child (rejected — degenerate geometry):\n"
-    "  \"A triangle has angles 0°, 90°, 90° and a side of length 90; find its area.\"\n"
-    "  A 0° angle does not form a triangle; the answer is mechanically 0.\n"
-    "  Constrain sampled angles to a non-degenerate range (each strictly\n"
-    "  between 0 and 180, summing to 180).\n"
-    "\n"
-    "Invalid child (rejected — both gcd AND lcm stated in problem):\n"
-    "  \"gcd(2,9)=1 and lcm(2,9)=18. Find gcd(a,b) + lcm(a,b).\"\n"
-    "  Both quantities the solver should compute are given as premises;\n"
-    "  the task degenerates to arithmetic addition.\n"
-    "\n"
-    "The deep child requires Vieta's formulas plus a one-line "
-    "reciprocal identity. The shallow child only requires reading off "
-    "a coefficient. Invalid children are rejected even at matching "
-    "pass rate because they fail mathematical validity, hint-leak, or "
-    "degenerate parameter selection.\n"
-    "\n"
-)
-
-CALIBRATION_BREADTH = (
-    "Calibration check (in_breadth only).\n"
-    "\n"
-    "Before finalizing, ask yourself: would a 7B math-tuned solver "
-    "get this right roughly half the time on seeds 0..4? If you "
-    "suspect over 80% (trivial substitution) or under 20% "
-    "(under-specified or numerically nasty), redesign the ranges or "
-    "constraints. Numerical answers requiring 6 or more decimal "
-    "places of precision are a strong signal of under-specification.\n"
-    "\n"
-)
-
-VALIDITY_CONTRACT = (
-    "Validity contract (mandatory).\n"
-    "\n"
-    "Inside generate(seed), REJECT any random parameter combination that "
-    "produces a mathematically invalid, contradictory, under-specified, "
-    "or degenerate-trivial problem. Use rejection sampling or "
-    "deterministic construction — never emit such a problem.\n"
-    "\n"
-    "Forbidden parameter patterns and required fixes:\n"
-    "\n"
-    "  1. INCONSISTENT GIVENS — declared invariants must hold.\n"
-    "     BAD : sample g, a, b independently then state \"gcd(a,b)=g\" "
-    "without enforcing g|a and g|b.\n"
-    "     FIX : sample coprime k1, k2 then set a = g*k1, b = g*k2; or "
-    "compute g = math.gcd(a, b) deterministically and state that value.\n"
-    "\n"
-    "  2. IMPOSSIBLE COUNTING — count is 0 or 1 by parity / pigeonhole.\n"
-    "     BAD : \"derangements of n with exactly n-1 fixed points\" "
-    "(forces 0 by parity), \"exactly n fixed points\" (always 1).\n"
-    "     FIX : restrict the count parameter k to 0..n-2 and forbid "
-    "k = n-1 and k = n.\n"
-    "\n"
-    "  3. CONTRADICTORY CONSTRAINTS — extra clauses unsatisfiable.\n"
-    "     BAD : \"three positive integers 1, 19, 19 with 1 > 19 and "
-    "19 > 19; find their mean\".\n"
-    "     FIX : never bolt on numeric inequalities you did not verify "
-    "against the chosen values; if you state x > y, x must exceed y.\n"
-    "\n"
-    "  4. DEGENERATE INPUTS — n = 0, 1, 2 of a quantity that needs >= 3.\n"
-    "     BAD : \"sum of first 1 terms of a geometric sequence\", "
-    "\"product over a single element\".\n"
-    "     FIX : sample n from a domain-appropriate minimum (n >= 3 for "
-    "sequences and counting; n >= 4 for non-trivial recursions).\n"
-    "\n"
-    "  5. UNDER-SPECIFIED OBJECT — missing data needed for unique answer.\n"
-    "     BAD : \"triangle with sides 6 and 7, find the area\" — needs "
-    "either the third side, an included angle, or a triangle type "
-    "(right / equilateral / isosceles).\n"
-    "     FIX : provide enough data for a unique solution by construction.\n"
-    "\n"
-    "  6. ANSWER UNRELATED TO STATEMENT — solver gets it right by chance.\n"
-    "     BAD : statement claims gcd(a,b)=g but the answer recipe ignores "
-    "g entirely; statement claims a sequence is geometric but the answer "
-    "is computed assuming arithmetic.\n"
-    "     FIX : derive the answer from exactly the parameters and "
-    "relations stated in the problem text.\n"
-    "\n"
-    "  7. HINT LEAK BY NAMING THE PROPERTY — the discriminating fact is "
-    "given away.\n"
-    "     BAD : \"For coprime integers a, b ...\", \"The roots are "
-    "reciprocals of each other ...\", \"Since (a, b, c) is a Pythagorean "
-    "triple ...\", \"Given that x is a perfect square ...\".\n"
-    "     FIX : let the solver discover the property. State only the "
-    "numeric or structural givens needed to reach the answer; never "
-    "name the trick or property by word.\n"
-    "\n"
-    "  8. BOTH PREMISE AND CONCLUSION STATED — task collapses to arithmetic.\n"
-    "     BAD : \"gcd(a,b)=1 and lcm(a,b)=18. Find gcd+lcm.\"\n"
-    "     FIX : state only inputs; never state derived quantities that "
-    "are themselves part of the answer chain.\n"
-    "\n"
-    "  9. VARIABLE COLLAPSE — sampling the same value for two different "
-    "variables.\n"
-    "     BAD : a, b sampled with a=b=7; \"committee of size n from "
-    "n people\".\n"
-    "     FIX : sample distinct values, or enforce a<b / "
-    "1<=k<=n-1 by construction.\n"
-    "\n"
-    " 10. DEGENERATE GEOMETRY — angles, sides, or counts that violate the "
-    "object's definition.\n"
-    "     BAD : triangle with a 0° angle, polygon with 2 vertices, "
-    "regular n-gon with n=2, \"diameter\" longer than the circle.\n"
-    "     FIX : constrain sampled parameters to the non-degenerate "
-    "interior of the object's definition (triangle angles strictly in "
-    "(0°, 180°) summing to 180°, polygon vertex count >= 3, etc.).\n"
-    "\n"
-    "Self-check before returning. From ONLY the rendered problem text "
-    "(not the source code), can you reach the stated answer with a clean "
-    "derivation that USES every stated quantity? If a stated quantity is "
-    "ignored, or if naming a property short-circuits the reasoning, the "
-    "problem is broken — regenerate.\n"
-    "\n"
-)
-
-CONCEPT_DECLARATION = concept_prompt_block()
-
 
 MUTATION_SYSTEM_PROMPT = (
-    "You are an expert designer of Python-based competition-math problem "
-    "generators.\n"
+    "You design Python generators for competition-math problems. "
+    "Each generator defines `generate(seed)` and returns one "
+    "(problem_text, answer) pair.\n"
     "\n"
-    "Your output is a single Python program defining `generate(seed)`. "
-    "Calibrate difficulty so that a strong 7B math-tuned solver passes "
-    "roughly half the time across seeds 0..4 — neither trivially solvable "
-    "nor pathologically hard. Avoid recycling textbook clichés or named "
-    "contest problems.\n"
+    "Validity is non-negotiable. The user message specifies the "
+    "validity contract; enforce its invariants by construction or "
+    "rejection sampling, never by hoping randomness cooperates.\n"
     "\n"
-    "Mathematical validity is non-negotiable. See the Validity contract in "
-    "the user message: every emitted (problem, answer) pair must be "
-    "internally consistent, fully specified, and non-degenerate. Use "
-    "rejection sampling or deterministic construction to enforce "
-    "invariants — do not let randomness produce contradictory or "
-    "impossible problems.\n"
+    "Output only Python source — no preamble, no markdown, no prose "
+    "outside the code. Inside `generate()`, brief one-line comments "
+    "are fine; no docstrings or multi-line prose.\n"
     "\n"
-    "Output discipline. Emit only Python source — no preamble, no markdown "
-    "commentary, no explanations outside the code. Inside `generate()`, do "
-    "not write multi-line docstrings or prose comments; brief one-line "
-    "comments naming the mathematical object are acceptable.\n"
-    "\n"
-    "FIRST, in your private scratch-pad, think step-by-step to design a "
-    "brand-new, non-trivial generator whose outputs are mathematically "
-    "valid by construction.\n"
-    "THEN, without revealing any of your private thoughts, output only "
-    "the Python source for the generator."
+    "FIRST, in your private scratch-pad, think step-by-step to design "
+    "a brand-new, non-trivial generator whose outputs are "
+    "mathematically valid by construction.\n"
+    "THEN, without revealing any of your private thoughts, output "
+    "only the Python source for the generator."
 )
 
 
@@ -330,59 +90,60 @@ SCORE_FEEDBACK = (
 
 MUTATE_DEPTH = (
     "Task: write a deeper variant of the parent generator. Stay in "
-    "the same domain but require more reasoning — not just bigger "
-    "numbers.\n"
+    "the same domain. Depth means wrapping the parent's object in a "
+    "classical identity, lifting it one level (scalar -> sequence "
+    "term, single root -> root pair), or chaining a second theorem "
+    "onto its result — not bigger numbers, not wrapper branches.\n"
+    "{few_shot}"
     "\n"
     "Parent program:\n"
     "```python\n{code}\n```\n"
     "\n"
     "{score_feedback}"
     "{exec_feedback}"
-    "{few_shot}"
-    + QUALITY_BAR
-    + DEPTH_BY_EXAMPLE +
     "Constraints for this mutation:\n"
-    "  - Add one substantial reasoning move beyond the parent's depth.\n"
+    "  - Add one substantive reasoning stage beyond the parent "
+    "(a named identity, theorem, or structural lift).\n"
     "  - Keep CONCEPT_TYPE = '{parent_concept_type}' and "
     "CONCEPT_GROUP = '{parent_concept_group}' exactly.\n"
-    "  - If the parent has a banned pattern, remove it.\n"
+    "  - Do not inherit reward-hack patterns from the parent; the "
+    "child's final answer should stay compact.\n"
     "\n"
-    + CONCEPT_DECLARATION
-    + HARD_CONTRACT
-    + TEXT_HYGIENE
-    + VALIDITY_CONTRACT
 )
 
 MUTATE_BREADTH = (
     "Task: write a generator in a different domain from the parent, "
-    "at matching quality. Use a new mathematical object — do not "
-    "reuse the parent's.\n"
+    "at matching quality. Breadth means choosing a new mathematical "
+    "object whose core reasoning has no overlap with the parent's "
+    "(combinatorics -> geometry via power-of-a-point, algebra -> "
+    "number theory via Legendre symbols) — not the same object in "
+    "new clothing, not a renaming.\n"
+    "{few_shot}"
     "\n"
     "Parent program (context only — do not reuse its object):\n"
     "```python\n{code}\n```\n"
     "\n"
     "{score_feedback}"
     "{exec_feedback}"
-    "{few_shot}"
-    + QUALITY_BAR
-    + DEPTH_BY_EXAMPLE +
     "Constraints for this mutation:\n"
-    "  - Pick CONCEPT_TYPE from the whitelist whose CONCEPT_GROUP is "
-    "NOT '{parent_concept_group}'.\n"
-    "  - Suggested groups to try: {suggested_groups}.\n"
+    "  - Pick a new CONCEPT_TYPE whose CONCEPT_GROUP is NOT "
+    "'{parent_concept_group}'.\n"
+    "  - The child's reasoning chain must not reuse the parent's "
+    "central technique (Vieta, Euclid, binomial, etc.) — discover "
+    "a new one for the new object.\n"
+    "  - Match the parent's depth: at least three reasoning stages "
+    "and a compact final answer.\n"
     "\n"
-    + CALIBRATION_BREADTH
-    + CONCEPT_DECLARATION
-    + HARD_CONTRACT
-    + TEXT_HYGIENE
-    + VALIDITY_CONTRACT
 )
 
 MUTATE_CROSSOVER = (
-    "Task: merge parents A and B into a hybrid generator whose "
-    "single mathematical object is the intersection of A's and B's "
-    "ideas — not a concatenation like \"compute X from A, then Y "
-    "from B\".\n"
+    "Task: merge parents A and B into a hybrid generator. Crossover "
+    "means finding a single mathematical object on which BOTH "
+    "parents' core ideas act simultaneously (a quadratic over GF(p) "
+    "where Vieta and Legendre multiplicativity both apply; C(n,k) "
+    "mod p where binomial counting and Lucas's theorem both apply) "
+    "— not a concatenation like \"compute X from A, then Y from B\".\n"
+    "{few_shot}"
     "\n"
     "Parent A (solver p={p_hat_a:.2f}, H={h_a:.2f}):\n"
     "```python\n{code_a}\n```\n"
@@ -390,25 +151,18 @@ MUTATE_CROSSOVER = (
     "Parent B (solver p={p_hat_b:.2f}, H={h_b:.2f}):\n"
     "```python\n{code_b}\n```\n"
     "\n"
-    "{few_shot}"
-    + QUALITY_BAR
-    + DEPTH_BY_EXAMPLE +
     "Constraints for this mutation:\n"
     "  - Identify a shared structure (group, graph, polynomial, "
     "probability space, modulus). Every reasoning step must use it.\n"
-    "  - Define exactly one whitelisted CONCEPT_TYPE / CONCEPT_GROUP "
-    "pair matching the hybrid object.\n"
+    "  - Both parents' techniques must fire on the same object — "
+    "if either parent's idea could be removed without changing the "
+    "answer, the hybrid has failed.\n"
+    "  - Declare one CONCEPT_TYPE / CONCEPT_GROUP pair matching the "
+    "hybrid object, using the form 'group.snake_case_name'.\n"
+    "  - Match the depth of the stronger parent and keep the final "
+    "answer compact.\n"
     "\n"
-    + CONCEPT_DECLARATION
-    + HARD_CONTRACT
-    + TEXT_HYGIENE
-    + VALIDITY_CONTRACT
 )
-
-
-# Backward-compatible re-export: external code may import SINGLE_ANSWER_RULE.
-SINGLE_ANSWER_RULE = HARD_CONTRACT
-
 
 # ---------------------------------------------------------------------------
 # Diagnostic / feedback helpers
@@ -843,61 +597,149 @@ def champion_passes_validity(
     return passed
 
 
-def build_few_shot_examples(
-    grid: MAPElitesGrid,
-    top_k: int = 3,
-    min_rq: float = 0.25,
+# ---------------------------------------------------------------------------
+# Operator-aware few-shot loader
+# ---------------------------------------------------------------------------
+#
+# Few-shot examples are loaded from hand-curated files, one per mutation
+# operator. Archive champions are deliberately NOT used as few-shot, so
+# archive contamination cannot propagate into the mutator's signal and
+# each operator receives examples tailored to its specific shape.
+
+
+_SHOT_DIR = Path(__file__).parent  # prompts/
+
+_SHOT_FILES: dict[str, Path] = {
+    "in_depth":   _SHOT_DIR / "in_depth_shot.txt",
+    "in_breadth": _SHOT_DIR / "in_breadth_shot.txt",
+    "crossover":  _SHOT_DIR / "crossover_shot.txt",
+}
+
+# Per-(op, top_k) cached rendered shot text — files are parsed once.
+_SHOT_CACHE: dict[str, str] = {}
+
+
+def _parse_paired_shots(text: str) -> list[tuple[str, str]]:
+    """Parse PARENT_PROGRAM_EXAMPLE_N / MUTATED_PROGRAM_EXAMPLE_N pairs."""
+    blocks = re.split(r"\n-{3,}\n", text)
+    pairs: list[tuple[str, str]] = []
+    for blk in blocks:
+        parents = re.findall(
+            r"PARENT_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
+            blk, re.S,
+        )
+        children = re.findall(
+            r"MUTATED_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
+            blk, re.S,
+        )
+        if parents and children:
+            pairs.append((parents[0].strip(), children[0].strip()))
+    return pairs
+
+
+def _parse_crossover_shots(text: str) -> list[tuple[str, str, str]]:
+    """Parse PARENT_A / PARENT_B / CROSSOVER_CHILD triples."""
+    blocks = re.split(r"\n-{3,}\n", text)
+    triples: list[tuple[str, str, str]] = []
+    for blk in blocks:
+        as_ = re.findall(
+            r"PARENT_A_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
+            blk, re.S,
+        )
+        bs_ = re.findall(
+            r"PARENT_B_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
+            blk, re.S,
+        )
+        cs_ = re.findall(
+            r"CROSSOVER_CHILD_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
+            blk, re.S,
+        )
+        if as_ and bs_ and cs_:
+            triples.append((as_[0].strip(), bs_[0].strip(), cs_[0].strip()))
+    return triples
+
+
+def _no_examples_fallback(op: str) -> str:
+    return (
+        f"High-quality {op} examples.\n"
+        f"\n"
+        f"No example pairs are available yet. Design from the rubric "
+        f"alone and do not imitate the parent's shape.\n"
+        f"\n"
+    )
+
+
+def _format_paired_shots(
+    op: str, pairs: list[tuple[str, str]], top_k: int
 ) -> str:
-    """Top-RQ champions as few-shot, with multi-seed validity filtering.
-
-    A champion is excluded from few-shot if any of seeds 0..4 produces
-    a broken-looking instance, or if all 5 seeds yield identical answers
-    (seed-independent generator). This blocks contamination — once a
-    broken champion enters the archive, it must NOT be paraded as a
-    high-quality example for the mutator to imitate.
-
-    If no clean champion is found, emit an explicit "examples
-    unavailable" note rather than silently leaking dirty examples.
-    """
-    champions = grid.get_all_champions()
-    if not champions:
-        return ""
-
-    clean = []
-    for champ in champions:
-        if (champ.rq_score or 0.0) < min_rq:
-            continue
-        if not champion_passes_validity(champ):
-            continue
-        inst = champ.execute(seed=0, timeout=3.0)
-        rendered = inst.problem if inst else ""
-        clean.append((champ, rendered))
-
-    clean.sort(key=lambda t: -(t[0].rq_score or 0.0))
-    picks = clean[:top_k]
-    if not picks:
-        return (
-            "High-quality examples.\n"
-            "\n"
-            "No validity-passing champions are available yet. Design "
-            "from the rubric alone and do not imitate the parent's "
-            "shape.\n"
-            "\n"
-        )
-
-    parts = ["High-quality examples (well-posed champions).\n"]
-    for i, (champ, rendered) in enumerate(picks, 1):
-        rq = getattr(champ, "rq_score", 0) or 0
-        p = getattr(champ, "p_hat", 0) or 0
-        h = getattr(champ, "h_score", 0) or 0
+    parts = [f"High-quality {op} examples (parent shape -> mutated child).\n"]
+    for i, (parent_src, child_src) in enumerate(pairs[:top_k], 1):
         parts.append(
-            f"Example {i} (R_Q={rq:.3f}, p={p:.2f}, H={h:.2f}):\n"
-            f"```python\n{champ.source_code}\n```"
+            f"Example {i}.\n"
+            f"  Parent (before {op}):\n"
+            f"  ```python\n{parent_src}\n  ```\n"
+            f"  Mutated child (after {op}):\n"
+            f"  ```python\n{child_src}\n  ```\n"
         )
-        if rendered:
-            parts.append(f"Rendered at seed=0: {rendered[:180]}")
-        parts.append("")
     return "\n".join(parts) + "\n"
+
+
+def _format_crossover_shots(
+    triples: list[tuple[str, str, str]], top_k: int
+) -> str:
+    parts = [
+        "High-quality crossover examples (parent A + parent B -> hybrid "
+        "child whose single mathematical object is the intersection of "
+        "A's and B's ideas, NOT a concatenation of A then B).\n"
+    ]
+    for i, (a_src, b_src, c_src) in enumerate(triples[:top_k], 1):
+        parts.append(
+            f"Example {i}.\n"
+            f"  Parent A:\n  ```python\n{a_src}\n  ```\n"
+            f"  Parent B:\n  ```python\n{b_src}\n  ```\n"
+            f"  Hybrid child:\n  ```python\n{c_src}\n  ```\n"
+        )
+    return "\n".join(parts) + "\n"
+
+
+def build_few_shot_examples(op: str, top_k: int = 2) -> str:
+    """Operator-aware few-shot loaded from prompts/<op>_shot.txt.
+
+    The shot files are hand-curated and parsed once per process; archive
+    champions are intentionally not consulted here.
+
+    Returns a rubric-section text block ready to fill the {few_shot}
+    slot of a mutation template. A "no examples available" fallback is
+    emitted when the file is missing or parses to no pairs/triples.
+    """
+    if op not in _SHOT_FILES:
+        return ""
+    cache_key = f"{op}::{top_k}"
+    cached = _SHOT_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    path = _SHOT_FILES[op]
+    if not path.exists():
+        rendered = _no_examples_fallback(op)
+        _SHOT_CACHE[cache_key] = rendered
+        return rendered
+
+    raw = path.read_text()
+    if op == "crossover":
+        triples = _parse_crossover_shots(raw)
+        rendered = (
+            _format_crossover_shots(triples, top_k)
+            if triples else _no_examples_fallback(op)
+        )
+    else:
+        pairs = _parse_paired_shots(raw)
+        rendered = (
+            _format_paired_shots(op, pairs, top_k)
+            if pairs else _no_examples_fallback(op)
+        )
+    _SHOT_CACHE[cache_key] = rendered
+    return rendered
 
 
 def build_execution_feedback(parent: ProblemProgram) -> str:
@@ -953,11 +795,10 @@ def build_execution_feedback(parent: ProblemProgram) -> str:
 MUTATION_STOP = ["\n```\n\n", "\n```\n#", "\n# end_of_code", "\n# === END"]
 
 
-def parent_concept_fields(parent: ProblemProgram) -> tuple[str, str, str]:
-    """Return (concept_type, concept_group, suggested_other_groups) for
-    prompt interpolation. Falls back to 'unknown' when parent metadata
-    is missing — concept rescue at extraction time handles those cases."""
-    from rq_questioner.concepts import CONCEPT_GROUPS
+def parent_concept_fields(parent: ProblemProgram) -> tuple[str, str]:
+    """Return (concept_type, concept_group) for prompt interpolation.
+    Falls back to 'unknown' when parent metadata is missing — concept
+    rescue at extraction time handles those cases."""
     ctype = (
         parent.declared_concept_type()
         or (parent.metadata or {}).get("concept_type")
@@ -968,9 +809,7 @@ def parent_concept_fields(parent: ProblemProgram) -> tuple[str, str, str]:
         or (parent.metadata or {}).get("concept_group")
         or "unknown"
     )
-    others = [g for g in CONCEPT_GROUPS if g != cgroup]
-    suggested = ", ".join(others[:3]) if others else "any other group"
-    return ctype, cgroup, suggested
+    return ctype, cgroup
 
 
 def choose_prefill_concept(
@@ -1026,37 +865,14 @@ def choose_prefill_concept(
 def build_mutation_prefill(
     ctype: str, cgroup: str, op: str = "in_depth"
 ) -> tuple[str, str]:
-    """Return (suffix_appended_to_prompt, prefix_for_extract_recovery).
-
-    The suffix opens a Python code fence and locks in CONCEPT_GROUP so
-    MAP-Elites D-axis binning stays deterministic. CONCEPT_TYPE is
-    handled differently per operation:
-
-      in_depth  — TYPE is also locked to the parent's exact concept
-                  (the operation's whole point is to preserve it).
-      in_breadth / crossover — TYPE is left as an open quote so the
-                  model picks a concrete whitelisted type that fits
-                  the function body it is about to write. The model is
-                  expected to close the quote and continue the program.
-                  `nearest_concept_type` rescues near-whitelist labels
-                  at extraction time.
-
-    The recovery prefix (suffix minus the fence) is prepended to the
-    model's output before code extraction so a full, parseable program
-    is reconstructed.
-    """
     if op == "in_depth":
         body = (
-            "import random\n\n"
-            f"CONCEPT_GROUP = \"{cgroup}\"\n"
-            f"CONCEPT_TYPE = \"{ctype}\"\n\n"
-            "def generate(seed):\n"
-        )
-    else:
-        body = (
-            "import random\n\n"
             f"CONCEPT_GROUP = \"{cgroup}\"\n"
             "CONCEPT_TYPE = \""
         )
-    suffix = "\n```python\n" + body
+    else:
+        body = (
+            "CONCEPT_GROUP = \""
+        )
+    suffix = "```python\n" + body
     return suffix, body

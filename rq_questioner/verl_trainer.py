@@ -488,7 +488,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
     # ------------------------------------------------------------------
     # DP-safe worker invocation — pads odd batches to world_size then unpads.
-    # evolution/reeval produce arbitrary batch sizes (n_children, G × candidates)
+    # evolution/reeval produce arbitrary batch sizes (n_children, G x candidates)
     # that may be odd under 2-GPU DP, tripping
     # DataProto.chunk(world_size) assertions. Same padding logic is used by math_eval.
     # ------------------------------------------------------------------
@@ -507,9 +507,9 @@ class RQEvolveTrainer(RayPPOTrainer):
         #   2. Actor micro-batch: split(micro_batch_size_per_device_for_experience)
         # Per-rank length must therefore be a non-zero multiple of micro_batch_size,
         # so the overall padded length needs to be a multiple of
-        # world_size × micro_batch_size. Otherwise split() divides by zero when
+        # world_size x micro_batch_size. Otherwise split() divides by zero when
         # the batch is tiny (reeval with 1–2 champions, evolution with
-        # G × candidates).
+        # G x candidates).
         world_size = self.actor_rollout_wg.world_size
         try:
             mbs = int(self.config.worker.actor.micro_batch_size_per_device_for_experience)
@@ -757,7 +757,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             # GPT-4o re-check (R-Zero results_recheck.py).
             #
             # Items math_verify scored 0 are dedup'd by (question, response)
-            # — ×32-inflated AIME/AMC duplicates collapse to one unique key
+            # — x32-inflated AIME/AMC duplicates collapse to one unique key
             # — and the unique calls run through a ThreadPoolExecutor of
             # cfg.gpt_judge.max_workers size for ~8x latency win.
             # ----------------------------------------------------------
@@ -805,7 +805,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                             else:
                                 cache[key] = bool(result.yes)
 
-                # Pass 2: apply cache to all records (×32 duplicates included).
+                # Pass 2: apply cache to all records (x32 duplicates included).
                 for rec in records:
                     if rec["score"] >= 0.5:
                         continue
@@ -1878,7 +1878,12 @@ class RQEvolveTrainer(RayPPOTrainer):
         # Phase 1: Mutation — 연산자 선택 + batch generate
         # ================================================================
 
-        few_shot = build_few_shot_examples(self.map_elites, top_k=3)
+        # Operator-aware few-shot: each mutation operator gets examples
+        # tailored to its shape (parent->depth, parent->breadth, A+B->hybrid).
+        # Loaded from hand-curated prompts/<op>_shot.txt; archive is not used.
+        few_shot_depth = build_few_shot_examples("in_depth", top_k=2)
+        few_shot_breadth = build_few_shot_examples("in_breadth", top_k=2)
+        few_shot_crossover = build_few_shot_examples("crossover", top_k=2)
 
         mutation_prompts = []  # (prompt_text, op, parent, parent_b, recovery_prefix)
         for _ in range(batch_size):
@@ -1904,7 +1909,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                         h_a=getattr(pa, "h_score", 1.0),
                         p_hat_b=getattr(pb, "p_hat", 0.5),
                         h_b=getattr(pb, "h_score", 1.0),
-                        few_shot=few_shot,
+                        few_shot=few_shot_crossover,
                     )
                     chosen_t, chosen_g = choose_prefill_concept(op, pa, pb)
                     suffix, recovery = build_mutation_prefill(
@@ -1924,16 +1929,16 @@ class RQEvolveTrainer(RayPPOTrainer):
 
             score_fb = build_score_feedback(parent)
             exec_fb = build_execution_feedback(parent)
-            ctype, cgroup, suggested = parent_concept_fields(parent)
+            ctype, cgroup = parent_concept_fields(parent)
             tmpl = MUTATE_DEPTH if op == "in_depth" else MUTATE_BREADTH
+            fs = few_shot_depth if op == "in_depth" else few_shot_breadth
             prompt_text = tmpl.format(
                 code=parent.source_code,
                 score_feedback=score_fb,
                 exec_feedback=exec_fb,
-                few_shot=few_shot,
+                few_shot=fs,
                 parent_concept_type=ctype,
                 parent_concept_group=cgroup,
-                suggested_groups=suggested,
             )
             chosen_t, chosen_g = choose_prefill_concept(op, parent)
             suffix, recovery = build_mutation_prefill(
@@ -2016,7 +2021,7 @@ class RQEvolveTrainer(RayPPOTrainer):
             if op == "crossover" and parent_b is not None:
                 child = ProblemProgram(
                     source_code=source_code,
-                    parent_id=f"{parent.program_id}×{parent_b.program_id}",
+                    parent_id=f"{parent.program_id}x{parent_b.program_id}",
                     generation=max(parent.generation, parent_b.generation) + 1,
                     metadata={"op": "crossover"},
                 )
@@ -2457,7 +2462,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         ``0..K·instances_per_program − 1`` in monotonic order across the run.
 
         Selection rule (``h_priority_d_uniform``):
-          Repeated H×D sweeps emit ≤1 new problem per filled niche per sweep.
+          Repeated HxD sweeps emit ≤1 new problem per filled niche per sweep.
           Across sweeps of the same refresh, the same champion may be
           revisited with its next unused seed until it has emitted
           ``instances_per_program`` instances this refresh.
@@ -2465,7 +2470,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
               dataset_size ≤ min(
                   training_budget,
-                  frontier_champions × instances_per_program,
+                  frontier_champions x instances_per_program,
               )
 
           Examples (instances_per_program=16, budget=960):
@@ -2646,7 +2651,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
                 failed_sweeps += 1
                 if not advanced:
-                    # Normal outcome when frontier_champions ×
+                    # Normal outcome when frontier_champions x
                     # instances_per_program < training_budget (small archive):
                     # every frontier champion hit its per-refresh emission cap
                     # this sweep. Info-level.

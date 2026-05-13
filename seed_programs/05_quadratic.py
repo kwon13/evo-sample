@@ -1,8 +1,9 @@
+CONCEPT_GROUP = "algebra"
+CONCEPT_TYPE = "algebra.quadratic_vieta_reciprocal"
+
 import random
 from fractions import Fraction
 
-CONCEPT_GROUP = "algebra"
-CONCEPT_TYPE = "algebra.quadratic_vieta_reciprocal"
 def generate(seed):
     rng = random.Random(seed)
 

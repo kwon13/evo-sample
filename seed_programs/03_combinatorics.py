@@ -1,8 +1,9 @@
+CONCEPT_GROUP = "combinatorics"
+CONCEPT_TYPE = "combinatorics.committee_count"
+
 import random
 import math
 
-CONCEPT_GROUP = "combinatorics"
-CONCEPT_TYPE = "combinatorics.committee_count"
 def generate(seed):
     rng = random.Random(seed)
 
