@@ -71,13 +71,12 @@ python "${SCRIPTS}/eval_vllm_math.py" \
   --tokenizer "${HF_DIR}" \
   --config "" \
   --output_dir "${MATH_OUT}" \
-  --batch_size 128 \
-  --max_tokens 4096 \
+  --max_tokens 8192 \
   --temperature 0.0 \
   --top_p 1.0 \
   --tensor_parallel_size 1 \
   --gpu_memory_utilization 0.85 \
-  --max_model_len 8192 \
+  --max_model_len 10240 \
   --dtype bfloat16 \
   2>&1 | tee "${LOG_DIR}/math_eval.log"
 

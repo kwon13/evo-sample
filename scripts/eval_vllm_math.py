@@ -208,11 +208,6 @@ def _build_prompt(tokenizer, problem: str, system_prompt: str) -> str:
     )
 
 
-def _chunks(items: list[Any], size: int):
-    for start in range(0, len(items), size):
-        yield start, items[start:start + size]
-
-
 def _load_problems(
     specs: list[dict[str, str]],
     fast_samples: dict[str, Any],
@@ -276,7 +271,7 @@ def _summarize(rows: list[dict[str, Any]], n: int) -> dict[str, Any]:
 
 
 def _make_sampling_params(args: argparse.Namespace, tokenizer=None):
-    """R-Zero-aligned SamplingParams (generate.py:22-26): max_tokens=4096,
+    """R-Zero-aligned SamplingParams (generate.py:22-26): max_tokens=8192,
     temperature=0.0, stop_token_ids=[eos]."""
     from vllm import SamplingParams
 
@@ -370,48 +365,50 @@ def evaluate(args: argparse.Namespace, cfg: Any) -> dict[str, Any]:
                 for item in problems
             ]
             start_time = time.time()
-            for start, prompt_batch in _chunks(prompts, args.batch_size):
-                batch_problems = problems[start:start + len(prompt_batch)]
-                outputs = llm.generate(
-                    prompt_batch,
-                    sampling_params,
-                    use_tqdm=not args.no_tqdm,
-                )
-                for item, output in zip(batch_problems, outputs):
-                    samples = []
-                    for sample_idx, completion in enumerate(output.outputs):
-                        response = completion.text
-                        grade = grade_math_response(response, item.answer)
-                        samples.append({
-                            "sample_idx": sample_idx,
-                            "response": response,
-                            **grade,
-                        })
-                    correct_first = bool(samples and samples[0]["correct"])
-                    correct_any = any(sample["correct"] for sample in samples)
-                    row = {
-                        "benchmark": benchmark,
-                        "index": item.index,
-                        "problem": item.problem,
-                        "answer": item.answer,
-                        "metadata": item.metadata,
-                        "correct_first": correct_first,
-                        "correct_any": correct_any,
-                        "samples": samples,
-                    }
-                    bench_rows.append(row)
-                    all_rows.append(row)
-                    details_f.write(json.dumps(row, ensure_ascii=False) + "\n")
-                    if not correct_first:
-                        failure_row = copy.deepcopy(row)
-                        if not args.log_full_failures:
-                            for sample in failure_row["samples"]:
-                                sample["response"] = sample["response"][
-                                    : args.failure_chars
-                                ]
-                        failures_f.write(
-                            json.dumps(failure_row, ensure_ascii=False) + "\n"
-                        )
+            # Hand the full benchmark to vLLM at once so PagedAttention /
+            # continuous batching can keep the KV cache saturated across the
+            # whole run. Chunking the request stream forces a tail-wait at
+            # each chunk boundary and underutilises the scheduler.
+            outputs = llm.generate(
+                prompts,
+                sampling_params,
+                use_tqdm=not args.no_tqdm,
+            )
+            for item, output in zip(problems, outputs):
+                samples = []
+                for sample_idx, completion in enumerate(output.outputs):
+                    response = completion.text
+                    grade = grade_math_response(response, item.answer)
+                    samples.append({
+                        "sample_idx": sample_idx,
+                        "response": response,
+                        **grade,
+                    })
+                correct_first = bool(samples and samples[0]["correct"])
+                correct_any = any(sample["correct"] for sample in samples)
+                row = {
+                    "benchmark": benchmark,
+                    "index": item.index,
+                    "problem": item.problem,
+                    "answer": item.answer,
+                    "metadata": item.metadata,
+                    "correct_first": correct_first,
+                    "correct_any": correct_any,
+                    "samples": samples,
+                }
+                bench_rows.append(row)
+                all_rows.append(row)
+                details_f.write(json.dumps(row, ensure_ascii=False) + "\n")
+                if not correct_first:
+                    failure_row = copy.deepcopy(row)
+                    if not args.log_full_failures:
+                        for sample in failure_row["samples"]:
+                            sample["response"] = sample["response"][
+                                : args.failure_chars
+                            ]
+                    failures_f.write(
+                        json.dumps(failure_row, ensure_ascii=False) + "\n"
+                    )
 
             elapsed = time.time() - start_time
             bench_summary = _summarize(bench_rows, args.n)
@@ -490,7 +487,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Global per-benchmark cap. Overrides config fast_samples if >0.",
     )
     parser.add_argument("--sample_seed", type=int, default=42)
-    parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--max_tokens", type=int, default=None)
     parser.add_argument("--temperature", type=float, default=None)
     parser.add_argument("--top_p", type=float, default=None)
@@ -516,10 +512,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def _apply_config_defaults(args: argparse.Namespace, cfg: Any) -> None:
-    if args.batch_size is None:
-        args.batch_size = int(_cfg_get(cfg, "math_eval.batch_size", 128) or 128)
     if args.max_tokens is None:
-        args.max_tokens = int(_cfg_get(cfg, "math_eval.max_tokens", 4096) or 4096)
+        args.max_tokens = int(_cfg_get(cfg, "math_eval.max_tokens", 8192) or 8192)
     if args.temperature is None:
         args.temperature = float(_cfg_get(cfg, "math_eval.temperature", 0.0) or 0.0)
     if args.top_p is None:
