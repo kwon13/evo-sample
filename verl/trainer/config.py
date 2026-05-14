@@ -174,6 +174,7 @@ class RQConfig:
     in_depth_ratio: float = 0.5
     ucb_c: float = 1.0
     epsilon: float = 0.3
+    use_reservoir: bool = False
     candidate_reservoir_size: int = 4
     # null = re-evaluate all occupied champions (Method-aligned default)
     # int  = partial budget (debug/ablation); 0 disables re-evaluation

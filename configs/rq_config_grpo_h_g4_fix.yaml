@@ -144,10 +144,15 @@ rq:
   in_depth_ratio: 0.5
   ucb_c: 1.0
   epsilon: 0.3
-  # Non-champion but valid/scored programs are kept as evolution material.
-  # Parent selection runs UCB over champion + reservoir material together.
-  # Reservoir programs are never used for Solver training unless they later become champions.
-  candidate_reservoir_size: 4        # per H/D cell, top-R_Q non-elites retained
+  # Reservoir of non-champion programs as additional mutation material.
+  #   use_reservoir=false (default, original MAP-Elites): mutation parents are
+  #     drawn ONLY from MAP cell champions. Non-champion rejected programs are
+  #     not stored and cannot pollute the mutation pool.
+  #   use_reservoir=true: parent selection runs UCB over champion + reservoir
+  #     material together. Reservoir programs are never used for Solver
+  #     training unless they later become champions.
+  use_reservoir: false
+  candidate_reservoir_size: 4        # per H/D cell, top-R_Q non-elites retained (only used when use_reservoir=true)
 
   # --- Champion re-evaluation ---
   # Re-evaluate occupied MAP-Elites champions before each Questioner evolution

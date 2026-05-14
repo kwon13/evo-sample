@@ -1,5 +1,5 @@
 CONCEPT_GROUP = "algebra"
-CONCEPT_TYPE = "linear_algebra.linear_system_sum"
+CONCEPT_TYPE = "algebra.linear_system_sum"
 
 import random
 

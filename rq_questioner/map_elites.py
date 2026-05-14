@@ -51,6 +51,7 @@ class MAPElitesGrid:
         seed_ids: list[str] | None = None,
         candidate_reservoir_size: int = 4,
         diversity_axis: str = "embedding",
+        use_reservoir: bool = False,
     ):
         if diversity_axis not in {"embedding", "concept_group", "concept_type"}:
             raise ValueError(f"Unknown diversity_axis: {diversity_axis}")
@@ -65,6 +66,11 @@ class MAPElitesGrid:
         self.h_range = h_range
         self.ucb_c = ucb_c
         self.epsilon = epsilon
+        # Master switch for the candidate reservoir. When False (original
+        # MAP-Elites spirit), only champions are used as mutation parents and
+        # non-champion programs are never stored — preventing malformed
+        # rejected problems from polluting the mutation pool.
+        self.use_reservoir = bool(use_reservoir)
         self.candidate_reservoir_size = max(0, int(candidate_reservoir_size))
 
         # Embedding model (lazy loaded)
@@ -418,6 +424,8 @@ class MAPElitesGrid:
         reason: str,
     ) -> bool:
         """Keep non-champion but valid/scored programs as evolution material."""
+        if not self.use_reservoir:
+            return False
         if self.candidate_reservoir_size <= 0:
             return False
 
@@ -545,11 +553,18 @@ class MAPElitesGrid:
         return entries
 
     def _material_entries(self) -> list:
-        """All programs available as evolution parents: champions + reservoir."""
+        """All programs available as evolution parents.
+
+        Champions are always included. Reservoir candidates are included only
+        when ``use_reservoir`` is enabled — otherwise mutation parents are
+        drawn strictly from MAP-Elites cells (original MAP-Elites behavior).
+        """
         entries = []
         for key, niche in self.grid.items():
             if niche.champion is not None:
                 entries.append((key, niche, niche.champion, "champion"))
+            if not self.use_reservoir:
+                continue
             for candidate in niche.candidates:
                 if (
                     niche.champion is not None
@@ -654,12 +669,17 @@ class MAPElitesGrid:
         return self._sample_material_parent()
 
     def sample_two_parents(self) -> tuple[Optional[ProblemProgram], Optional[ProblemProgram]]:
-        """Crossover용 부모 2개 선택 (champion + reservoir material)."""
+        """Crossover용 부모 2개 선택.
+
+        ``use_reservoir=True``: champion + reservoir material pool.
+        ``use_reservoir=False``: champion-only pool (original MAP-Elites).
+        """
         material: dict[str, ProblemProgram] = {}
         for _, niche in self._champion_entries():
             material[niche.champion.program_id] = niche.champion
-        for _, _, candidate in self._reservoir_entries():
-            material[candidate.program_id] = candidate
+        if self.use_reservoir:
+            for _, _, candidate in self._reservoir_entries():
+                material[candidate.program_id] = candidate
 
         if len(material) < 2:
             return None, None

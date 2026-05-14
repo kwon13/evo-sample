@@ -45,13 +45,10 @@ def validate_concept_decl(concept_type, concept_group):
     if concept_group not in CONCEPT_GROUPS:
         reasons.append(f"unknown CONCEPT_GROUP: {concept_group}")
         return reasons
-    # type은 free-form: group prefix만 일치하면 통과.
-    expected_prefix = concept_group + "."
-    if not concept_type.startswith(expected_prefix):
-        reasons.append(
-            f"CONCEPT_TYPE prefix mismatch: '{concept_type}' must start with "
-            f"'{expected_prefix}' to match CONCEPT_GROUP '{concept_group}'"
-        )
+    # CONCEPT_TYPE is free-form. The prior prefix check rejected legitimate
+    # cross-prefix labels (e.g. linear_algebra.* under group=algebra), so it
+    # has been removed. CONCEPT_GROUP membership in CONCEPT_GROUPS is the
+    # only structural invariant now.
     return reasons
 
 

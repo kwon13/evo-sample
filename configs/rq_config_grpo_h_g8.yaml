@@ -1,7 +1,7 @@
 data:
   train_files: ""
-  max_prompt_length: 4096
-  max_response_length: 4096
+  max_prompt_length: 6000
+  max_response_length: 6000
   rollout_batch_size: 32
   shuffle: true
 
@@ -17,7 +17,7 @@ worker:
     strategy: fsdp
     global_batch_size: 32
     micro_batch_size_per_device_for_update: 4
-    micro_batch_size_per_device_for_experience: 2
+    micro_batch_size_per_device_for_experience: 4
     use_torch_compile: false
     fsdp:
       enable_full_shard: true
@@ -43,8 +43,8 @@ worker:
     name: vllm
     temperature: 0.8
     top_p: 0.95
-    # max_model_len = max_prompt_length + max_response_length = 4096 + 4096
-    max_model_len: 8192
+    # max_model_len = max_prompt_length + max_response_length = 6000 + 6000
+    max_model_len: 12000
     max_num_batched_tokens: 12288
     dtype: bfloat16
     tensor_parallel_size: 1
@@ -64,14 +64,14 @@ trainer:
   total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo_h_g8_new
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_new
+  experiment_name: qwen3_4b_base_grpo_h_g8_org_map
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_org_map
   logger:
     - console
     - wandb
   n_gpus_per_node: 4
   nnodes: 1
-  save_freq: 16
+  save_freq: 32
   save_final_checkpoint: true
   save_limit: 16
 
@@ -105,8 +105,8 @@ math_eval:
   # Set true in a standalone post-training eval to promote items whose
   # extracted answer math_verify rejected but GPT-4o judges equivalent.
   gpt_judge:
-    enabled: true
-    model: gpt-4o
+    enabled: false
+    model: gpt-4o-mini
     api_key_env: OPENAI_API_KEY
     retry_max: 3
     retry_backoff_seconds: [1, 5, 30]
@@ -139,15 +139,20 @@ rq:
   #   h           : mean output-token entropy averaged over G responses
   #   h_span_max : response span-max entropy averaged over G responses
   uncertainty_metric: h
-  instances_per_program: 16
+  instances_per_program: 4
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
   ucb_c: 1.0
   epsilon: 0.3
-  # Non-champion but valid/scored programs are kept as evolution material.
-  # Parent selection runs UCB over champion + reservoir material together.
-  # Reservoir programs are never used for Solver training unless they later become champions.
-  candidate_reservoir_size: 4        # per H/D cell, top-R_Q non-elites retained
+  # Reservoir of non-champion programs as additional mutation material.
+  #   use_reservoir=false (default, original MAP-Elites): mutation parents are
+  #     drawn ONLY from MAP cell champions. Non-champion rejected programs are
+  #     not stored and cannot pollute the mutation pool.
+  #   use_reservoir=true: parent selection runs UCB over champion + reservoir
+  #     material together. Reservoir programs are never used for Solver
+  #     training unless they later become champions.
+  use_reservoir: false
+  candidate_reservoir_size: 4        # per H/D cell, top-R_Q non-elites retained (only used when use_reservoir=true)
 
   # --- Champion re-evaluation ---
   # Re-evaluate occupied MAP-Elites champions before each Questioner evolution
@@ -212,5 +217,5 @@ rq:
   #   false          — evolve at outer iteration 0 even on resume. Checkpoint is already
   #                    loaded by fit() at that point, so this scores the archive
   #                    with the checkpointed policy (not the base model).
-  evolve_before_train: true
-  skip_initial_evolution_on_resume: true
+  evolve_before_train: false
+  skip_initial_evolution_on_resume: false

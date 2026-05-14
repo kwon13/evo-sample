@@ -108,6 +108,7 @@ def init_map_elites(
     epsilon,
     candidate_reservoir_size=4,
     diversity_axis="concept_group",
+    use_reservoir=False,
 ) -> MAPElitesGrid:
     grid = MAPElitesGrid(
         n_h_bins=n_h_bins,
@@ -117,6 +118,7 @@ def init_map_elites(
         epsilon=epsilon,
         candidate_reservoir_size=candidate_reservoir_size,
         diversity_axis=diversity_axis,
+        use_reservoir=use_reservoir,
     )
 
     if diversity_axis == "embedding":
@@ -238,6 +240,7 @@ class RQTaskRunner:
         ucb_c = rq_cfg_get("ucb_c", 1.0)
         epsilon = rq_cfg_get("epsilon", 0.3)
         candidate_reservoir_size = rq_cfg_get("candidate_reservoir_size", 4)
+        use_reservoir = bool(rq_cfg_get("use_reservoir", False))
         instances_per_program = rq_cfg_get("instances_per_program", 16)
 
         # Seeds + MAP-Elites
@@ -256,6 +259,11 @@ class RQTaskRunner:
             epsilon,
             candidate_reservoir_size=candidate_reservoir_size,
             diversity_axis=diversity_axis,
+            use_reservoir=use_reservoir,
+        )
+        print(
+            f"[Runner] reservoir: "
+            f"{'ON (champion + reservoir parents)' if use_reservoir else 'OFF (champion-only parents, original MAP-Elites)'}"
         )
         dynamic_dataset = build_seed_dataset(seeds, instances_per_program)
         dynamic_dataset.set_tokenizer(tokenizer, max_prompt_length=config.data.max_prompt_length)
