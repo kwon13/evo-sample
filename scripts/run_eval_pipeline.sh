@@ -140,5 +140,9 @@ echo "=========================================================="
 : <<'END_COMMENT'
 # 폴더 내 모든 step (16, 32, 48, 64, 80) 순차 평가
 bash scripts/run_eval_all_steps.sh \
-  /data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo_h_g8_new 7
+  /data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo_h_g8_new 0
+
+bash scripts/run_eval_all_steps_parallel.sh \
+  /data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo_h_g8_new \
+  0,1,2,3
 END_COMMENT

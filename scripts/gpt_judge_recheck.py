@@ -24,7 +24,9 @@ import json
 import logging
 import os
 import sys
+import threading
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -55,23 +57,42 @@ def _first_sample(row: dict[str, Any]) -> dict[str, Any]:
     return samples[0] if samples else {}
 
 
-def recheck(details_path: Path, gpt_model: str, api_key: str) -> dict[str, Any]:
+def recheck(
+    details_path: Path,
+    gpt_model: str,
+    api_key: str,
+    max_workers: int,
+) -> dict[str, Any]:
     rows = _load_jsonl(details_path)
     by_bench: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         by_bench[row["benchmark"]].append(row)
 
     summary: dict[str, Any] = {"benchmarks": {}}
-    calls = 0
-    yes = 0
-    failed = 0
+    total_calls = 0
+    total_yes = 0
+    total_failed = 0
+
+    progress_lock = threading.Lock()
+
+    def _judge_one(row: dict[str, Any]) -> tuple[dict[str, Any], Any]:
+        return row, call_gpt_judge(
+            ground_truth=str(row.get("answer", "")),
+            extracted_answer=str(_first_sample(row).get("pred", "")),
+            model=gpt_model,
+            api_key=api_key,
+        )
 
     for bench in MATH_6:
         bench_rows = by_bench.get(bench, [])
         if not bench_rows:
             continue
         total = len(bench_rows)
+
+        # Pre-count rows that math_verify already accepted; collect the rest
+        # (incorrect + has an extracted answer) for GPT judging.
         correct = 0
+        to_judge: list[dict[str, Any]] = []
         for row in bench_rows:
             sample = _first_sample(row)
             if sample.get("correct"):
@@ -79,24 +100,34 @@ def recheck(details_path: Path, gpt_model: str, api_key: str) -> dict[str, Any]:
                 continue
             pred = sample.get("pred") or ""
             if not pred:
-                continue
-            res = call_gpt_judge(
-                ground_truth=str(row.get("answer", "")),
-                extracted_answer=str(pred),
-                model=gpt_model,
-                api_key=api_key,
-            )
-            calls += 1
-            if res.error:
-                failed += 1
-            if res.yes:
-                yes += 1
-                correct += 1
-            if calls % 50 == 0:
-                logger.info(
-                    "[%s] gpt calls so far: %d, yes: %d, failed: %d",
-                    bench, calls, yes, failed,
-                )
+                continue  # extraction failed; leave as wrong, no GPT call
+            to_judge.append(row)
+
+        bench_calls = 0
+        bench_yes = 0
+        bench_failed = 0
+        if to_judge:
+            with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                futures = [ex.submit(_judge_one, row) for row in to_judge]
+                for fut in as_completed(futures):
+                    _, res = fut.result()
+                    bench_calls += 1
+                    if res.error:
+                        bench_failed += 1
+                    if res.yes:
+                        bench_yes += 1
+                        correct += 1
+                    if bench_calls % 50 == 0:
+                        with progress_lock:
+                            logger.info(
+                                "[%s] gpt %d/%d  yes=%d  failed=%d",
+                                bench, bench_calls, len(to_judge),
+                                bench_yes, bench_failed,
+                            )
+
+        total_calls += bench_calls
+        total_yes += bench_yes
+        total_failed += bench_failed
         pass_at_1 = correct / total if total else 0.0
         summary["benchmarks"][bench] = {
             "total": total,
@@ -105,10 +136,14 @@ def recheck(details_path: Path, gpt_model: str, api_key: str) -> dict[str, Any]:
         }
         print(
             f"{bench:14s}: {pass_at_1 * 100:.2f}% ({correct}/{total})  "
-            f"[calls so far: {calls}, yes: {yes}]"
+            f"[gpt={bench_calls}, yes={bench_yes}, fail={bench_failed}]"
         )
 
-    summary["gpt_judge"] = {"calls": calls, "yes": yes, "failed": failed}
+    summary["gpt_judge"] = {
+        "calls": total_calls,
+        "yes": total_yes,
+        "failed": total_failed,
+    }
     return summary
 
 
@@ -117,6 +152,12 @@ def main() -> None:
     p.add_argument("--details", required=True, help="path to details.jsonl from eval_vllm_math.py")
     p.add_argument("--out", required=True, help="output with_gpt_judge.json path")
     p.add_argument("--model", default="gpt-4o")
+    p.add_argument(
+        "--max_workers",
+        type=int,
+        default=16,
+        help="ThreadPoolExecutor size for concurrent gpt-4o calls.",
+    )
     p.add_argument("--log_level", default="INFO")
     args = p.parse_args()
 
@@ -135,7 +176,7 @@ def main() -> None:
     if not details_path.is_file():
         raise FileNotFoundError(f"details file not found: {details_path}")
 
-    summary = recheck(details_path, args.model, api_key)
+    summary = recheck(details_path, args.model, api_key, args.max_workers)
 
     bench_stats = summary["benchmarks"]
     if all(b in bench_stats for b in MATH_6):
