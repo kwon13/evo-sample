@@ -19,7 +19,6 @@ ALLOWED_IMPORT_ROOTS = {
 }
 
 FORBIDDEN_SOURCE_PATTERNS = (
-    "while true",
     "print(",
     "input(",
     "open(",
@@ -201,6 +200,10 @@ def lint_generator_source(source_code: str) -> list[str]:
                 root = module.split(".", 1)[0]
                 if root not in ALLOWED_IMPORT_ROOTS:
                     reasons.append(f"disallowed import: {module}")
+            # from-imports of non-deterministic RNG symbols (e.g.
+            # `from sympy import randprime`, `from random import choice`).
+            if isinstance(node, ast.ImportFrom):
+                reasons.extend(_check_from_import_rng(node))
         elif isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.Assign, ast.AnnAssign)):
             continue
         elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
@@ -208,6 +211,134 @@ def lint_generator_source(source_code: str) -> list[str]:
         else:
             reasons.append(f"top-level executable statement: {type(node).__name__}")
 
+    reasons.extend(_check_nondeterministic_rng_calls(tree))
+    reasons.extend(_check_infinite_while_loops(tree))
+
+    return reasons
+
+
+def _is_constant_truthy(expr: ast.expr) -> bool:
+    """True iff ``expr`` is a compile-time constant that evaluates truthy
+    (``True``, nonzero literal, non-empty string, etc.). Anything dynamic
+    (variable, comparison, function call) returns False — we only flag
+    statically-obvious infinite loops."""
+    if isinstance(expr, ast.Constant):
+        return bool(expr.value)
+    return False
+
+
+def _check_infinite_while_loops(tree: ast.AST) -> list[str]:
+    """Flag ``while <truthy_constant>:`` loops whose body cannot exit.
+
+    A loop is treated as exitable if its body contains at least one of
+    ``break``, ``return``, or ``raise``. We use ``ast.walk`` so a
+    terminator nested inside an ``if`` (the rejection-sampling pattern)
+    counts. Loops with a dynamic condition (``while cond:``,
+    ``while i < n:``) are trusted — we cannot prove termination
+    statically, and they are the overwhelmingly common case."""
+    reasons: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.While):
+            continue
+        if not _is_constant_truthy(node.test):
+            continue
+        has_exit = any(
+            isinstance(sub, (ast.Break, ast.Return, ast.Raise))
+            for sub in ast.walk(node)
+        )
+        if not has_exit:
+            reasons.append(
+                "infinite while loop: `while True:` with no "
+                "`break` / `return` / `raise` in body"
+            )
+    return reasons
+
+
+def _check_from_import_rng(node: ast.ImportFrom) -> list[str]:
+    """Reject `from X import Y` forms that pull in seed-ignoring RNG entry
+    points (e.g. ``from sympy import randprime``, ``from random import
+    choice``). Only ``from random import Random`` is allowed under the
+    ``random`` module."""
+    reasons: list[str] = []
+    mod = node.module or ""
+    if mod == "random":
+        for alias in node.names:
+            if alias.name != "Random":
+                reasons.append(
+                    f"non-deterministic RNG import: from random import "
+                    f"{alias.name} (use `rng = random.Random(seed)`)"
+                )
+    elif mod.startswith("sympy"):
+        for alias in node.names:
+            nm = alias.name
+            if nm.startswith("rand") or nm.startswith("random"):
+                reasons.append(
+                    f"non-deterministic RNG import: from {mod} import "
+                    f"{nm} (uses sympy global RNG, ignores seed)"
+                )
+    return reasons
+
+
+def _check_nondeterministic_rng_calls(tree: ast.AST) -> list[str]:
+    """AST-level check that flags real *calls* into non-deterministic RNG
+    surfaces. We look only at ``Call`` nodes (so a docstring mentioning
+    "sympy.randprime" is fine) and we walk the function attribute chain.
+
+    Allowed:
+        rng = random.Random(seed); rng.<anything>(...)
+        sympy.<non-random>(...)
+    Blocked:
+        random.<anything except Random>(...)
+        sympy.rand*  /  sympy.random*
+        numpy.random.* / np.random.*
+        secrets.*
+        os.urandom / os.getrandom
+    """
+    reasons: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        # Pattern A: <Name>.<attr>(...)
+        if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+            mod = func.value.id
+            attr = func.attr
+            if mod == "random" and attr != "Random":
+                reasons.append(
+                    f"non-deterministic RNG call: random.{attr}(...) "
+                    "— construct `rng = random.Random(seed)` and call "
+                    f"`rng.{attr}(...)` instead"
+                )
+            elif mod == "sympy" and (attr.startswith("rand")
+                                     or attr.startswith("random")):
+                reasons.append(
+                    f"non-deterministic RNG call: sympy.{attr}(...) "
+                    "uses sympy's module-global RNG and ignores `seed`"
+                )
+            elif mod == "secrets":
+                reasons.append(
+                    f"non-deterministic RNG call: secrets.{attr}(...) "
+                    "— use `random.Random(seed)`"
+                )
+            elif mod == "os" and attr in ("urandom", "getrandom"):
+                reasons.append(
+                    f"non-deterministic RNG call: os.{attr}(...) "
+                    "— use `random.Random(seed)`"
+                )
+        # Pattern B: <Name>.<mid>.<attr>(...) — e.g. np.random.choice(...)
+        elif (
+            isinstance(func, ast.Attribute)
+            and isinstance(func.value, ast.Attribute)
+            and isinstance(func.value.value, ast.Name)
+        ):
+            root = func.value.value.id
+            mid = func.value.attr
+            attr = func.attr
+            if root in ("np", "numpy") and mid == "random":
+                reasons.append(
+                    f"non-deterministic RNG call: {root}.random.{attr}(...) "
+                    "— use `random.Random(seed)`"
+                )
     return reasons
 
 
