@@ -4,6 +4,16 @@ CONCEPT_TYPE = "number_theory.kth_root_mod_prime"
 import math
 import random
 
+
+PRIMES = [29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
+          97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151,
+          157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223,
+          227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281,
+          283, 293]
+K_POOL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18, 20, 24]
+DIVISOR_TARGETS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 18, 20, 24]
+
+
 def _prime_factors(n):
     factors = set()
     d = 2
@@ -26,30 +36,21 @@ def _primitive_root(p):
 
 
 def generate(seed):
-    """
-    Count k-th roots of a given residue modulo a prime p.
-
-    Inverse construction:
-      - pick prime p and a primitive root g of (Z/pZ)*
-      - pick exponent e in [1, p-2] and power k in {2,3,4,5,6,8,10,12}
-      - a = g^e mod p  (so solver is given a; exponent is hidden)
-      - # solutions to x^k ≡ a (mod p) = gcd(k, p-1) if gcd(k,p-1) | e else 0
-    """
     rng = random.Random(seed)
-    p = rng.choice([29, 31, 41, 43, 73, 89, 97, 101, 109, 113, 127, 137, 149])
+
+    target = DIVISOR_TARGETS[seed % len(DIVISOR_TARGETS)]
+    candidates = [(p, k) for p in PRIMES for k in K_POOL
+                  if math.gcd(k, p - 1) == target]
+    p, k = rng.choice(candidates)
     g = _primitive_root(p)
-
-    k = rng.choice([2, 3, 4, 5, 6, 8, 10, 12])
-    exponent = rng.randint(1, p - 2)
+    multiples = list(range(target, p - 1, target))
+    exponent = rng.choice(multiples)
     a = pow(g, exponent, p)
-
-    divisor = math.gcd(k, p - 1)
-    answer = divisor if exponent % divisor == 0 else 0
+    answer = target
 
     problem = (
-        f"Modulo the prime p={p}, g={g} is a primitive root. "
-        f"Let a be the least positive residue of g^{exponent} modulo p, "
-        f"so a={a}. How many residue classes x modulo {p} satisfy "
-        f"x^{k} ≡ a (mod {p})?"
+        f"Let p = {p}, and let g = {g} be a primitive root modulo p. "
+        f"For the residue a = {a}, how many residue classes x modulo {p} "
+        f"satisfy x^{k} ≡ a (mod {p})?"
     )
     return problem, str(answer)

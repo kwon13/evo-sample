@@ -312,6 +312,24 @@ class MAPElitesGrid:
         program.niche_div = div_bin
         program.rq_score = rq_score
 
+        # ─── Seed-variation gate (archive entry filter) ────────────────────
+        # Block constant-function and rewording-only generators from
+        # entering the archive in the first place. These have historically
+        # passed R_Q sorting because they confuse the solver without being
+        # well-posed problems; once admitted they propagate broken patterns
+        # via mutation chain.
+        #
+        # The validity check verifies that across seeds 0..4 the generated
+        # problem text varies substantively AND the answer is not constant
+        # or near-constant. See champion_passes_validity for thresholds.
+        from prompts.mutation import champion_passes_validity
+        if not champion_passes_validity(program):
+            if program.metadata is None:
+                program.metadata = {}
+            program.metadata["archive_status"] = "seed_variation_rejected"
+            return False
+        # ───────────────────────────────────────────────────────────────────
+
         niche = self.grid[(h_bin, div_bin)]
 
         duplicate = self._find_duplicate_behavior(program)

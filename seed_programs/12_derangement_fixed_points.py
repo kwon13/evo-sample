@@ -4,6 +4,7 @@ CONCEPT_TYPE = "combinatorics.derangement_fixed_points"
 import math
 import random
 
+
 def _derangement(n):
     if n == 0:
         return 1
@@ -18,8 +19,8 @@ def _derangement(n):
 def generate(seed):
     rng = random.Random(seed)
 
-    n = rng.randint(7, 10)
-    k = rng.randint(2, 4)
+    n = rng.randint(6, 15)
+    k = rng.randint(1, min(5, n - 2))
 
     answer = sum(math.comb(n, j) * _derangement(n - j) for j in range(k, n + 1))
 

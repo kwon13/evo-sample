@@ -64,8 +64,8 @@ trainer:
   total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo_h_g8_fix_prompt
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_fix_prompt
+  experiment_name: qwen3_4b_base_grpo_h_g8_fix_archive
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_fix_archive
   logger:
     - console
     - wandb
@@ -173,7 +173,7 @@ rq:
   # exec-failing ones.
   # L=[0.3, 0.7]: 이전 [0.1, 0.9] 대비 narrower band — Solver가 진짜 경계
   # (어렵지도 쉽지도 않은) 문제만 학습. Training set 크기는 줄어듦.
-  frontier_p_hat_range: [0.4, 0.8]
+  frontier_p_hat_range: [0.3, 0.7]
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
   # mode:

@@ -3,24 +3,30 @@ CONCEPT_TYPE = "geometry.trig_area"
 
 import random
 
+
 def generate(seed):
     rng = random.Random(seed)
 
     while True:
-        x1 = rng.randint(2, 12)
-        y1 = rng.randint(1, 10)
-        x2 = rng.randint(1, 12)
-        y2 = rng.randint(2, 10)
+        ax = rng.randint(-20, 20)
+        ay = rng.randint(-20, 20)
+        bx = rng.randint(-20, 20)
+        by = rng.randint(-20, 20)
+        cx = rng.randint(-20, 20)
+        cy = rng.randint(-20, 20)
 
-        twice_area = abs(x1 * y2 - x2 * y1)
-        if twice_area > 0 and twice_area % 2 == 0:
+        twice_area = abs((bx - ax) * (cy - ay) - (cx - ax) * (by - ay))
+        if twice_area > 0:
             break
 
-    area = twice_area // 2
+    if twice_area % 2 == 0:
+        answer = str(twice_area // 2)
+    else:
+        answer = f"{twice_area}/2"
 
     problem = (
-        f"Triangle ABC has A = (0, 0), B = ({x1}, {y1}), "
-        f"and C = ({x2}, {y2}). Find its area."
+        f"Triangle ABC has A = ({ax}, {ay}), B = ({bx}, {by}), "
+        f"and C = ({cx}, {cy}). Find its area."
     )
 
-    return problem, str(area)
+    return problem, answer

@@ -3,16 +3,17 @@ CONCEPT_TYPE = "inequality.am_gm_product"
 
 import random
 
+
+S_POOL = [6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42]
+K_POOL = [1, 2, 3, 4, 5, 6, 7]
+
+
 def generate(seed):
     rng = random.Random(seed)
 
-    s = rng.choice([6, 9, 12, 15, 18])
-    k = rng.choice([1, 2, 3])
+    s = rng.choice(S_POOL)
+    k = rng.choice(K_POOL)
 
-    # Maximize (a+k)(b+k)(c+k)
-    # subject to a+b+c=s, a,b,c>0.
-    # Let x=a+k, y=b+k, z=c+k.
-    # Then x+y+z=s+3k, so product <= ((s+3k)/3)^3.
     max_product = ((s + 3 * k) // 3) ** 3
 
     problem = (

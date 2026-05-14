@@ -532,13 +532,23 @@ def champion_passes_validity(
     seeds: tuple[int, ...] = (0, 1, 2, 3, 4),
     use_cache: bool = True,
 ) -> bool:
-    """Multi-seed validity check. Reject the champion if ANY seed produces
-    a broken-looking instance, OR if all seeds yield identical answers
-    (seed-independent generator).
+    """Multi-seed validity check. Reject the champion if ANY of:
+      - any seed produces a broken-looking instance,
+      - exec fails on any seed,
+      - generated problem texts are not strictly all distinct
+        across the seeds (character-wise comparison),
+      - generated answers are not strictly all distinct across the seeds.
 
-    Strict policy — even one broken seed is enough to reject. Per the user
-    review: false positives are recoverable, contamination propagation is
-    not.
+    Strict policy — anything less than full seed variation indicates a
+    generator that is effectively constant (or thinly re-worded around a
+    fixed answer) and is therefore treated as too-easy / contaminating.
+    Per the user review: false positives are recoverable, contamination
+    propagation is not.
+
+    Distinctness is decided by exact string equality (whitespace-stripped),
+    not by length, so generators that change only one numeric field while
+    keeping the surrounding wording verbatim still count as distinct as
+    long as the resulting strings differ at any character position.
 
     Caching:
       Result is stored on ``champ.metadata['validity_check']`` keyed by
@@ -558,6 +568,7 @@ def champion_passes_validity(
         return bool(cache.get("passed"))
 
     answers: list[str] = []
+    problems: list[str] = []
     broken_seeds: list[int] = []
     exec_failed_seeds: list[int] = []
     for s in seeds:
@@ -577,11 +588,32 @@ def champion_passes_validity(
             broken_seeds.append(s)
             continue
         answers.append(ans)
+        problems.append((inst.problem or "").strip())
 
     n_total = len(seeds)
     n_broken = len(broken_seeds) + len(exec_failed_seeds)
-    seed_independent = (len(answers) >= 2 and len(set(answers)) == 1)
-    passed = (n_broken == 0) and not seed_independent and len(answers) == n_total
+    n_distinct_problems = len(set(problems))
+    n_distinct_answers = len(set(answers))
+
+    # Strict distinctness: every seed must produce a distinct problem text
+    # AND a distinct answer. Anything less is treated as constant / thin
+    # rewording and rejected. Only meaningful when every seed produced
+    # output; if some seeds failed the check falls back to the legacy
+    # all-identical-answer rejection.
+    if len(answers) == n_total:
+        problem_invariant = n_distinct_problems < n_total
+        answer_invariant = n_distinct_answers < n_total
+        seed_invariant = problem_invariant or answer_invariant
+    else:
+        problem_invariant = False
+        answer_invariant = (len(answers) >= 2 and n_distinct_answers == 1)
+        seed_invariant = answer_invariant
+
+    passed = (
+        n_broken == 0
+        and not seed_invariant
+        and len(answers) == n_total
+    )
 
     if champ.metadata is None:
         champ.metadata = {}
@@ -589,7 +621,11 @@ def champion_passes_validity(
         "passed": passed,
         "broken_seeds": broken_seeds,
         "exec_failed_seeds": exec_failed_seeds,
-        "seed_independent": seed_independent,
+        "seed_invariant": seed_invariant,
+        "problem_invariant": problem_invariant,
+        "answer_invariant": answer_invariant,
+        "n_distinct_problems": n_distinct_problems,
+        "n_distinct_answers": n_distinct_answers,
         "n_valid": len(answers),
         "n_total": n_total,
         "rq_score_at_check": rq_now,
