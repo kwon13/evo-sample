@@ -139,7 +139,7 @@ rq:
   #   h           : mean output-token entropy averaged over G responses
   #   h_span_max : response span-max entropy averaged over G responses
   uncertainty_metric: h
-  instances_per_program: 4
+  instances_per_program: 8
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
   ucb_c: 1.0
