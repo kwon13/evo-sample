@@ -6,12 +6,65 @@ R_Q(x') = p_θ(x') * (1 - p_θ(x')) * (1/G) * Σ_i H(y_i)
 Where:
   - p_θ(x') is estimated from G rollouts as pass rate
   - H(y_i) is the mean per-token entropy of rollout response y_i
+
+Ablation: R_Q is the product of a learnability term p(1-p) and an
+uncertainty term U. configure_rq_ablation() can force either term to
+1.0 so a run can isolate the other term's contribution. See
+compute_rq_value() — the single source of truth for the scalar R_Q.
 """
 from __future__ import annotations
 
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
+
+
+# ---------------------------------------------------------------------------
+# R_Q term ablation
+# ---------------------------------------------------------------------------
+# R_Q = [p(1-p)] * [U]. Each switch, when True, replaces its term with the
+# neutral element 1.0, removing that term's influence on R_Q. Both False
+# (default) = standard R_Q. Set once at trainer startup via
+# configure_rq_ablation(); evolution does not change them mid-run.
+_ABLATE_LEARNABILITY = False   # True -> p(1-p) term forced to 1.0
+_ABLATE_UNCERTAINTY = False    # True -> U (entropy) term forced to 1.0
+
+
+def configure_rq_ablation(
+    ablate_learnability: bool = False,
+    ablate_uncertainty: bool = False,
+) -> None:
+    """Set R_Q term ablation. Call once at startup from the rq config."""
+    global _ABLATE_LEARNABILITY, _ABLATE_UNCERTAINTY
+    _ABLATE_LEARNABILITY = bool(ablate_learnability)
+    _ABLATE_UNCERTAINTY = bool(ablate_uncertainty)
+
+
+def rq_ablation_state() -> dict:
+    """Current ablation switches — log this into run metrics so each
+    run records which R_Q terms were active."""
+    return {
+        "ablate_learnability": _ABLATE_LEARNABILITY,
+        "ablate_uncertainty": _ABLATE_UNCERTAINTY,
+    }
+
+
+def rq_terms(p_hat: float, uncertainty: float) -> tuple[float, float]:
+    """Return (learnability_term, uncertainty_term) with ablation applied.
+
+    learnability_term = p(1-p), or 1.0 if ablated.
+    uncertainty_term  = U,      or 1.0 if ablated.
+    """
+    learn = 1.0 if _ABLATE_LEARNABILITY else p_hat * (1.0 - p_hat)
+    unc = 1.0 if _ABLATE_UNCERTAINTY else float(uncertainty)
+    return learn, unc
+
+
+def compute_rq_value(p_hat: float, uncertainty: float) -> float:
+    """Single source of truth for the scalar R_Q = p(1-p) * U, with the
+    ablation switches applied. Every R_Q computation site routes here."""
+    learn, unc = rq_terms(p_hat, uncertainty)
+    return learn * unc
 
 
 @dataclass
@@ -39,8 +92,8 @@ def compute_rq(
     Returns:
         RQResult with the computed R_Q score
     """
-    p_var = p_hat * (1.0 - p_hat)
-    rq = p_var * h_bar
+    p_var = p_hat * (1.0 - p_hat)        # raw learnability — reporting only
+    rq = compute_rq_value(p_hat, h_bar)  # ablation switches applied here
 
     return RQResult(
         rq_score=rq,
@@ -89,8 +142,8 @@ def compute_rq_full(
         Complete RQResult
     """
     p_hat = estimate_pass_rate(correct_flags)
-    p_var = p_hat * (1.0 - p_hat)
-    rq = p_var * h_bar
+    p_var = p_hat * (1.0 - p_hat)        # raw learnability — reporting only
+    rq = compute_rq_value(p_hat, h_bar)  # ablation switches applied here
 
     return RQResult(
         rq_score=rq,

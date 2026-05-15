@@ -27,22 +27,24 @@ MUTATED_PROGRAM_EXAMPLE_1:
 ```python
 """In-breadth mutation generator.
 
-Parent (sequence.arithmetic_nth_term): a_n = a_1 + (n-1)*d, a
-single linear evaluation in a discrete progression.
-Child (geometry.chord_length_from_center): chord length given
-radius r and centre-distance d, answered as an irrational surd.
+Crosses domains from arithmetic_nth_term (a linear step in a
+discrete progression) to chord geometry — no shared object,
+move, or vocabulary with the parent.
 
-The jump is in-breadth: parent and child share no domain, no
-move, no vocabulary. The solver must drop the radius to a chord
-endpoint, see that radius, centre-perpendicular, and half-chord
-form a right triangle, apply Pythagoras to get half-chord =
-sqrt(r^2 - d^2), and double. Coordinate geometry is the only
-alternative and runs several times longer.
+To solve, given only radius r and the chord's centre-distance
+d, the reader must:
+  (1) drop the radius to a chord endpoint,
+  (2) see that radius, centre-perpendicular, and half-chord
+      form a right triangle,
+  (3) apply Pythagoras: half-chord = sqrt(r^2 - d^2),
+  (4) double it for the full chord, in exact surd form.
+Coordinate geometry also works but runs several times longer.
 
-Guards reject r^2 - d^2 a perfect square (integer chord,
-guessable), radicand m > 30 (artificial), and gcd(r, d) > 1
-(rescales to a smaller named case). Problem text states only r
-and d; Pythagoras and the bisection are never mentioned.
+Guards keep the task honest: r^2 - d^2 not a perfect square
+(else the chord is an integer, guessable), radicand <= 30 (not
+artificial), gcd(r, d) = 1 (not a rescaled smaller case). The
+problem text states only r and d — never Pythagoras or the
+bisection.
 """
 
 import random
@@ -79,9 +81,9 @@ def generate(seed):
     )
     return problem, answer
 
+CONCEPT_REASON = "To solve, the reader must decompose the chord into a right triangle of radius, centre-perpendicular, and half-chord, then apply Pythagoras — that decomposition is the problem's reasoning core."
 CONCEPT_GROUP = "geometry"
 CONCEPT_TYPE = "geometry.chord_length_from_center"
-CONCEPT_REASON = "Mutation jumps from sequence to geometry: discrete progression yields to continuous Pythagorean decomposition, with no shared move between parent and child."
 ```
 
 PARENT_PROGRAM_EXAMPLE_2:
@@ -114,25 +116,24 @@ MUTATED_PROGRAM_EXAMPLE_2:
 ```python
 """In-breadth mutation generator.
 
-Parent (geometry.rectangle_area): one multiplication of two
-side lengths to get a continuous area.
-Child (number_theory.divisor_count): given an integer N,
-report the number of positive divisors d(N).
+Crosses domains from rectangle_area (one multiplication of two
+side lengths) to divisor counting — no shared object, move, or
+vocabulary with the parent.
 
-The jump is in-breadth: parent and child share no domain, no
-move, no vocabulary. The solver must factor N into primes
-N = p1^e1 * p2^e2 * ... * pk^ek, recall the multiplicative
-formula d(N) = (e1+1)(e2+1)...(ek+1), and evaluate it. Trial
-division up to sqrt(N) is the only alternative and grows with
-N, while the formula collapses the count to a small product of
+To solve, given only an integer N, the reader must:
+  (1) factor N into primes N = p1^e1 * p2^e2 * ... * pk^ek,
+  (2) recall the multiplicative formula
+      d(N) = (e1+1)(e2+1)...(ek+1),
+  (3) evaluate that product.
+Trial division up to sqrt(N) also works but grows with N, while
+the formula collapses the count to a small product of
 exponents-plus-one.
 
-Guards reject N prime or prime-power (formula degenerates to a
-single factor, no real chain), N with fewer than three distinct
-prime factors (one multiplication is not a chain), and answers
-in {1, 2, 3, 4} (named-trivial counts the solver guesses by
-inspection). Problem text states only N; factorisation and the
-exponent formula are never mentioned.
+Guards keep the task honest: N not prime or a prime power (else
+the formula degenerates to one factor), N with at least three
+distinct prime factors (so the product is a real chain), answer
+not in {1, 2, 3, 4} (guessable). The problem text states only N
+— never the factorisation or the exponent formula.
 """
 
 import random
@@ -164,7 +165,7 @@ def generate(seed):
     )
     return problem, str(sympy.Integer(count))
 
+CONCEPT_REASON = "To solve, the reader must factor N into prime powers and apply the multiplicative divisor formula d(N) = prod(e_i + 1) — that factor-and-count is the problem's reasoning core."
 CONCEPT_GROUP = "number_theory"
 CONCEPT_TYPE = "number_theory.divisor_count"
-CONCEPT_REASON = "Mutation jumps from geometry to number_theory: continuous side-length multiplication yields to prime-exponent enumeration via d(N) = prod(e_i + 1), with no shared move between parent and child."
 ```

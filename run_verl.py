@@ -243,6 +243,28 @@ class RQTaskRunner:
         use_reservoir = bool(rq_cfg_get("use_reservoir", False))
         instances_per_program = rq_cfg_get("instances_per_program", 16)
 
+        # R_Q term ablation: R_Q = p(1-p) * U. Forcing a term to 1.0
+        # isolates the other term's contribution. Default: both active.
+        from rq_questioner.rq_score import configure_rq_ablation
+        rq_ablate_learnability = bool(
+            rq_cfg_get("rq_ablate_learnability", False)
+        )
+        rq_ablate_uncertainty = bool(
+            rq_cfg_get("rq_ablate_uncertainty", False)
+        )
+        configure_rq_ablation(
+            ablate_learnability=rq_ablate_learnability,
+            ablate_uncertainty=rq_ablate_uncertainty,
+        )
+        if rq_ablate_learnability or rq_ablate_uncertainty:
+            print(
+                f"[Runner] R_Q ABLATION active — "
+                f"learnability p(1-p): {'1.0 (ablated)' if rq_ablate_learnability else 'on'}, "
+                f"uncertainty U: {'1.0 (ablated)' if rq_ablate_uncertainty else 'on'}"
+            )
+        else:
+            print("[Runner] R_Q ablation: none (both terms active)")
+
         # Seeds + MAP-Elites
         print("[Runner] loading seed programs...")
         seeds = load_seeds(seed_dir)

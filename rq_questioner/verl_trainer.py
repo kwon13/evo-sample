@@ -44,7 +44,7 @@ from verl.utils.dataset import collate_fn as verl_collate_fn
 
 from .map_elites import MAPElitesGrid
 from .program import ProblemProgram, ProblemInstance
-from .rq_score import compute_rq_full
+from .rq_score import compute_rq_full, compute_rq_value, rq_ablation_state
 from .verl_dataset import MapElitesDynamicDataset
 from .code_utils import (
     extract_generator_code,
@@ -64,7 +64,7 @@ from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
     MUTATION_SYSTEM_PROMPT,
     build_score_feedback, build_few_shot_examples, build_execution_feedback,
-    parent_concept_fields, build_mutation_prefill,
+    parent_concept_fields,
     SOLVER_SYSTEM_PROMPT,
 )
 
@@ -224,22 +224,21 @@ def _extract_code(text: str) -> str | None:
     return extract_generator_code(text)
 
 
-def _format_mutation_prompt(tokenizer, prompt_text: str, suffix: str) -> str:
-    """Wrap a mutation prompt in chat format while keeping the assistant prefill.
+def _format_mutation_prompt(tokenizer, prompt_text: str) -> str:
+    """Wrap a mutation prompt in chat format.
 
     Layout:
       - system turn: MUTATION_SYSTEM_PROMPT (induces internal deliberation,
-        suppresses visible chain-of-thought; the prefill restricts visible
-        output to code, this guides the unseen forward-pass planning)
+        suppresses visible chain-of-thought)
       - user turn: instructions, parent code, rubric (= prompt_text)
-      - assistant turn (partial, not closed): code-fence + prefill body (= suffix)
+      - assistant turn: started fresh via add_generation_prompt; the model
+        emits the full generator file (docstring -> imports -> generate ->
+        CONCEPT_* constants) as raw Python source.
 
-    Uses `continue_final_message=True` so the assistant turn stays open and the
-    model continues directly from the prefill. If the tokenizer rejects either
-    the system role or the option, falls back to raw concatenation with the
-    system prompt prepended so the guidance is preserved.
+    If the tokenizer rejects the system role, falls back to raw concatenation
+    with the system prompt prepended so the guidance is preserved.
     """
-    fallback = MUTATION_SYSTEM_PROMPT + "\n\n" + prompt_text + suffix
+    fallback = MUTATION_SYSTEM_PROMPT + "\n\n" + prompt_text
     chat_template = getattr(tokenizer, "chat_template", None)
     if not chat_template:
         return fallback
@@ -247,14 +246,12 @@ def _format_mutation_prompt(tokenizer, prompt_text: str, suffix: str) -> str:
     messages = [
         {"role": "system", "content": MUTATION_SYSTEM_PROMPT},
         {"role": "user", "content": prompt_text},
-        {"role": "assistant", "content": suffix.lstrip("\n")},
     ]
     try:
         return tokenizer.apply_chat_template(
             messages,
             tokenize=False,
-            add_generation_prompt=False,
-            continue_final_message=True,
+            add_generation_prompt=True,
         )
     except (TypeError, ValueError):
         return fallback
@@ -1249,6 +1246,12 @@ class RQEvolveTrainer(RayPPOTrainer):
             "total_replacements": stats["total_replacements"],
             "total_reservoir_insertions": stats.get("total_reservoir_insertions", 0),
             "total_duplicate_rejections": stats.get("total_duplicate_rejections", 0),
+            "total_template_duplicate_rejections": stats.get(
+                "total_template_duplicate_rejections", 0
+            ),
+            # R_Q ablation state — records which terms were active this run.
+            "rq_ablate_learnability": rq_ablation_state()["ablate_learnability"],
+            "rq_ablate_uncertainty": rq_ablation_state()["ablate_uncertainty"],
             # Champion distribution (frontier tracking)
             "champion_p_hat_mean": float(np.mean(p_hats)) if p_hats else 0.0,
             "champion_p_hat_std": float(np.std(p_hats)) if p_hats else 0.0,
@@ -1820,7 +1823,7 @@ class RQEvolveTrainer(RayPPOTrainer):
                 pred_answers,
                 span_max_per_pair[ci],
             )
-            new_rq = new_p_hat * (1.0 - new_p_hat) * uncertainty_score
+            new_rq = compute_rq_value(new_p_hat, uncertainty_score)
 
             champ.p_hat = new_p_hat
             champ.h_score = uncertainty_score
@@ -1886,7 +1889,7 @@ class RQEvolveTrainer(RayPPOTrainer):
         few_shot_breadth = build_few_shot_examples("in_breadth")
         few_shot_crossover = build_few_shot_examples("crossover")
 
-        mutation_prompts = []  # (prompt_text, op, parent, parent_b, recovery_prefix)
+        mutation_prompts = []  # (full_prompt, op, parent, parent_b)
         for _ in range(batch_size):
             roll = random.random()
             if roll < self.crossover_ratio:
@@ -1913,12 +1916,11 @@ class RQEvolveTrainer(RayPPOTrainer):
                         h_b=getattr(pb, "h_score", 1.0),
                         few_shot=few_shot_crossover,
                     )
-                    suffix, recovery = build_mutation_prefill(op=op)
                     full_prompt = _format_mutation_prompt(
-                        self.tokenizer, prompt_text, suffix
+                        self.tokenizer, prompt_text
                     )
                     mutation_prompts.append(
-                        (full_prompt, op, pa, pb, recovery)
+                        (full_prompt, op, pa, pb)
                     )
                     continue
 
@@ -1939,12 +1941,11 @@ class RQEvolveTrainer(RayPPOTrainer):
                 parent_concept_type=ctype,
                 parent_concept_group=cgroup,
             )
-            suffix, recovery = build_mutation_prefill(op=op)
             full_prompt = _format_mutation_prompt(
-                self.tokenizer, prompt_text, suffix
+                self.tokenizer, prompt_text
             )
             mutation_prompts.append(
-                (full_prompt, op, parent, None, recovery)
+                (full_prompt, op, parent, None)
             )
 
         if not mutation_prompts:
@@ -1959,7 +1960,7 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         mut_batch = _make_gen_batch(
             tokenizer=self.tokenizer,
-            prompts_text=[pt for pt, _, _, _, _ in mutation_prompts],
+            prompts_text=[pt for pt, _, _, _ in mutation_prompts],
             answers=[""] * len(mutation_prompts),
             temperature=temperature,
             eos_token_id=eos_id, pad_token_id=pad_id,
@@ -1994,12 +1995,12 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         # Decode + execute (CPU)
         children = []  # (child, inst, op, mutation_output, source_code, inner_iteration)
-        for i, (_, op, parent, parent_b, recovery) in enumerate(mutation_prompts):
+        for i, (_, op, parent, parent_b) in enumerate(mutation_prompts):
             inner_iteration = inner_iteration_start + i
             code_text = self.tokenizer.decode(
                 resp_ids[i].tolist(), skip_special_tokens=True
             )
-            source_code = _extract_code(recovery + code_text)
+            source_code = _extract_code(code_text)
             if not source_code:
                 self._record_evolution_event({
                     "event": "candidate_failed",

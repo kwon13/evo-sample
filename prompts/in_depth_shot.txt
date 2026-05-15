@@ -28,24 +28,25 @@ MUTATED_PROGRAM_EXAMPLE_1:
 ```python
 """In-depth mutation generator.
 
-Parent (number_theory.modular_reduction): one direct
-reduction N mod p with N given as an integer.
-Child (same concept_type): a^b mod p with b far too large
-to form a^b directly.
+Deepens modular_reduction: the parent reduces a given integer
+N mod p in one step; this child asks for a^b mod p with b far
+too large to form a^b directly.
 
-The depth wraps the parent's move in three new stages —
-see that direct a^b is hopeless, recall Fermat's little
-theorem a^(p-1) ≡ 1 (mod p) for gcd(a, p) = 1, reduce the
-exponent to b' = b mod (p-1), then run the parent's
-reduction on a^b'. Fast modular exponentiation works but
-takes several times more multiplications and effectively
-rediscovers FLT empirically along the way.
+To solve, given only a, b, p, the reader must:
+  (1) see that forming a^b directly is hopeless,
+  (2) recall Fermat's little theorem a^(p-1) ≡ 1 (mod p) for
+      gcd(a, p) = 1,
+  (3) reduce the exponent to b' = b mod (p-1),
+  (4) reduce a^b' mod p — the parent's original move.
+Fast modular exponentiation also works but costs several times
+more multiplications and effectively rediscovers FLT along the
+way.
 
-Guards reject b' in {0, 1} (collapses to 1 or a mod p),
-final residues in {0, 1, p-1} (guessable by inspection),
-and a not coprime to p (FLT precondition — here forced by
-2 <= a < p prime). Problem text states only a, b, p; FLT
-and the exponent reduction are never mentioned.
+Guards keep the task honest: b' not in {0, 1} (else it collapses
+to 1 or a mod p), final residue not in {0, 1, p-1} (guessable),
+a coprime to p (FLT precondition, forced by 2 <= a < p prime).
+The problem text states only a, b, p — never FLT or the exponent
+reduction.
 """
 
 import random
@@ -73,9 +74,9 @@ def generate(seed):
     )
     return problem, str(sympy.Integer(answer))
 
+CONCEPT_REASON = "To solve, the reader must recognise a too-large exponent forces Fermat's little theorem to reduce it mod (p-1) before the final mod-p reduction — that exponent reduction is the problem's reasoning core."
 CONCEPT_GROUP = "number_theory"
 CONCEPT_TYPE = "number_theory.modular_reduction"
-CONCEPT_REASON = "In-depth deepening of modular_reduction: Fermat's little theorem wraps three new stages (recognise infeasibility of direct a^b, recall a^(p-1) ≡ 1, reduce exponent) around the parent's final mod-p reduction."
 ```
 
 PARENT_PROGRAM_EXAMPLE_2:
@@ -124,29 +125,28 @@ MUTATED_PROGRAM_EXAMPLE_2:
 ```python
 """In-depth mutation generator.
 
-Parent (algebra.polynomial_evaluation): one substitution
-p(c) for a small-degree polynomial and a given point c.
-Child (same concept_type): the remainder of a higher-degree
-polynomial p(x) when divided by (x - c), with the linear
-divisor presented in a slightly disguised form so the
-identity is not visible by surface match.
+Deepens polynomial_evaluation: the parent substitutes a point
+into a small-degree polynomial; this child asks for the
+remainder of a higher-degree p(x) divided by (x - c), the
+linear divisor lightly disguised so the identity is not a
+surface match.
 
-The depth wraps the parent's move in three new stages — see
-that performing the polynomial division explicitly is messy
-for the stated degree, recall the remainder theorem
-"p(x) mod (x - c) = p(c)", read off c from the divisor, then
-run the parent's single-point evaluation on it. Synthetic
-division is the only short alternative and is itself a
-disguised execution of the remainder theorem.
+To solve, given the polynomial and the divisor, the reader
+must:
+  (1) see that explicit polynomial division is messy at the
+      stated degree,
+  (2) recall the remainder theorem p(x) mod (x - c) = p(c),
+  (3) read c off the divisor,
+  (4) evaluate p(c) — the parent's single-point substitution.
+Synthetic division is the only short alternative, and is
+itself a disguised execution of the remainder theorem.
 
-Guards reject a leading coefficient of 0 (collapses degree),
-|c| > 4 (intermediate powers blow up and the problem
-measures arithmetic stamina rather than reasoning), and
-final values in {-1, 0, 1} (named-trivial residues the
-solver may guess). Problem text states only the polynomial
-and the divisor (x - c) rewritten as e.g. "x + 3" or
-"2x - 6 scaled"; the remainder theorem and the substitution
-shortcut are never mentioned.
+Guards keep the task honest: leading coefficient != 0 (degree
+preserved), |c| <= 4 (powers do not blow into an
+arithmetic-stamina test), final value not in {-1, 0, 1}
+(guessable). The problem text states only the polynomial and
+the divisor (x - c) — never the remainder theorem or the
+substitution shortcut.
 """
 
 import random
@@ -197,7 +197,7 @@ def generate(seed):
     )
     return problem, str(sympy.Integer(answer))
 
+CONCEPT_REASON = "To solve, the reader must recognise division by a linear factor (x - c) reduces to evaluating p(c) via the remainder theorem — that substitution is the problem's reasoning core."
 CONCEPT_GROUP = "algebra"
 CONCEPT_TYPE = "algebra.polynomial_evaluation"
-CONCEPT_REASON = "In-depth deepening of polynomial_evaluation: the remainder theorem wraps three new stages (recognise infeasibility of direct division, recall p(x) mod (x - c) = p(c), extract c from the divisor) around the parent's final single-point evaluation."
 ```

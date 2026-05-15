@@ -51,26 +51,22 @@ CROSSOVER_CHILD_PROGRAM_EXAMPLE_1:
 ```python
 """Crossover hybrid generator.
 
-Parent A (algebra.arithmetic_mean): for x + y = S, the mean
-(x + y)/2 = S/2 is fixed.
-Parent B (algebra.product_extremum_discrete): pick the (x, y)
-that maximises x*y.
+Parents fused: arithmetic_mean (a fixed sum x + y = S) and
+product_extremum_discrete (maximising x*y). They are not chained;
+the AM-GM inequality (x + y)/2 >= sqrt(x*y) makes the fixed sum
+bound the product directly.
 
-Shared structure: the same pair (x, y) is both constrained by
-A's mean condition and evaluated by B's product. The AM-GM
-inequality
-    (x + y)/2  >=  sqrt(x*y)
-is the identity fusing them: A's mean bounds B's product, tight
-at x = y, giving max x*y = (S/2)^2.
+To solve, given only S, the reader must:
+  (1) see that x*y must be maximised over a continuous set, so
+      no "scan a list" shortcut applies,
+  (2) recall AM-GM and read off that x*y <= (S/2)^2,
+  (3) note the bound is tight at x = y and report (S/2)^2.
+Without AM-GM there is no shorter handle on a continuous optimum.
 
-Why the solver is stuck without AM-GM: the feasible set is now
-continuous, so B's "max over a list" move does not apply, and no
-shorter handle exists.
-
-Guards reject S odd (forces integer answer), (S/2)^2 <= 25 (too
-small to require work), and S < 8 (optimum too close to the
-boundary the solver might guess). Problem text states only S; it
-never mentions AM-GM, the x = y optimum, or completing the square.
+Guards keep the task honest: S even (integer answer), (S/2)^2 > 25
+(not trivially small), S >= 8 (optimum away from a guessable
+boundary). The problem text states only S — never AM-GM, the
+x = y optimum, or completing the square.
 """
 
 import random, sympy
@@ -95,9 +91,9 @@ def generate(seed):
     )
     return problem, str(sympy.Integer(best))
 
+CONCEPT_REASON = "To solve, the reader must recognise a product under a fixed-sum constraint is maximised via the AM-GM inequality, tight at x = y — that inequality is the problem's reasoning core."
 CONCEPT_GROUP = "algebra"
 CONCEPT_TYPE = "algebra.am_gm_product_max"
-CONCEPT_REASON = "AM-GM fuses arithmetic_mean (constraint) with product_extremum_discrete (objective): the mean bounds the product, tight at x = y."
 ```
 
 PARENT_A_PROGRAM_EXAMPLE_2:
@@ -157,32 +153,25 @@ CROSSOVER_CHILD_PROGRAM_EXAMPLE_2:
 ```python
 """Crossover hybrid generator.
 
-Parent A (combinatorics.binomial_coefficient): C(n, k) counts
-k-subsets of an n-set.
-Parent B (sequence.geometric_sum): 1 + r + r^2 + ... + r^(n-1)
-sums a geometric progression.
+Parents fused: binomial_coefficient (the C(n, k) counts) and
+geometric_sum (a progression of powers of r). The binomial
+theorem (1 + r)^n = sum_{k=0..n} C(n, k) * r^k puts both on one
+polynomial — the binomials are exactly the weights of the sum.
 
-Shared structure: the single expansion (1 + r)^n is at once
-A's generating object — its coefficients are the C(n, k) — and
-B's value when those coefficients are weighted by powers of r.
-The binomial theorem
-    (1 + r)^n  =  sum_{k=0..n} C(n, k) * r^k
-fuses them on the same polynomial: the sum the solver wants is
-a weighted geometric-style sum whose weights are exactly A's
-binomials. Substituting x = r collapses the whole sum to a
-single power (1 + r)^n.
+To solve, given the series sum C(n,k)*r^k written out, the
+reader must:
+  (1) see that evaluating n+1 binomials and summing is the long
+      path,
+  (2) recognise the weighted sum as the binomial expansion of
+      (1 + r)^n,
+  (3) collapse it to the single power (1 + r)^n and evaluate.
+Without the binomial theorem each term is handled separately.
 
-Why the solver is stuck without the binomial theorem: A alone
-gives one coefficient at a time, requiring n separate binomial
-evaluations and a final weighted sum; B alone applies only to
-unit weights. Recognising the sum as (1 + r)^n is the only
-short path.
-
-Guards reject r = 1 (collapses to A's row sum 2^n), small n
-where the term-by-term sum is feasible, and answers that are
-named powers the solver might recognise by inspection.
-Problem text lists the series explicitly; it never mentions
-the binomial theorem or that the answer is a single power.
+Guards keep the task honest: r != 1 (else it degenerates to the
+row sum 2^n), n large enough that term-by-term is unattractive,
+and answers that are not powers guessable by inspection. The
+problem text lists the series explicitly — never the binomial
+theorem or that the answer is one power.
 """
 
 import sympy
@@ -217,7 +206,7 @@ def generate(seed):
     )
     return problem, str(sympy.Integer(answer))
 
+CONCEPT_REASON = "To solve, the reader must recognise a sum of binomially-weighted powers as the expansion of (1 + r)^n and collapse it via the binomial theorem — that recognition is the problem's reasoning core."
 CONCEPT_GROUP = "combinatorics"
 CONCEPT_TYPE = "combinatorics.binomial_theorem_sum"
-CONCEPT_REASON = "The binomial theorem fuses binomial_coefficient (the weights) with geometric_sum (the power structure): the weighted sum collapses to the single power (1 + r)^n."
 ```

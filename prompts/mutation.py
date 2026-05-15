@@ -12,36 +12,47 @@ from rq_questioner.program import ProblemProgram
 
 MUTATION_SYSTEM_PROMPT = (
     "You design Python generators for competition-math problems. "
-    "Each file defines `generate(seed)` returning one "
-    "(problem_text, answer) pair, then labels what it produced.\n"
+    "Each file defines `generate(seed)`, which returns one "
+    "(problem_text, answer) pair, and then labels what it produced.\n"
     "\n"
-    "File shape, in order: an optional module docstring describing "
-    "the mutation idea; imports (only collections, fractions, "
-    "functools, itertools, math, random, sympy); `def generate(seed)`; "
-    "then the three constants CONCEPT_GROUP, CONCEPT_TYPE "
-    "(\"<group>.<snake_case>\"), and CONCEPT_REASON (one short "
-    "sentence). The constants come AFTER `generate` — they label the "
-    "problem you just built, they are not a target to design toward.\n"
+    "File structure, in this order:\n"
+    "  1. an optional module docstring — the mutation idea and how "
+    "the resulting problem is solved;\n"
+    "  2. imports (only collections, fractions, functools, itertools, "
+    "math, random, sympy);\n"
+    "  3. `def generate(seed)`;\n"
+    "  4. the constants CONCEPT_REASON, CONCEPT_GROUP, CONCEPT_TYPE, "
+    "in that order.\n"
+    "The constants come last because they describe the problem you "
+    "just built — they are not a target to design toward.\n"
     "\n"
     + concept_prompt_block() +
     "\n"
-    "Honesty. The problem text must never contain the answer's literal "
-    "value — no \"... and the result is 17\", no \"simplify A/B = "
-    "2002\". The solver computes it. CONCEPT_GROUP and CONCEPT_TYPE "
-    "must reflect what the problem actually tests; do not borrow a "
-    "label from another domain to occupy a new cell.\n"
+    "Fill the three constants like this:\n"
+    "  - CONCEPT_REASON: one sentence beginning \"To solve, \" stating "
+    "the core reasoning a solver must perform using only the problem "
+    "text. Describe what the SOLVER does, never what your generator "
+    "did — a computation that runs inside `generate` but leaves no "
+    "trace in the problem text or answer (dead code, an unused "
+    "intermediate) is invisible to the solver and must not influence "
+    "the label. If the problem reduces to a single elementary "
+    "operation, say so plainly rather than reaching for a "
+    "harder-sounding label.\n"
+    "  - CONCEPT_GROUP and CONCEPT_TYPE: name the reasoning that "
+    "CONCEPT_REASON describes. Never borrow a label from another "
+    "domain to land in a different grid cell.\n"
     "\n"
-    "Validity by construction or rejection sampling, never by hoping "
-    "randomness cooperates. Determinism: use `rng = random.Random(seed)` "
-    "for every random draw; never `sympy.randprime`, `numpy.random.*`, "
-    "`secrets`, `os.urandom`, or any module-global RNG.\n"
+    "The problem text must never reveal the answer's value — no "
+    "\"... and the result is 17\", no \"simplify A/B = 2002\". The "
+    "solver computes it.\n"
     "\n"
-    "Output Python source only — no markdown, no prose outside the "
-    "code. The top-of-file docstring is the one place for narrative; "
-    "use it for the mutation rationale and nothing else.\n"
+    "Make every instance valid by construction or rejection sampling, "
+    "never by hoping randomness cooperates. Draw all randomness from "
+    "`rng = random.Random(seed)`; never `sympy.randprime`, "
+    "`numpy.random.*`, `secrets`, `os.urandom`, or any module-global "
+    "RNG.\n"
     "\n"
-    "Think step-by-step in private before writing. Reveal only the "
-    "final Python source."
+    "Think step-by-step in private before writing, then output Python source only."
 )
 
 
@@ -854,82 +865,3 @@ def parent_concept_fields(parent: ProblemProgram) -> tuple[str, str]:
     return ctype, cgroup
 
 
-def choose_prefill_concept(
-    op: str,
-    parent: ProblemProgram,
-    parent_b: ProblemProgram | None = None,
-    rng=None,
-) -> tuple[str, str]:
-    """Pick a (concept_type, concept_group) pair for prefill injection.
-
-    in_depth   : parent's exact concept (preserve constraint).
-    in_breadth : random whitelisted type whose group differs from parent.
-    crossover  : random whitelisted type from the union of A's and B's groups.
-    """
-    import random as _random
-    from rq_questioner.concepts import CONCEPT_TYPES, CONCEPT_TYPE_TO_GROUP
-    rng = rng or _random.Random()
-    p_ctype = (
-        parent.declared_concept_type()
-        or (parent.metadata or {}).get("concept_type")
-    )
-    p_cgroup = (
-        parent.declared_concept_group()
-        or (parent.metadata or {}).get("concept_group")
-    )
-
-    def _pair(t: str) -> tuple[str, str]:
-        return t, CONCEPT_TYPE_TO_GROUP[t]
-
-    if op == "in_depth":
-        if p_ctype in CONCEPT_TYPES:
-            return _pair(p_ctype)
-        return _pair(CONCEPT_TYPES[0])
-    if op == "in_breadth":
-        candidates = [
-            t for t in CONCEPT_TYPES
-            if CONCEPT_TYPE_TO_GROUP.get(t) != p_cgroup
-        ]
-        return _pair(rng.choice(candidates) if candidates else CONCEPT_TYPES[0])
-    # crossover
-    pb_cgroup = (
-        parent_b.declared_concept_group() or (parent_b.metadata or {}).get("concept_group")
-        if parent_b is not None else None
-    )
-    span = {g for g in (p_cgroup, pb_cgroup) if g}
-    candidates = [
-        t for t in CONCEPT_TYPES
-        if CONCEPT_TYPE_TO_GROUP.get(t) in span
-    ] or list(CONCEPT_TYPES)
-    return _pair(rng.choice(candidates))
-
-
-_PREFILL_DOCSTRING_TITLES = {
-    "in_depth":   '"""In-depth mutation generator.\n\n',
-    "in_breadth": '"""In-breadth mutation generator.\n\n',
-    "crossover":  '"""Crossover hybrid generator.\n\n',
-}
-
-
-def build_mutation_prefill(op: str = "in_depth") -> tuple[str, str]:
-    """Prefill the assistant turn so the model begins inside the module
-    docstring with an op-specific title line, matching the few-shot
-    child format exactly.
-
-    The new output ordering (docstring -> imports -> generate ->
-    CONCEPT_GROUP/TYPE/REASON) is enforced via the system prompt; the
-    prefill no longer asserts a CONCEPT label. Pre-hoc label
-    prefilling caused archive entries whose declared concept_type
-    did not match the problem the model actually wrote — labels are
-    now declared by the model *after* the function, so its choice
-    can honestly reflect what was generated.
-
-    Returns (suffix, recovery_body) where ``recovery_body`` is the
-    string that must be re-prepended to the model's output before
-    code extraction.
-    """
-    body = _PREFILL_DOCSTRING_TITLES.get(
-        op, _PREFILL_DOCSTRING_TITLES["in_depth"]
-    )
-    suffix = "```python\n" + body
-    return suffix, body

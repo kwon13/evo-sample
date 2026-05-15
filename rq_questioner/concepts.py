@@ -61,15 +61,16 @@ def concept_axis_labels(diversity_axis: str) -> list[str]:
 
 
 def concept_prompt_block() -> str:
-    """Group-only enumeration block. CONCEPT_TYPE is intentionally
-    free-form — only CONCEPT_GROUP membership is structurally enforced,
-    and only CONCEPT_GROUP affects the MAP-Elites D-axis."""
+    """Group-only enumeration block: states which CONCEPT_GROUP values
+    are valid and the CONCEPT_TYPE string format. How to *choose* a
+    label is left to the mutation system prompt — this block only
+    enumerates. CONCEPT_TYPE is intentionally free-form; only
+    CONCEPT_GROUP membership is structurally enforced, and only
+    CONCEPT_GROUP affects the MAP-Elites D-axis."""
     groups = ", ".join(CONCEPT_GROUPS)
     return (
         f"CONCEPT_GROUP must be exactly one of: {groups}\n"
-        "CONCEPT_TYPE is free-form snake_case after the group prefix "
-        "(format: '<group>.<specific_name>'); pick one that honestly "
-        "describes the reasoning core of the problem you just generated.\n"
+        "CONCEPT_TYPE is a free-form '<group>.<snake_case_name>' string.\n"
     )
 
 

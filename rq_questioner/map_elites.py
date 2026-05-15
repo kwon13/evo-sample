@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import random as _random
 import hashlib
 import numpy as np
@@ -9,6 +10,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 from .concepts import CONCEPT_GROUPS, CONCEPT_TYPES
 from .program import ProblemProgram
+from .rq_score import compute_rq_value
 
 
 @dataclass
@@ -95,6 +97,7 @@ class MAPElitesGrid:
         self.total_reservoir_insertions = 0
         self.total_reservoir_selections = 0
         self.total_duplicate_rejections = 0
+        self.total_template_duplicate_rejections = 0
 
     # ------------------------------------------------------------------
     # Embedding & Diversity Axis
@@ -261,6 +264,67 @@ class MAPElitesGrid:
                     return existing
         return None
 
+    @staticmethod
+    def _template_normalize_text(text: str) -> str:
+        """Reduce a problem text to its numeric-free skeleton: every
+        integer / decimal literal becomes 'N', whitespace collapsed,
+        lowercased. Two problems sharing this skeleton are the same
+        problem template differing only in sampled numbers."""
+        t = re.sub(r"-?\d+(?:\.\d+)?", "N", str(text or ""))
+        return " ".join(t.split()).lower()
+
+    @classmethod
+    def program_template_signature(
+        cls,
+        program: ProblemProgram,
+        n_seeds: int = 5,
+    ) -> str | None:
+        """Signature of the problem's numeric-free skeleton across seeds.
+
+        Unlike program_behavior_signature (which hashes the exact
+        problem/answer pairs, so it only catches digit-identical
+        clones), this hashes the problem text with every number
+        replaced by 'N'. It catches generators emitting the same
+        sentence template with different sampled numbers — the
+        surface-clone pattern that lets one problem template occupy
+        multiple grid cells under different concept labels.
+        """
+        cache_key = f"_template_signature_v1_{n_seeds}"
+        cached = (program.metadata or {}).get(cache_key)
+        if cached:
+            return str(cached)
+
+        templates = []
+        for seed in range(n_seeds):
+            inst = program.execute(seed=seed, timeout=5.0)
+            if inst is None:
+                return None
+            templates.append(cls._template_normalize_text(inst.problem))
+        payload = json.dumps(sorted(set(templates)), ensure_ascii=False)
+        signature = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        program.metadata[cache_key] = signature
+        return signature
+
+    def _find_duplicate_template(
+        self,
+        program: ProblemProgram,
+    ) -> ProblemProgram | None:
+        signature = self.program_template_signature(program)
+        if not signature:
+            return None
+
+        for niche in self.grid.values():
+            material = []
+            if niche.champion is not None:
+                material.append(niche.champion)
+            material.extend(niche.candidates)
+            for existing in material:
+                if existing.program_id == program.program_id:
+                    continue
+                if self.program_template_signature(existing) == signature:
+                    return existing
+        return None
+
     def register_seed(self, seed_id: str) -> int:
         """하위 호환용. embedding 기반에서는 no-op."""
         return 0
@@ -352,6 +416,30 @@ class MAPElitesGrid:
             })
             self.total_duplicate_rejections += 1
             return False
+
+        # ─── Surface-form (template) duplicate gate ────────────────────────
+        # Behavior-signature catches digit-identical clones only. This
+        # catches generators that emit the SAME problem template with
+        # different sampled numbers — the surface-clone pattern that lets
+        # one problem occupy multiple grid cells under different concept
+        # labels (e.g. the "regular polygon perimeter" template seen in
+        # six cells of one archive). Reject so a template holds at most
+        # one cell.
+        template_duplicate = self._find_duplicate_template(program)
+        if template_duplicate is not None:
+            program.metadata["archive_status"] = "duplicate_rejected"
+            program.metadata["reservoir_reason"] = "duplicate_template_signature"
+            program.metadata["duplicate_of"] = template_duplicate.program_id
+            niche.history.append({
+                "program_id": program.program_id,
+                "rq": rq_score,
+                "generation": program.generation,
+                "event": "template_duplicate_rejected",
+                "duplicate_of": template_duplicate.program_id,
+            })
+            self.total_template_duplicate_rejections += 1
+            return False
+        # ───────────────────────────────────────────────────────────────────
 
         if niche.champion is None or rq_score > niche.champion_rq:
             displaced = niche.champion
@@ -499,7 +587,7 @@ class MAPElitesGrid:
 
         if new_h_bin == old_h_bin and new_div_bin == old_div_bin:
             program.h_score = new_h_value
-            new_rq = program.p_hat * (1.0 - program.p_hat) * new_h_value
+            new_rq = compute_rq_value(program.p_hat, new_h_value)
             program.rq_score = new_rq
             program.fitness = new_rq
             niche = self.grid[(old_h_bin, old_div_bin)]
@@ -736,6 +824,9 @@ class MAPElitesGrid:
             "total_reservoir_insertions": self.total_reservoir_insertions,
             "total_reservoir_selections": self.total_reservoir_selections,
             "total_duplicate_rejections": self.total_duplicate_rejections,
+            "total_template_duplicate_rejections": (
+                self.total_template_duplicate_rejections
+            ),
             "candidate_reservoir_size": self.candidate_reservoir_size,
         }
 
@@ -747,6 +838,9 @@ class MAPElitesGrid:
             "h_range": self.h_range,
             "candidate_reservoir_size": self.candidate_reservoir_size,
             "total_duplicate_rejections": self.total_duplicate_rejections,
+            "total_template_duplicate_rejections": (
+                self.total_template_duplicate_rejections
+            ),
             "stats": self.stats(),
         }
         with open(os.path.join(path, "grid_meta.json"), "w") as f:

@@ -139,6 +139,15 @@ rq:
   #   h           : mean output-token entropy averaged over G responses
   #   h_span_max : response span-max entropy averaged over G responses
   uncertainty_metric: h
+
+  # --- R_Q term ablation (default: both terms active = standard R_Q) ---
+  # R_Q = p(1-p) * U. To isolate one term's contribution, force the other
+  # to 1.0 with the switch below. Both false = no ablation.
+  #   rq_ablate_learnability: true  -> p(1-p) term becomes 1.0
+  #   rq_ablate_uncertainty:  true  -> U (entropy) term becomes 1.0
+  rq_ablate_learnability: false
+  rq_ablate_uncertainty: false
+
   instances_per_program: 16
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
