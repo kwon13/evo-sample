@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "number_theory"
-CONCEPT_TYPE = "number_theory.gcd_lcm_sync"
-
 import random
 import math
 
@@ -44,3 +41,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "number_theory"
+CONCEPT_TYPE = "number_theory.gcd_lcm_sync"

@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "algebra"
-CONCEPT_TYPE = "algebra.linear_system_sum"
-
 import random
 
 def generate(seed):
@@ -52,3 +49,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "algebra"
+CONCEPT_TYPE = "algebra.linear_system_sum"

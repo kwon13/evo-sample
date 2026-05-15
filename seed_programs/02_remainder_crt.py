@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "number_theory"
-CONCEPT_TYPE = "number_theory.crt_count"
-
 import math
 import random
 
@@ -28,3 +25,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "number_theory"
+CONCEPT_TYPE = "number_theory.crt_count"

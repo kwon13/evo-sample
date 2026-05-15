@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "geometry"
-CONCEPT_TYPE = "geometry.trig_area"
-
 import random
 
 
@@ -30,3 +27,6 @@ def generate(seed):
     )
 
     return problem, answer
+
+CONCEPT_GROUP = "geometry"
+CONCEPT_TYPE = "geometry.trig_area"

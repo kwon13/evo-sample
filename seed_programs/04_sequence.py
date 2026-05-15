@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "sequence"
-CONCEPT_TYPE = "sequence.geometric_to_arithmetic_sum"
-
 import random
 
 def generate(seed):
@@ -22,3 +19,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "sequence"
+CONCEPT_TYPE = "sequence.geometric_to_arithmetic_sum"

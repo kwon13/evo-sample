@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "combinatorics"
-CONCEPT_TYPE = "combinatorics.derangement_fixed_points"
-
 import math
 import random
 
@@ -31,3 +28,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "combinatorics"
+CONCEPT_TYPE = "combinatorics.derangement_fixed_points"

@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "geometry"
-CONCEPT_TYPE = "geometry.ptolemy_cyclic_quadrilateral"
-
 import random
 from fractions import Fraction
 
@@ -30,3 +27,6 @@ def generate(seed):
         f"Using Ptolemy's theorem, find the length of the other diagonal BD."
     )
     return problem, answer
+
+CONCEPT_GROUP = "geometry"
+CONCEPT_TYPE = "geometry.ptolemy_cyclic_quadrilateral"

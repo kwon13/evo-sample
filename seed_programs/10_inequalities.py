@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "inequality"
-CONCEPT_TYPE = "inequality.am_gm_product"
-
 import random
 
 
@@ -22,3 +19,6 @@ def generate(seed):
     )
 
     return problem, str(max_product)
+
+CONCEPT_GROUP = "inequality"
+CONCEPT_TYPE = "inequality.am_gm_product"

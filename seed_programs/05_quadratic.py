@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "algebra"
-CONCEPT_TYPE = "algebra.quadratic_vieta_reciprocal"
-
 import random
 from fractions import Fraction
 
@@ -32,3 +29,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "algebra"
+CONCEPT_TYPE = "algebra.quadratic_vieta_reciprocal"

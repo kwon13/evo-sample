@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "sequence"
-CONCEPT_TYPE = "sequence.linear_recurrence"
-
 import random
 
 def generate(seed):
@@ -20,3 +17,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "sequence"
+CONCEPT_TYPE = "sequence.linear_recurrence"

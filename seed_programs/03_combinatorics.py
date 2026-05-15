@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "combinatorics"
-CONCEPT_TYPE = "combinatorics.committee_count"
-
 import random
 import math
 
@@ -29,3 +26,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "combinatorics"
+CONCEPT_TYPE = "combinatorics.committee_count"

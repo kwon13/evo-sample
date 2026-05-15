@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "geometry"
-CONCEPT_TYPE = "geometry.power_of_point_secants"
-
 import random
 from fractions import Fraction
 
@@ -36,3 +33,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "geometry"
+CONCEPT_TYPE = "geometry.power_of_point_secants"

@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "number_theory"
-CONCEPT_TYPE = "number_theory.kth_root_mod_prime"
-
 import math
 import random
 
@@ -54,3 +51,6 @@ def generate(seed):
         f"satisfy x^{k} ≡ a (mod {p})?"
     )
     return problem, str(answer)
+
+CONCEPT_GROUP = "number_theory"
+CONCEPT_TYPE = "number_theory.kth_root_mod_prime"

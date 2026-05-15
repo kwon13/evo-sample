@@ -1,6 +1,3 @@
-CONCEPT_GROUP = "geometry"
-CONCEPT_TYPE = "geometry.line_intersection_distance"
-
 import random
 import sympy
 
@@ -29,3 +26,6 @@ def generate(seed):
     )
 
     return problem, str(answer)
+
+CONCEPT_GROUP = "geometry"
+CONCEPT_TYPE = "geometry.line_intersection_distance"
