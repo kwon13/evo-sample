@@ -173,6 +173,87 @@ def extract_generator_code(text: str) -> str | None:
     return scored[0][2]
 
 
+# CONCEPT_GROUP is intentionally preserved when stripping parent code for
+# the mutation prompt — it matches the few-shot parent format (which keeps
+# the group declaration at the bottom of the file) and lets MUTATE_DEPTH /
+# MUTATE_BREADTH express "same/different domain" via code the model can
+# read in place, rather than via an out-of-band instruction variable.
+# CONCEPT_TYPE and CONCEPT_REASON are removed: type is free-form and post-
+# hoc, so exposing the parent's type would re-introduce a label-copy anchor.
+_CONCEPT_CONSTANT_NAMES = frozenset(
+    {"CONCEPT_TYPE", "CONCEPT_REASON"}
+)
+
+
+def strip_parent_source_for_prompt(source_code: str) -> str:
+    """Return parent ``source_code`` with two anchors removed:
+
+    1. The module-level docstring (the long prose narrative LLMs
+       gravitate toward as an output template).
+    2. The top-level ``CONCEPT_GROUP`` / ``CONCEPT_TYPE`` /
+       ``CONCEPT_REASON`` constant assignments (so the parent's
+       label is not visible to the mutation LLM — preventing
+       label-copy reward-hacks).
+
+    The minimal parent (imports + ``generate``) is what the LLM
+    sees; the actual taxonomic labels are conveyed via the prompt
+    template instructions instead. If parsing fails for any
+    reason, the original source is returned unchanged.
+    """
+    try:
+        tree = ast.parse(source_code)
+    except SyntaxError:
+        return source_code
+
+    kept_concept_group: list[ast.stmt] = []
+    other_nodes: list[ast.stmt] = []
+    for node in tree.body:
+        # Drop ANY top-level string-literal expression. In a well-formed
+        # module that is the docstring; in archived programs that
+        # accumulated a prose narrative anywhere at top level, it is
+        # exactly the LLM-imitation anchor we want gone.
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            continue
+        # Drop CONCEPT_TYPE / CONCEPT_REASON assignments (CONCEPT_GROUP
+        # is intentionally preserved — see _CONCEPT_CONSTANT_NAMES).
+        if isinstance(node, ast.Assign):
+            targets = [
+                t.id for t in node.targets if isinstance(t, ast.Name)
+            ]
+            if any(t in _CONCEPT_CONSTANT_NAMES for t in targets):
+                continue
+            # CONCEPT_GROUP gets re-located to the end of the file so
+            # the rendered parent matches the few-shot parent format
+            # (label appears after `generate`, never before).
+            if "CONCEPT_GROUP" in targets:
+                kept_concept_group.append(node)
+                continue
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id in _CONCEPT_CONSTANT_NAMES
+        ):
+            continue
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "CONCEPT_GROUP"
+        ):
+            kept_concept_group.append(node)
+            continue
+        other_nodes.append(node)
+
+    tree.body = other_nodes + kept_concept_group
+    try:
+        return ast.unparse(tree)
+    except Exception:
+        return source_code
+
+
 def lint_generator_source(source_code: str) -> list[str]:
     """Cheap static checks before executing an LLM-generated program."""
     reasons: list[str] = []

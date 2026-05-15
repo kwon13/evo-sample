@@ -1,28 +1,3 @@
-"""
-Mutation prompts for R_Q-Evolve Questioner.
-
-Design goals (revised):
-  1. REWARD-HACK DEFENSE — explicitly name & forbid the degenerate
-     patterns that hijack fitness R_Q = p(1-p)·H by making the
-     solver uncertain *without* teaching it reasoning (e.g. `x % 1`,
-     arbitrary float-rounding, random letter-variable ensembles).
-  2. STRUCTURED CREATIVITY — replace the vague "make it harder"
-     hint with 6 named complexity axes that push real reasoning
-     depth (parametric lifting, case analysis, theorem chaining,
-     structural constraints, dimension lift, hidden identity).
-  3. CONCEPT DECLARATION — force the LLM to commit to a named
-     mathematical domain + techniques so that near-duplicate
-     problems in different niches become rarer.
-  4. FEW-SHOT HYGIENE — filter champions for banned patterns
-     before they reach the few-shot window so the model doesn't
-     learn to imitate degenerate incumbents.
-  5. DIAGNOSTIC SHARPENING — detect parents that look like
-     reward-hacks (high-H/mid-p with `%1`, `*1`, etc. in source)
-     and instruct the LLM to REPAIR them, not extend them.
-"""
-
-from __future__ import annotations
-
 import re
 from pathlib import Path
 
@@ -37,28 +12,36 @@ from rq_questioner.program import ProblemProgram
 
 MUTATION_SYSTEM_PROMPT = (
     "You design Python generators for competition-math problems. "
-    "Each generator defines `generate(seed)` and returns one "
-    "(problem_text, answer) pair.\n"
+    "Each file defines `generate(seed)` returning one "
+    "(problem_text, answer) pair, then labels what it produced.\n"
     "\n"
-    "Validity is non-negotiable. The user message specifies the "
-    "validity contract; enforce its invariants by construction or "
-    "rejection sampling, never by hoping randomness cooperates.\n"
+    "File shape, in order: an optional module docstring describing "
+    "the mutation idea; imports (only collections, fractions, "
+    "functools, itertools, math, random, sympy); `def generate(seed)`; "
+    "then the three constants CONCEPT_GROUP, CONCEPT_TYPE "
+    "(\"<group>.<snake_case>\"), and CONCEPT_REASON (one short "
+    "sentence). The constants come AFTER `generate` — they label the "
+    "problem you just built, they are not a target to design toward.\n"
     "\n"
-    "Determinism: use `rng = random.Random(seed)` for ALL randomness "
-    "inside `generate(seed)`. Do NOT call `sympy.randprime`, "
-    "`numpy.random.*`, `secrets.*`, `os.urandom`, or any "
-    "module-global RNG — these ignore the seed and produce "
-    "different problems on each call, which fails validation.\n"
+    + concept_prompt_block() +
     "\n"
-    "Output only Python source — no preamble, no markdown, no prose "
-    "outside the code. Inside `generate()`, brief one-line comments "
-    "are fine; no docstrings or multi-line prose.\n"
+    "Honesty. The problem text must never contain the answer's literal "
+    "value — no \"... and the result is 17\", no \"simplify A/B = "
+    "2002\". The solver computes it. CONCEPT_GROUP and CONCEPT_TYPE "
+    "must reflect what the problem actually tests; do not borrow a "
+    "label from another domain to occupy a new cell.\n"
     "\n"
-    "FIRST, in your private scratch-pad, think step-by-step to design "
-    "a brand-new, non-trivial generator whose outputs are "
-    "mathematically valid by construction.\n"
-    "THEN, without revealing any of your private thoughts, output "
-    "only the Python source for the generator."
+    "Validity by construction or rejection sampling, never by hoping "
+    "randomness cooperates. Determinism: use `rng = random.Random(seed)` "
+    "for every random draw; never `sympy.randprime`, `numpy.random.*`, "
+    "`secrets`, `os.urandom`, or any module-global RNG.\n"
+    "\n"
+    "Output Python source only — no markdown, no prose outside the "
+    "code. The top-of-file docstring is the one place for narrative; "
+    "use it for the mutation rationale and nothing else.\n"
+    "\n"
+    "Think step-by-step in private before writing. Reveal only the "
+    "final Python source."
 )
 
 
@@ -110,8 +93,9 @@ MUTATE_DEPTH = (
     "Constraints for this mutation:\n"
     "  - Add one substantive reasoning stage beyond the parent "
     "(a named identity, theorem, or structural lift).\n"
-    "  - Keep CONCEPT_TYPE = '{parent_concept_type}' and "
-    "CONCEPT_GROUP = '{parent_concept_group}' exactly.\n"
+    "  - Keep CONCEPT_GROUP = '{parent_concept_group}' (same domain). "
+    "Choose your own CONCEPT_TYPE that honestly describes the "
+    "child's reasoning core.\n"
     "  - Do not inherit reward-hack patterns from the parent; the "
     "child's final answer should stay compact.\n"
     "\n"
@@ -662,43 +646,59 @@ _SHOT_CACHE: dict[str, str] = {}
 
 
 def _parse_paired_shots(text: str) -> list[tuple[str, str]]:
-    """Parse PARENT_PROGRAM_EXAMPLE_N / MUTATED_PROGRAM_EXAMPLE_N pairs."""
-    blocks = re.split(r"\n-{3,}\n", text)
-    pairs: list[tuple[str, str]] = []
-    for blk in blocks:
-        parents = re.findall(
-            r"PARENT_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
-            blk, re.S,
+    """Parse all PARENT_PROGRAM_EXAMPLE_N / MUTATED_PROGRAM_EXAMPLE_N
+    pairs from ``text``. Pairs are joined by the numeric index N, so
+    intervening whitespace/separators do not affect the mapping and
+    every example present in the file is recovered."""
+    parents = {
+        int(n): src.strip()
+        for n, src in re.findall(
+            r"PARENT_PROGRAM_EXAMPLE_(\d+):\s*```python\n(.*?)```",
+            text, re.S,
         )
-        children = re.findall(
-            r"MUTATED_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
-            blk, re.S,
+    }
+    children = {
+        int(n): src.strip()
+        for n, src in re.findall(
+            r"MUTATED_PROGRAM_EXAMPLE_(\d+):\s*```python\n(.*?)```",
+            text, re.S,
         )
-        if parents and children:
-            pairs.append((parents[0].strip(), children[0].strip()))
-    return pairs
+    }
+    return [
+        (parents[n], children[n])
+        for n in sorted(parents.keys() & children.keys())
+    ]
 
 
 def _parse_crossover_shots(text: str) -> list[tuple[str, str, str]]:
-    """Parse PARENT_A / PARENT_B / CROSSOVER_CHILD triples."""
-    blocks = re.split(r"\n-{3,}\n", text)
-    triples: list[tuple[str, str, str]] = []
-    for blk in blocks:
-        as_ = re.findall(
-            r"PARENT_A_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
-            blk, re.S,
+    """Parse all PARENT_A / PARENT_B / CROSSOVER_CHILD triples,
+    joined by their numeric index N."""
+    parents_a = {
+        int(n): src.strip()
+        for n, src in re.findall(
+            r"PARENT_A_PROGRAM_EXAMPLE_(\d+):\s*```python\n(.*?)```",
+            text, re.S,
         )
-        bs_ = re.findall(
-            r"PARENT_B_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
-            blk, re.S,
+    }
+    parents_b = {
+        int(n): src.strip()
+        for n, src in re.findall(
+            r"PARENT_B_PROGRAM_EXAMPLE_(\d+):\s*```python\n(.*?)```",
+            text, re.S,
         )
-        cs_ = re.findall(
-            r"CROSSOVER_CHILD_PROGRAM_EXAMPLE_\d+:\s*```python\n(.*?)```",
-            blk, re.S,
+    }
+    children = {
+        int(n): src.strip()
+        for n, src in re.findall(
+            r"CROSSOVER_CHILD_PROGRAM_EXAMPLE_(\d+):\s*```python\n(.*?)```",
+            text, re.S,
         )
-        if as_ and bs_ and cs_:
-            triples.append((as_[0].strip(), bs_[0].strip(), cs_[0].strip()))
-    return triples
+    }
+    keys = parents_a.keys() & parents_b.keys() & children.keys()
+    return [
+        (parents_a[n], parents_b[n], children[n])
+        for n in sorted(keys)
+    ]
 
 
 def _no_examples_fallback(op: str) -> str:
@@ -712,10 +712,10 @@ def _no_examples_fallback(op: str) -> str:
 
 
 def _format_paired_shots(
-    op: str, pairs: list[tuple[str, str]], top_k: int
+    op: str, pairs: list[tuple[str, str]]
 ) -> str:
     parts = [f"High-quality {op} examples (parent shape -> mutated child).\n"]
-    for i, (parent_src, child_src) in enumerate(pairs[:top_k], 1):
+    for i, (parent_src, child_src) in enumerate(pairs, 1):
         parts.append(
             f"Example {i}.\n"
             f"  Parent (before {op}):\n"
@@ -727,14 +727,14 @@ def _format_paired_shots(
 
 
 def _format_crossover_shots(
-    triples: list[tuple[str, str, str]], top_k: int
+    triples: list[tuple[str, str, str]]
 ) -> str:
     parts = [
         "High-quality crossover examples (parent A + parent B -> hybrid "
         "child whose single mathematical object is the intersection of "
         "A's and B's ideas, NOT a concatenation of A then B).\n"
     ]
-    for i, (a_src, b_src, c_src) in enumerate(triples[:top_k], 1):
+    for i, (a_src, b_src, c_src) in enumerate(triples, 1):
         parts.append(
             f"Example {i}.\n"
             f"  Parent A:\n  ```python\n{a_src}\n  ```\n"
@@ -744,11 +744,12 @@ def _format_crossover_shots(
     return "\n".join(parts) + "\n"
 
 
-def build_few_shot_examples(op: str, top_k: int = 2) -> str:
+def build_few_shot_examples(op: str) -> str:
     """Operator-aware few-shot loaded from prompts/<op>_shot.txt.
 
-    The shot files are hand-curated and parsed once per process; archive
-    champions are intentionally not consulted here.
+    All examples present in the shot file are included. Files are
+    hand-curated and parsed once per process; archive champions are
+    intentionally not consulted here.
 
     Returns a rubric-section text block ready to fill the {few_shot}
     slot of a mutation template. A "no examples available" fallback is
@@ -756,31 +757,30 @@ def build_few_shot_examples(op: str, top_k: int = 2) -> str:
     """
     if op not in _SHOT_FILES:
         return ""
-    cache_key = f"{op}::{top_k}"
-    cached = _SHOT_CACHE.get(cache_key)
+    cached = _SHOT_CACHE.get(op)
     if cached is not None:
         return cached
 
     path = _SHOT_FILES[op]
     if not path.exists():
         rendered = _no_examples_fallback(op)
-        _SHOT_CACHE[cache_key] = rendered
+        _SHOT_CACHE[op] = rendered
         return rendered
 
     raw = path.read_text()
     if op == "crossover":
         triples = _parse_crossover_shots(raw)
         rendered = (
-            _format_crossover_shots(triples, top_k)
+            _format_crossover_shots(triples)
             if triples else _no_examples_fallback(op)
         )
     else:
         pairs = _parse_paired_shots(raw)
         rendered = (
-            _format_paired_shots(op, pairs, top_k)
+            _format_paired_shots(op, pairs)
             if pairs else _no_examples_fallback(op)
         )
-    _SHOT_CACHE[cache_key] = rendered
+    _SHOT_CACHE[op] = rendered
     return rendered
 
 
@@ -904,17 +904,32 @@ def choose_prefill_concept(
     return _pair(rng.choice(candidates))
 
 
-def build_mutation_prefill(
-    ctype: str, cgroup: str, op: str = "in_depth"
-) -> tuple[str, str]:
-    if op == "in_depth":
-        body = (
-            f"CONCEPT_GROUP = \"{cgroup}\"\n"
-            "CONCEPT_TYPE = \""
-        )
-    else:
-        body = (
-            "CONCEPT_GROUP = \""
-        )
+_PREFILL_DOCSTRING_TITLES = {
+    "in_depth":   '"""In-depth mutation generator.\n\n',
+    "in_breadth": '"""In-breadth mutation generator.\n\n',
+    "crossover":  '"""Crossover hybrid generator.\n\n',
+}
+
+
+def build_mutation_prefill(op: str = "in_depth") -> tuple[str, str]:
+    """Prefill the assistant turn so the model begins inside the module
+    docstring with an op-specific title line, matching the few-shot
+    child format exactly.
+
+    The new output ordering (docstring -> imports -> generate ->
+    CONCEPT_GROUP/TYPE/REASON) is enforced via the system prompt; the
+    prefill no longer asserts a CONCEPT label. Pre-hoc label
+    prefilling caused archive entries whose declared concept_type
+    did not match the problem the model actually wrote — labels are
+    now declared by the model *after* the function, so its choice
+    can honestly reflect what was generated.
+
+    Returns (suffix, recovery_body) where ``recovery_body`` is the
+    string that must be re-prepended to the model's output before
+    code extraction.
+    """
+    body = _PREFILL_DOCSTRING_TITLES.get(
+        op, _PREFILL_DOCSTRING_TITLES["in_depth"]
+    )
     suffix = "```python\n" + body
     return suffix, body

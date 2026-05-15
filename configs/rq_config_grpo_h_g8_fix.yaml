@@ -64,8 +64,8 @@ trainer:
   total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
-  experiment_name: qwen3_4b_base_grpo_h_g8_fix_archive
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_fix_archive
+  experiment_name: qwen3_4b_base_grpo_h_g8_org_map_pobs=8
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_org_map_pobs=8
   logger:
     - console
     - wandb
@@ -105,7 +105,7 @@ math_eval:
   # Set true in a standalone post-training eval to promote items whose
   # extracted answer math_verify rejected but GPT-4o judges equivalent.
   gpt_judge:
-    enabled: true
+    enabled: false
     model: gpt-4o
     api_key_env: OPENAI_API_KEY
     retry_max: 3
@@ -139,7 +139,7 @@ rq:
   #   h           : mean output-token entropy averaged over G responses
   #   h_span_max : response span-max entropy averaged over G responses
   uncertainty_metric: h
-  instances_per_program: 16
+  instances_per_program: 8
   crossover_ratio: 0.2
   in_depth_ratio: 0.5
   ucb_c: 1.0
@@ -178,7 +178,7 @@ rq:
   # exec-failing ones.
   # L=[0.3, 0.7]: 이전 [0.1, 0.9] 대비 narrower band — Solver가 진짜 경계
   # (어렵지도 쉽지도 않은) 문제만 학습. Training set 크기는 줄어듦.
-  frontier_p_hat_range: [0.3, 0.7]
+  frontier_p_hat_range: [0.2, 0.8]
 
   # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
   # mode:
@@ -217,5 +217,5 @@ rq:
   #   false          — evolve at outer iteration 0 even on resume. Checkpoint is already
   #                    loaded by fit() at that point, so this scores the archive
   #                    with the checkpointed policy (not the base model).
-  evolve_before_train: true
-  skip_initial_evolution_on_resume: true
+  evolve_before_train: false
+  skip_initial_evolution_on_resume: false

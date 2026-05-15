@@ -61,14 +61,15 @@ def concept_axis_labels(diversity_axis: str) -> list[str]:
 
 
 def concept_prompt_block() -> str:
-    types = ", ".join(CONCEPT_TYPES)
+    """Group-only enumeration block. CONCEPT_TYPE is intentionally
+    free-form — only CONCEPT_GROUP membership is structurally enforced,
+    and only CONCEPT_GROUP affects the MAP-Elites D-axis."""
     groups = ", ".join(CONCEPT_GROUPS)
     return (
-        "Required top-level constants (use these exact strings):\n"
-        f"  CONCEPT_TYPE must be one of: {types}\n"
-        f"  CONCEPT_GROUP must be one of: {groups}\n"
-        "  CONCEPT_GROUP must match the prefix-group of CONCEPT_TYPE.\n"
-        "\n"
+        f"CONCEPT_GROUP must be exactly one of: {groups}\n"
+        "CONCEPT_TYPE is free-form snake_case after the group prefix "
+        "(format: '<group>.<specific_name>'); pick one that honestly "
+        "describes the reasoning core of the problem you just generated.\n"
     )
 
 

@@ -1,113 +1,203 @@
 PARENT_PROGRAM_EXAMPLE_1:
 ```python
-CONCEPT_GROUP = "number_theory"
-CONCEPT_TYPE = "number_theory.gcd_lcm_sync"
-
-"""Shallow gcd generator (parent shape).
-
-Single reasoning move: apply the Euclidean algorithm to two given
-integers and report the result. No identities, no modular reduction,
-no chaining — just one Euclid run.
-"""
-
 import random
 import sympy
 
 def generate(seed):
     rng = random.Random(seed)
-    # Sample two coprime cofactors and a common factor so the gcd is
-    # exactly g by construction.
-    g = rng.randint(3, 15)
     while True:
-        k1 = rng.randint(4, 20)
-        k2 = rng.randint(4, 20)
-        if sympy.gcd(k1, k2) == 1 and k1 != k2:
-            break
-    a, b = g * k1, g * k2
-    problem = f"Find the greatest common divisor of {a} and {b}."
-    return problem, str(sympy.Integer(g))
+        p = rng.choice([5, 7, 11, 13, 17, 19])
+        N = rng.randint(200, 9000)
+        r = N % p
+        if r in (0, 1, p - 1):
+            continue
+        if p == 5 and N % 10 == r:
+            continue
+        break
+    problem = (
+        f"Compute the remainder when {N} is divided by {p}. "
+        f"State only the remainder as an integer between 0 and {p - 1}."
+    )
+    return problem, str(sympy.Integer(r))
+
+CONCEPT_GROUP = "number_theory"
+CONCEPT_TYPE = "number_theory.modular_reduction"
 ```
 
 MUTATED_PROGRAM_EXAMPLE_1:
 ```python
-CONCEPT_GROUP = "number_theory"
-CONCEPT_TYPE = "number_theory.gcd_lcm_sync"
+"""In-depth mutation generator.
 
-"""In-depth mutation child of a shallow gcd-sum generator.
+Parent (number_theory.modular_reduction): one direct
+reduction N mod p with N given as an integer.
+Child (same concept_type): a^b mod p with b far too large
+to form a^b directly.
 
-Parent shape (shallow): "gcd(a, b) = ?  with a, b given."
-Single reasoning move: run Euclid.
+The depth wraps the parent's move in three new stages —
+see that direct a^b is hopeless, recall Fermat's little
+theorem a^(p-1) ≡ 1 (mod p) for gcd(a, p) = 1, reduce the
+exponent to b' = b mod (p-1), then run the parent's
+reduction on a^b'. Fast modular exponentiation works but
+takes several times more multiplications and effectively
+rediscovers FLT empirically along the way.
 
-This child requires four reasoning stages:
-  (1) recognize that gcd(F_m, F_n) = F_{gcd(m, n)}  (Fibonacci gcd identity),
-  (2) reduce gcd(m, n) by the Euclidean algorithm on the INDICES, not
-      the giant Fibonacci values themselves,
-  (3) compute the resulting small Fibonacci number,
-  (4) read it off modulo the stated prime so the final answer is a
-      clean residue rather than a multi-hundred-digit integer.
-
-Inverse construction. We sample indices m, n with a controlled gcd g,
-compute F_g exactly with sympy, then reduce modulo a prime p chosen so
-that F_g mod p is non-trivial (not 0, 1, or p-1). The problem text
-states only m, n, p and asks for gcd(F_m, F_n) mod p — the Fibonacci
-gcd identity is the discovery, not a hint.
+Guards reject b' in {0, 1} (collapses to 1 or a mod p),
+final residues in {0, 1, p-1} (guessable by inspection),
+and a not coprime to p (FLT precondition — here forced by
+2 <= a < p prime). Problem text states only a, b, p; FLT
+and the exponent reduction are never mentioned.
 """
 
 import random
 import sympy
 
-
 def generate(seed):
     rng = random.Random(seed)
-
     while True:
-        # Sample a target index-gcd g in a range that yields a Fibonacci
-        # number large enough to be non-trivial but small enough to fit
-        # the reasoning chain cleanly.
-        g = rng.randint(6, 14)
+        p = rng.choice([7, 11, 13, 17, 19, 23])
+        a = rng.randint(2, p - 1)
+        b = rng.randint(p ** 2, p ** 3)
 
-        # Build m, n as g * k1, g * k2 with coprime cofactors. This
-        # guarantees gcd(m, n) = g by construction — no rejection on the
-        # index gcd is needed.
-        k1 = rng.randint(3, 9)
-        k2_pool = [k for k in range(3, 12) if sympy.gcd(k1, k) == 1 and k != k1]
-        if not k2_pool:
-            continue
-        k2 = rng.choice(k2_pool)
-        m, n = g * k1, g * k2
-
-        # Keep the indices within a band that fits in a problem statement
-        # without looking artificial.
-        if not (40 <= min(m, n) and max(m, n) <= 140):
+        b_reduced = b % (p - 1)
+        if b_reduced in (0, 1):
             continue
 
-        f_g = sympy.fibonacci(g)
-
-        # Pick a prime where F_g mod p is genuinely informative.
-        # Reject p that produces residue 0, 1, or p-1 (trick surfaces
-        # that let a solver guess without the identity), and require
-        # p < F_g so that the modular reduction actually shrinks the
-        # value — otherwise the residue equals F_g and stage (4) of
-        # the reasoning chain becomes vacuous.
-        p_candidates = list(sympy.primerange(20, max(int(f_g), 51)))
-        rng.shuffle(p_candidates)
-        chosen_p = None
-        for p in p_candidates:
-            if p >= int(f_g):
-                continue
-            r = f_g % p
-            if r not in (0, 1, p - 1) and r > 5:
-                chosen_p = p
-                break
-        if chosen_p is None:
+        answer = pow(a, b, p)
+        if answer in (0, 1, p - 1):
             continue
-
-        answer = f_g % chosen_p
         break
 
     problem = (
-        f"Let F_k denote the k-th Fibonacci number, with F_1 = F_2 = 1. "
-        f"Compute the remainder when gcd(F_{m}, F_{n}) is divided by {chosen_p}."
+        f"Compute the remainder when {a}^{b} is divided by {p}. "
+        f"State only the remainder as an integer between 0 and {p - 1}."
     )
     return problem, str(sympy.Integer(answer))
+
+CONCEPT_GROUP = "number_theory"
+CONCEPT_TYPE = "number_theory.modular_reduction"
+CONCEPT_REASON = "In-depth deepening of modular_reduction: Fermat's little theorem wraps three new stages (recognise infeasibility of direct a^b, recall a^(p-1) ≡ 1, reduce exponent) around the parent's final mod-p reduction."
+```
+
+PARENT_PROGRAM_EXAMPLE_2:
+```python
+import random
+import sympy
+
+def generate(seed):
+    rng = random.Random(seed)
+    while True:
+        x = sympy.symbols('x')
+        deg = rng.randint(2, 3)
+        coeffs = [rng.randint(-5, 5) for _ in range(deg + 1)]
+        if coeffs[0] == 0:
+            continue
+        c = rng.randint(-4, 4)
+        if c == 0:
+            continue
+        poly = sum(coeffs[i] * x ** (deg - i) for i in range(deg + 1))
+        answer = int(poly.subs(x, c))
+        if abs(answer) < 5:
+            continue
+        break
+    terms = []
+    for i, k in enumerate(coeffs):
+        power = deg - i
+        if k == 0:
+            continue
+        if power == 0:
+            terms.append(f"{k:+d}")
+        elif power == 1:
+            terms.append(f"{k:+d}*x")
+        else:
+            terms.append(f"{k:+d}*x^{power}")
+    expr = " ".join(terms).lstrip("+ ").replace("+ -", "- ")
+    problem = (
+        f"Let p(x) = {expr}. Compute p({c})."
+    )
+    return problem, str(sympy.Integer(answer))
+
+CONCEPT_GROUP = "algebra"
+CONCEPT_TYPE = "algebra.polynomial_evaluation"
+```
+
+MUTATED_PROGRAM_EXAMPLE_2:
+```python
+"""In-depth mutation generator.
+
+Parent (algebra.polynomial_evaluation): one substitution
+p(c) for a small-degree polynomial and a given point c.
+Child (same concept_type): the remainder of a higher-degree
+polynomial p(x) when divided by (x - c), with the linear
+divisor presented in a slightly disguised form so the
+identity is not visible by surface match.
+
+The depth wraps the parent's move in three new stages — see
+that performing the polynomial division explicitly is messy
+for the stated degree, recall the remainder theorem
+"p(x) mod (x - c) = p(c)", read off c from the divisor, then
+run the parent's single-point evaluation on it. Synthetic
+division is the only short alternative and is itself a
+disguised execution of the remainder theorem.
+
+Guards reject a leading coefficient of 0 (collapses degree),
+|c| > 4 (intermediate powers blow up and the problem
+measures arithmetic stamina rather than reasoning), and
+final values in {-1, 0, 1} (named-trivial residues the
+solver may guess). Problem text states only the polynomial
+and the divisor (x - c) rewritten as e.g. "x + 3" or
+"2x - 6 scaled"; the remainder theorem and the substitution
+shortcut are never mentioned.
+"""
+
+import random
+import sympy
+
+def generate(seed):
+    rng = random.Random(seed)
+    x = sympy.symbols('x')
+
+    while True:
+        deg = rng.randint(5, 7)
+        coeffs = [rng.randint(-4, 4) for _ in range(deg + 1)]
+        if coeffs[0] == 0:
+            continue
+
+        c = rng.randint(-3, 3)
+        if c == 0:
+            continue
+
+        poly = sum(coeffs[i] * x ** (deg - i) for i in range(deg + 1))
+        answer = int(poly.subs(x, c))
+
+        if answer in (-1, 0, 1):
+            continue
+        if abs(answer) > 500:
+            continue
+        break
+
+    terms = []
+    for i, k in enumerate(coeffs):
+        power = deg - i
+        if k == 0:
+            continue
+        if power == 0:
+            terms.append(f"{k:+d}")
+        elif power == 1:
+            terms.append(f"{k:+d}*x")
+        else:
+            terms.append(f"{k:+d}*x^{power}")
+    expr = " ".join(terms).lstrip("+ ").replace("+ -", "- ")
+
+    divisor = f"x - {c}" if c > 0 else f"x + {-c}"
+
+    problem = (
+        f"Let p(x) = {expr}. Compute the remainder when p(x) is "
+        f"divided by ({divisor}). State only the remainder as an "
+        f"integer."
+    )
+    return problem, str(sympy.Integer(answer))
+
+CONCEPT_GROUP = "algebra"
+CONCEPT_TYPE = "algebra.polynomial_evaluation"
+CONCEPT_REASON = "In-depth deepening of polynomial_evaluation: the remainder theorem wraps three new stages (recognise infeasibility of direct division, recall p(x) mod (x - c) = p(c), extract c from the divisor) around the parent's final single-point evaluation."
 ```

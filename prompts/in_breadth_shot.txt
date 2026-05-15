@@ -1,148 +1,170 @@
 PARENT_PROGRAM_EXAMPLE_1:
 ```python
-CONCEPT_GROUP = "combinatorics"
-CONCEPT_TYPE = "combinatorics.committee_count"
-
-"""Shallow committee-count generator (parent shape).
-
-Single reasoning move: read off a binomial coefficient C(n, k) for
-given n and k. No multi-stage counting, no inclusion-exclusion, no
-constraint on roles — just one binomial evaluation.
-"""
-
-import math
 import random
 import sympy
-
 
 def generate(seed):
     rng = random.Random(seed)
     while True:
-        n = rng.randint(8, 18)
-        # k strictly between 2 and n-2 so the answer is non-trivial and
-        # not symmetric to a 1-element or (n-1)-element choice.
-        k = rng.randint(3, n - 3)
-        if k == n - k:
-            continue  # avoid the symmetric midpoint where C(n,k) is "named"
-        answer = math.comb(n, k)
-        if answer < 20:
-            continue  # too small to require real reasoning
+        a1 = rng.randint(2, 20)
+        d = rng.randint(2, 12)
+        n = rng.randint(8, 25)
+        answer = a1 + (n - 1) * d
+        if answer < 50:
+            continue
         break
     problem = (
-        f"A committee of {k} people is to be formed from a group of {n} "
-        f"people. How many distinct committees are possible?"
+        f"An arithmetic sequence has first term {a1} and common "
+        f"difference {d}. Compute its {n}-th term."
     )
     return problem, str(sympy.Integer(answer))
+
+CONCEPT_GROUP = "sequence"
+CONCEPT_TYPE = "sequence.arithmetic_nth_term"
 ```
 
 MUTATED_PROGRAM_EXAMPLE_1:
 ```python
-CONCEPT_GROUP = "geometry"
-CONCEPT_TYPE = "geometry.power_of_point_secants"
+"""In-breadth mutation generator.
 
-"""In-breadth mutation child: parent worked in combinatorics
-(committee count via a single binomial). This child moves to
-geometry.power_of_point_secants -- a fully continuous domain with
-no enumeration, no factorials, and no shared reasoning structure
-with the parent.
+Parent (sequence.arithmetic_nth_term): a_n = a_1 + (n-1)*d, a
+single linear evaluation in a discrete progression.
+Child (geometry.chord_length_from_center): chord length given
+radius r and centre-distance d, answered as an irrational surd.
 
-Reasoning stages required of the solver:
-  (1) recognize that for a fixed circle and an external point P, the
-      product of the two intersection distances along any secant
-      through P is invariant -- i.e. discover the Power of a Point
-      relation PA * PB = PC * PD,
-  (2) use that invariance to confirm the configuration is consistent
-      (the two stated secants must yield the same product; if a
-      solver verifies this, they have effectively learned the
-      relation),
-  (3) extend the same invariance to the tangent case, where the
-      tangent length T satisfies PT^2 = PA * PB,
-  (4) reduce the resulting integer PA * PB to its square-free form
-      k^2 * d and report PT = k * sqrt(d).
+The jump is in-breadth: parent and child share no domain, no
+move, no vocabulary. The solver must drop the radius to a chord
+endpoint, see that radius, centre-perpendicular, and half-chord
+form a right triangle, apply Pythagoras to get half-chord =
+sqrt(r^2 - d^2), and double. Coordinate geometry is the only
+alternative and runs several times longer.
 
-A solver who does NOT discover the power-of-a-point relation is
-forced into coordinate geometry: place P and the circle, solve for
-the circle's center and radius from the four intersection
-constraints, then derive the tangent length from the discriminant
-of a quadratic. That route is solvable but several times longer.
-
-Inverse construction. We sample PA, PB, PC freely and DERIVE PD
-from the power-of-a-point identity (PD = PA * PB / PC). This
-guarantees by construction that a consistent circle exists. We then
-reject configurations where:
-  - PD is non-integer (would force ugly stated lengths),
-  - PD <= PC (would put D between P and C, breaking the far-point
-    convention),
-  - PA * PB is a perfect square (would collapse PT to an integer
-    and let the solver guess by inspection),
-  - the surd radicand exceeds 50 (would look artificial in the
-    problem statement),
-  - any two of the four stated distances coincide (creates
-    accidental symmetry that may shortcut the chain).
-
-Note on hint hygiene. The problem text does NOT name "power of a
-point", does NOT mention that PA * PB equals PC * PD, and does NOT
-hint that the tangent length is related to the secant products.
-The solver must discover the relation.
+Guards reject r^2 - d^2 a perfect square (integer chord,
+guessable), radicand m > 30 (artificial), and gcd(r, d) > 1
+(rescales to a smaller named case). Problem text states only r
+and d; Pythagoras and the bisection are never mentioned.
 """
 
 import random
 import sympy
 
+def generate(seed):
+    rng = random.Random(seed)
+    while True:
+        r = rng.randint(5, 15)
+        d = rng.randint(1, r - 1)
+
+        diff = r * r - d * d
+        m, k = diff, 1
+        for q in sympy.primerange(2, 20):
+            while m % (q * q) == 0:
+                m //= q * q
+                k *= q
+
+        if m == 1:
+            continue
+        if m > 30:
+            continue
+        if sympy.gcd(r, d) > 1:
+            continue
+
+        coef = 2 * k
+        answer = f"{coef}*sqrt({m})"
+        break
+
+    problem = (
+        f"A circle has radius {r}. A chord of the circle lies at "
+        f"perpendicular distance {d} from the centre. Compute "
+        f"the length of the chord in exact form."
+    )
+    return problem, answer
+
+CONCEPT_GROUP = "geometry"
+CONCEPT_TYPE = "geometry.chord_length_from_center"
+CONCEPT_REASON = "Mutation jumps from sequence to geometry: discrete progression yields to continuous Pythagorean decomposition, with no shared move between parent and child."
+```
+
+PARENT_PROGRAM_EXAMPLE_2:
+```python
+import random
+import sympy
 
 def generate(seed):
     rng = random.Random(seed)
     while True:
-        PA = rng.randint(2, 8)
-        # PB > PA so that B is the far intersection along the first secant.
-        PB = rng.randint(PA + 4, PA + 14)
-        PC = rng.randint(2, 8)
-        prod = PA * PB
-        # Power-of-a-point forces PD; require an integer for clean wording.
-        if prod % PC != 0:
+        a = rng.randint(3, 15)
+        b = rng.randint(3, 15)
+        if a == b:
             continue
-        PD = prod // PC
-        # PD must be the far intersection along the second secant.
-        if PD <= PC:
+        area = a * b
+        if area < 20:
             continue
-        # Second chord length CD = PD - PC; reject vanishingly short chords.
-        if PD - PC < 3:
-            continue
-        # Keep all stated distances in a natural range.
-        if PD > 40:
+        break
+    problem = (
+        f"A rectangle has side lengths {a} and {b}. "
+        f"Compute its area."
+    )
+    return problem, str(sympy.Integer(area))
+
+CONCEPT_GROUP = "geometry"
+CONCEPT_TYPE = "geometry.rectangle_area"
+```
+
+MUTATED_PROGRAM_EXAMPLE_2:
+```python
+"""In-breadth mutation generator.
+
+Parent (geometry.rectangle_area): one multiplication of two
+side lengths to get a continuous area.
+Child (number_theory.divisor_count): given an integer N,
+report the number of positive divisors d(N).
+
+The jump is in-breadth: parent and child share no domain, no
+move, no vocabulary. The solver must factor N into primes
+N = p1^e1 * p2^e2 * ... * pk^ek, recall the multiplicative
+formula d(N) = (e1+1)(e2+1)...(ek+1), and evaluate it. Trial
+division up to sqrt(N) is the only alternative and grows with
+N, while the formula collapses the count to a small product of
+exponents-plus-one.
+
+Guards reject N prime or prime-power (formula degenerates to a
+single factor, no real chain), N with fewer than three distinct
+prime factors (one multiplication is not a chain), and answers
+in {1, 2, 3, 4} (named-trivial counts the solver guesses by
+inspection). Problem text states only N; factorisation and the
+exponent formula are never mentioned.
+"""
+
+import random
+import sympy
+
+def generate(seed):
+    rng = random.Random(seed)
+    while True:
+        N = rng.randint(200, 5000)
+        factors = sympy.factorint(N)
+
+        if len(factors) < 3:
             continue
 
-        # Reduce PT^2 = PA * PB to square-free form k^2 * d.
-        d, k = prod, 1
-        for q in sympy.primerange(2, 30):
-            while d % (q * q) == 0:
-                d //= q * q
-                k *= q
-        # Perfect square -> integer tangent -> solver guesses by inspection.
-        if d == 1:
+        count = 1
+        for e in factors.values():
+            count *= (e + 1)
+
+        if count <= 4:
             continue
-        # Surd radicand must stay small and clean to state.
-        if d > 50:
+        if count > 36:
             continue
 
-        # Degeneracy guards: distinct stated distances avoid accidental
-        # symmetric shortcuts.
-        if PA == PC or PB == PD:
-            continue
-        if len({PA, PB, PC, PD}) < 4:
-            continue
-
-        answer = f"sqrt({d})" if k == 1 else f"{k}*sqrt({d})"
         break
 
     problem = (
-        f"From a point P outside a circle, two straight lines are drawn "
-        f"that each cross the circle in two places. The first line meets "
-        f"the circle at points A and B with PA = {PA} and PB = {PB}. "
-        f"The second line meets the circle at points C and D with "
-        f"PC = {PC} and PD = {PD}. A third line from P is drawn so that "
-        f"it just touches the circle at a single point T. Compute the "
-        f"length PT in exact form."
+        f"Let N = {N}. Compute the number of positive integers "
+        f"that divide N (including 1 and N itself)."
     )
-    return problem, answer
+    return problem, str(sympy.Integer(count))
+
+CONCEPT_GROUP = "number_theory"
+CONCEPT_TYPE = "number_theory.divisor_count"
+CONCEPT_REASON = "Mutation jumps from geometry to number_theory: continuous side-length multiplication yields to prime-exponent enumeration via d(N) = prod(e_i + 1), with no shared move between parent and child."
 ```

@@ -50,6 +50,7 @@ from .code_utils import (
     extract_generator_code,
     lint_generator_source,
     lint_problem_instance,
+    strip_parent_source_for_prompt,
 )
 from .concepts import validate_concept_decl
 from evaluation.math_benchmarks import (
@@ -63,7 +64,7 @@ from prompts import (
     MUTATE_DEPTH, MUTATE_BREADTH, MUTATE_CROSSOVER,
     MUTATION_SYSTEM_PROMPT,
     build_score_feedback, build_few_shot_examples, build_execution_feedback,
-    parent_concept_fields, choose_prefill_concept, build_mutation_prefill,
+    parent_concept_fields, build_mutation_prefill,
     SOLVER_SYSTEM_PROMPT,
 )
 
@@ -1881,9 +1882,9 @@ class RQEvolveTrainer(RayPPOTrainer):
         # Operator-aware few-shot: each mutation operator gets examples
         # tailored to its shape (parent->depth, parent->breadth, A+B->hybrid).
         # Loaded from hand-curated prompts/<op>_shot.txt; archive is not used.
-        few_shot_depth = build_few_shot_examples("in_depth", top_k=2)
-        few_shot_breadth = build_few_shot_examples("in_breadth", top_k=2)
-        few_shot_crossover = build_few_shot_examples("crossover", top_k=2)
+        few_shot_depth = build_few_shot_examples("in_depth")
+        few_shot_breadth = build_few_shot_examples("in_breadth")
+        few_shot_crossover = build_few_shot_examples("crossover")
 
         mutation_prompts = []  # (prompt_text, op, parent, parent_b, recovery_prefix)
         for _ in range(batch_size):
@@ -1904,17 +1905,15 @@ class RQEvolveTrainer(RayPPOTrainer):
                     op = "in_depth"
                 else:
                     prompt_text = MUTATE_CROSSOVER.format(
-                        code_a=pa.source_code, code_b=pb.source_code,
+                        code_a=strip_parent_source_for_prompt(pa.source_code),
+                        code_b=strip_parent_source_for_prompt(pb.source_code),
                         p_hat_a=getattr(pa, "p_hat", 0.5),
                         h_a=getattr(pa, "h_score", 1.0),
                         p_hat_b=getattr(pb, "p_hat", 0.5),
                         h_b=getattr(pb, "h_score", 1.0),
                         few_shot=few_shot_crossover,
                     )
-                    chosen_t, chosen_g = choose_prefill_concept(op, pa, pb)
-                    suffix, recovery = build_mutation_prefill(
-                        chosen_t, chosen_g, op=op
-                    )
+                    suffix, recovery = build_mutation_prefill(op=op)
                     full_prompt = _format_mutation_prompt(
                         self.tokenizer, prompt_text, suffix
                     )
@@ -1933,17 +1932,14 @@ class RQEvolveTrainer(RayPPOTrainer):
             tmpl = MUTATE_DEPTH if op == "in_depth" else MUTATE_BREADTH
             fs = few_shot_depth if op == "in_depth" else few_shot_breadth
             prompt_text = tmpl.format(
-                code=parent.source_code,
+                code=strip_parent_source_for_prompt(parent.source_code),
                 score_feedback=score_fb,
                 exec_feedback=exec_fb,
                 few_shot=fs,
                 parent_concept_type=ctype,
                 parent_concept_group=cgroup,
             )
-            chosen_t, chosen_g = choose_prefill_concept(op, parent)
-            suffix, recovery = build_mutation_prefill(
-                chosen_t, chosen_g, op=op
-            )
+            suffix, recovery = build_mutation_prefill(op=op)
             full_prompt = _format_mutation_prompt(
                 self.tokenizer, prompt_text, suffix
             )
