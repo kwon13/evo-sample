@@ -65,7 +65,7 @@ trainer:
   max_steps: 256
   project_name: rq_evolve
   experiment_name: qwen3_4b_base_grpo_h_g8_org_map
-  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_org_map
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_org_map_only_learnability
   logger:
     - console
     - wandb
