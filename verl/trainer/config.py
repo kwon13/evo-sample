@@ -176,6 +176,11 @@ class RQConfig:
     epsilon: float = 0.3
     use_reservoir: bool = False
     candidate_reservoir_size: int = 4
+    # R_Q term ablation: R_Q = p(1-p) * U. Forcing a term to 1.0 removes
+    # its influence so a run can isolate the other term. Both False
+    # (default) = standard R_Q.
+    rq_ablate_learnability: bool = False
+    rq_ablate_uncertainty: bool = False
     # null = re-evaluate all occupied champions (Method-aligned default)
     # int  = partial budget (debug/ablation); 0 disables re-evaluation
     reeval_per_step: Optional[int] = None
