@@ -1799,17 +1799,19 @@ class RQEvolveTrainer(RayPPOTrainer):
 
         # ---- 4. Counters (evicted / exec_fail_evicted already initialized) --
         # frontier_p_hat_range defines the training-data frontier band; it is
-        # NOT a reeval eviction gate anymore. Extreme-p champions stay in the
-        # archive as mutation material and are excluded from training via
-        # _refresh_dataset(); their R_Q naturally collapses to 0.
+        # NOT a reeval eviction gate. p=1 (and other in-band extreme-p)
+        # champions stay in the archive as mutation material and are excluded
+        # from training via _refresh_dataset(); their R_Q collapses to 0.
+        # EXCEPTION: exact p_hat == 0 IS a reeval eviction gate (see below).
         low, high = self.frontier_p_hat_range
         extreme_p_kept = 0
 
-        # ---- 5. Update / rebin — NEVER evict on extreme-p anymore ------
-        # p=0 / p=1 champions are kept as archive material and will be
-        # filtered out of Solver training data by _refresh_dataset().
-        # Their R_Q naturally drops to 0 (since p(1-p)=0), so they cannot
-        # displace positive-R_Q candidates at try_insert time.
+        # ---- 5. Update / rebin --------------------------------------------
+        # p=1 champions are kept as archive material and filtered out of
+        # Solver training data by _refresh_dataset(); their R_Q drops to 0
+        # (since p(1-p)=0) so they cannot displace positive-R_Q candidates.
+        # p_hat == 0 champions are EVICTED from their niche (per-champion gate
+        # below) — a problem the Solver never solves is not kept.
         for ci in range(n_pairs):
             champ, inst, rq_before = pairs[ci]
             h_bar = h_per_pair[ci]
@@ -1838,6 +1840,23 @@ class RQEvolveTrainer(RayPPOTrainer):
                 else "too_easy" if new_p_hat >= high
                 else "frontier"
             )
+
+            # p_hat == 0 gate — a champion the Solver no longer solves on any
+            # probe rollout is evicted from its niche, consistent with the
+            # new-candidate p_hat=0 gate. The niche reopens for re-exploration.
+            # Only exact p_hat == 0 is evicted; p=1 / other extreme-p
+            # champions are still kept as archive material.
+            if new_p_hat == 0.0:
+                if self.map_elites.evict_champion(champ):
+                    evicted += 1
+                    logger.info(
+                        f"[Reeval] EVICT p_hat=0 ({champ.niche_h},"
+                        f"{champ.niche_div}) id={champ.program_id}"
+                    )
+                rq_deltas.append(float(champ.rq_score) - rq_before)
+                reevaluated += 1
+                continue
+
             if new_p_hat <= low or new_p_hat >= high:
                 extreme_p_kept += 1
 
@@ -2268,12 +2287,13 @@ class RQEvolveTrainer(RayPPOTrainer):
             )
 
         # ---- (d) Score + grid insertion ------------------------------
-        # p=0 / p=1 candidates are KEPT as archive material (evolutionary
-        # parents, empty-niche fillers). They produce R_Q=0 so they cannot
-        # displace a positive-R_Q champion, and _refresh_dataset() skips
-        # them when assembling Solver training data. This follows Method's
-        # pseudocode (TryInsert has no p_hat gate) while keeping Solver
-        # training focused on the learnability frontier.
+        # p=1 candidates are KEPT as archive material (evolutionary parents,
+        # empty-niche fillers); they produce R_Q=0 so they cannot displace a
+        # positive-R_Q champion, and _refresh_dataset() skips them when
+        # assembling Solver training data.
+        # p_hat == 0 candidates are REJECTED outright (per-candidate gate
+        # below) — a problem the Solver never solves is not admitted to the
+        # archive (champion or reservoir).
         f_low, f_high = self.frontier_p_hat_range
         attempted = n_children
         inserted = 0
@@ -2318,10 +2338,21 @@ class RQEvolveTrainer(RayPPOTrainer):
                 else "frontier"
             )
 
-            was_inserted = self.map_elites.try_insert(
-                program=child, h_value=uncertainty_score,
-                problem_text=inst.problem, rq_score=rq_result.rq_score,
-            )
+            # p_hat == 0 gate — a candidate the Solver never solved on any
+            # probe rollout is NOT admitted to the archive (neither champion
+            # nor reservoir). This overrides vanilla MAP-Elites empty-niche
+            # filling for the p=0 case only; p=1 and other low-R_Q champions
+            # still enter as archive/mutation material. Distinct from the
+            # frontier_p_hat_range training band, which only filters the
+            # Solver training dataset — this blocks the niche entirely.
+            if p_hat == 0.0:
+                child.metadata["archive_status"] = "p_hat_zero_rejected"
+                was_inserted = False
+            else:
+                was_inserted = self.map_elites.try_insert(
+                    program=child, h_value=uncertainty_score,
+                    problem_text=inst.problem, rq_score=rq_result.rq_score,
+                )
             first_prediction = pred_answers[0] if pred_answers else None
             first_correct = flags[0] if flags else False
             first_response = decoded_per_child[ci][0] if decoded_per_child[ci] else ""
