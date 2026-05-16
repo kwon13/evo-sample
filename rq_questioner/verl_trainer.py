@@ -1546,15 +1546,43 @@ class RQEvolveTrainer(RayPPOTrainer):
         except Exception as exc:
             logger.warning(f"[Checkpoint] Failed to save used_seeds: {exc}")
 
-    def _load_checkpoint(self) -> None:
-        """Restore used_seeds after the base-class checkpoint load."""
-        import json
-        import os
+        # MAP-Elites archive — champions per niche. Without this the archive
+        # is lost on resume and the grid restarts from seeds only.
+        map_dir = os.path.join(folder_path, "map_elites")
+        try:
+            self.map_elites.save(map_dir)
+            n_champ = sum(
+                1 for n in self.map_elites.grid.values()
+                if n.champion is not None
+            )
+            logger.info(
+                f"[Checkpoint] Saved MAP-Elites archive ({n_champ} champions) "
+                f"→ {map_dir}"
+            )
+        except Exception as exc:
+            logger.warning(
+                f"[Checkpoint] Failed to save MAP-Elites archive: {exc}"
+            )
 
+    def _load_checkpoint(self) -> None:
+        """Restore used_seeds and the MAP-Elites archive after base load.
+
+        The base class restores actor/critic/dataloader; this override then
+        restores RQ-specific state so a resumed run continues from the same
+        archive instead of a seed-only grid.
+        """
         super()._load_checkpoint()
 
         if self.config.trainer.load_checkpoint_path is None:
             return
+
+        self._load_used_seeds()
+        self._restore_map_elites()
+
+    def _load_used_seeds(self) -> None:
+        """Restore the used_seeds sidecar written by _save_checkpoint."""
+        import json
+        import os
 
         used_seeds_path = os.path.join(
             self.config.trainer.load_checkpoint_path, self._USED_SEEDS_FILE,
@@ -1582,6 +1610,135 @@ class RQEvolveTrainer(RayPPOTrainer):
                 f"[Checkpoint] Failed to load used_seeds from "
                 f"{used_seeds_path}: {exc}"
             )
+
+    def _clear_map_elites_grid(self) -> None:
+        """Empty every niche so a restore reflects exactly the saved state."""
+        for niche in self.map_elites.grid.values():
+            niche.champion = None
+            niche.champion_rq = -1.0
+            niche.candidates.clear()
+
+    def _restore_map_elites(self) -> None:
+        """Restore the MAP-Elites archive on resume.
+
+        Primary source: the ``map_elites/`` directory inside the checkpoint
+        folder (written by :meth:`_save_checkpoint`). Fallback: reconstruct
+        from the ``evo_step_<global_step>.json`` evolution snapshot — needed
+        for checkpoints created before MAP archive checkpointing existed.
+        Without either, resume silently restarts from a seed-only grid.
+        """
+        import os
+
+        map_dir = os.path.join(
+            self.config.trainer.load_checkpoint_path, "map_elites",
+        )
+        if os.path.isdir(map_dir):
+            try:
+                self._clear_map_elites_grid()
+                self.map_elites.load(map_dir)
+                n_champ = sum(
+                    1 for n in self.map_elites.grid.values()
+                    if n.champion is not None
+                )
+                logger.info(
+                    f"[Checkpoint] Restored MAP-Elites archive "
+                    f"({n_champ} champions) from {map_dir}"
+                )
+                return
+            except Exception as exc:
+                logger.warning(
+                    f"[Checkpoint] Failed to load MAP-Elites archive from "
+                    f"{map_dir}: {exc}; trying evolution-snapshot fallback"
+                )
+
+        self._restore_map_from_evolution_snapshot()
+
+    def _restore_map_from_evolution_snapshot(self) -> None:
+        """Rebuild the grid from evolution_logs/evo_step_<global_step>.json.
+
+        The snapshot stores, per occupied niche, the champion's source_code,
+        program_id, niche coords and scored metrics — enough to reconstruct
+        each champion ProblemProgram and place it directly in its niche.
+        Direct placement (no try_insert) reproduces the saved state exactly:
+        validity/duplicate gates are NOT re-applied. Reservoir candidates are
+        not reconstructable (the snapshot keeps only their program_ids).
+        """
+        import json
+        import os
+
+        step = getattr(self, "global_step", 0)
+        snapshot_path = os.path.join(
+            getattr(self.config.trainer, "default_local_dir", "./rq_output"),
+            "evolution_logs",
+            f"evo_step_{step}.json",
+        )
+        if not os.path.exists(snapshot_path):
+            logger.warning(
+                f"[Checkpoint] No MAP archive in checkpoint and no evolution "
+                f"snapshot at {snapshot_path}; resuming with a seed-only grid."
+            )
+            return
+
+        try:
+            with open(snapshot_path, "r", encoding="utf-8") as f:
+                snapshot = json.load(f)
+        except Exception as exc:
+            logger.warning(
+                f"[Checkpoint] Failed to read evolution snapshot "
+                f"{snapshot_path}: {exc}; resuming with a seed-only grid."
+            )
+            return
+
+        self._clear_map_elites_grid()
+        restored = 0
+        reservoir_lost = 0
+        for cell in snapshot.get("grid", []):
+            reservoir_lost += int(cell.get("reservoir_count", 0) or 0)
+            if not cell.get("has_champion"):
+                continue
+            h_bin = int(cell["h_bin"])
+            div_bin = int(cell["div_bin"])
+            niche = self.map_elites.grid.get((h_bin, div_bin))
+            if niche is None:
+                logger.warning(
+                    f"[Checkpoint] snapshot cell ({h_bin},{div_bin}) has no "
+                    f"matching niche in the current grid; skipped"
+                )
+                continue
+            rq = float(cell.get("rq_score", 0.0) or 0.0)
+            champ = ProblemProgram(
+                source_code=cell.get("source_code", ""),
+                program_id=cell.get("program_id", ""),
+                generation=int(cell.get("generation", 0) or 0),
+                h_score=float(cell.get("h_score", 0.0) or 0.0),
+                p_hat=float(cell.get("p_hat", 0.0) or 0.0),
+                rq_score=rq,
+                fitness=rq,
+                niche_h=h_bin,
+                niche_div=div_bin,
+                root_seed_id=cell.get("root_seed_id", "") or "",
+                metadata={
+                    "uncertainty_metric": cell.get(
+                        "uncertainty_metric", self.uncertainty_metric,
+                    ),
+                    "uncertainty_scores": cell.get("uncertainty_scores", {}),
+                    "token_entropy": cell.get("token_entropy"),
+                },
+            )
+            niche.champion = champ
+            niche.champion_rq = rq
+            restored += 1
+
+        msg = (
+            f"[Checkpoint] Reconstructed MAP-Elites archive from "
+            f"{os.path.basename(snapshot_path)}: {restored} champions"
+        )
+        if reservoir_lost:
+            msg += (
+                f" (reservoir not reconstructable from snapshot: "
+                f"{reservoir_lost} candidates dropped)"
+            )
+        logger.info(msg)
 
     # ------------------------------------------------------------------
     # Option A — Champion re-evaluation

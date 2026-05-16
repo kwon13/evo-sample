@@ -39,4 +39,4 @@ export WANDB_MODE="${WANDB_MODE:-online}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-python run_verl.py --config configs/rq_config_grpo_h_g8_fix.yaml
+python run_verl.py --config configs/rq_config_grpo_h_g8_fix_resume.yaml

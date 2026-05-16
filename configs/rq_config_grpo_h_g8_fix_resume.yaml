@@ -1,0 +1,231 @@
+data:
+  train_files: ""
+  max_prompt_length: 6000
+  max_response_length: 6000
+  rollout_batch_size: 36
+  shuffle: true
+
+algorithm:
+  adv_estimator: grpo
+  kl_penalty: low_var_kl
+  kl_coef: 1.0e-3
+  use_kl_loss: true
+
+worker:
+  hybrid_engine: true
+  actor:
+    strategy: fsdp
+    global_batch_size: 36
+    micro_batch_size_per_device_for_update: 6
+    micro_batch_size_per_device_for_experience: 6
+    use_torch_compile: false
+    fsdp:
+      enable_full_shard: true
+      enable_cpu_offload: false
+      torch_dtype: bfloat16
+    model:
+      model_path: Qwen/Qwen3-4B-Base
+      trust_remote_code: true
+      enable_gradient_checkpointing: true
+    optim:
+      lr: 1e-6
+      weight_decay: 1e-2
+      strategy: adamw
+      lr_warmup_ratio: 0.0
+
+  ref:
+    fsdp:
+      enable_full_shard: true
+      enable_cpu_offload: false
+      torch_dtype: bfloat16
+
+  rollout:
+    name: vllm
+    temperature: 0.8
+    top_p: 0.95
+    # max_model_len = max_prompt_length + max_response_length = 6000 + 6000
+    max_model_len: 12000
+    max_num_batched_tokens: 12288
+    dtype: bfloat16
+    tensor_parallel_size: 1
+    enable_chunked_prefill: true
+    enforce_eager: false
+    n: 8
+    gpu_memory_utilization: 0.85
+    ignore_eos: false
+    disable_log_stats: true
+
+  reward:
+    reward_type: batch
+    reward_function: ./reward_fn.py:compute_score
+    num_cpus: 1
+
+trainer:
+  load_checkpoint_path: ./rq_output/verl_ckpt_grpo_h_g8_org_map_pobs=8/global_step_96
+  total_outer_iterations: 100
+  max_steps: 256
+  project_name: rq_evolve
+  experiment_name: qwen3_4b_base_grpo_h_g8_org_map_pobs=8
+  default_local_dir: ./rq_output/verl_ckpt_grpo_h_g8_org_map_pobs=8
+  logger:
+    - console
+    - wandb
+  n_gpus_per_node: 4
+  nnodes: 1
+  save_freq: 32
+  save_final_checkpoint: true
+  save_limit: 16
+
+math_eval:
+  enabled: true
+  before_train: true
+  every_n_outer_iterations: 5
+  max_tokens: 4096
+  temperature: 0.0
+  top_p: 1.0
+  batch_size: 128
+  sample_seed: 42
+  output_details: true
+  max_logged_failures: 20
+  fast_samples:
+    math500: -1
+    amc23: -1
+    aime24: -1
+    aime25: -1
+    minerva_math: -1
+    olympiadbench: -1
+  benchmarks:
+    - name: math500
+    - name: amc23
+    - name: aime24
+    - name: aime25
+    - name: minerva_math
+    - name: olympiadbench
+  # GPT-4o re-check (R-Zero results_recheck.py port).
+  # enabled=false: math_verify is the sole grader (training-time default).
+  # Set true in a standalone post-training eval to promote items whose
+  # extracted answer math_verify rejected but GPT-4o judges equivalent.
+  gpt_judge:
+    enabled: false
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    retry_max: 3
+    retry_backoff_seconds: [1, 5, 30]
+    max_workers: 8  # ThreadPoolExecutor size for parallel GPT-4o calls
+
+rq:
+  seed_programs_dir: ./seed_programs
+  n_h_bins: 10
+  # D-axis can be:
+  #   concept_group: 6 controlled math categories
+  #   concept_type : 15 fine-grained templates
+  #   embedding    : legacy sentence-embedding PCA axis
+  diversity_axis: concept_group
+  n_div_bins: 6
+  # H bins are applied to the selected uncertainty_metric. The paper default is
+  # token-level entropy, matching the Fisher/gradient derivation. The supported
+  # metrics are h and h_span_max.
+  # H=[0, 1.2]: 이전 grpo_h run 분석 결과 p99=0.76, 99% 이상 데이터가 1.2 이내.
+  # n_h_bins=10 유지 시 bin width = 0.12 (이전 0.2 대비 finer resolution).
+  h_range: [0.0, 0.5]
+  # Outer iteration budget: each inner iteration mutates, verifies,
+  # evaluates, and tries to insert one candidate program. The batch size is
+  # only a throughput knob; it does not change the algorithmic budget.
+  inner_iterations: 64
+  inner_iteration_batch_size: 8
+  # rq.num_rollouts는 R_Q scoring용 rollout 수 (evolution 내부).
+  # worker.rollout.n (GRPO group size)과 완전히 독립.
+  num_rollouts: 10
+  # R_Q uncertainty metric:
+  #   h           : mean output-token entropy averaged over G responses
+  #   h_span_max : response span-max entropy averaged over G responses
+  uncertainty_metric: h
+
+  # --- R_Q term ablation (default: both terms active = standard R_Q) ---
+  # R_Q = p(1-p) * U. To isolate one term's contribution, force the other
+  # to 1.0 with the switch below. Both false = no ablation.
+  #   rq_ablate_learnability: true  -> p(1-p) term becomes 1.0
+  #   rq_ablate_uncertainty:  true  -> U (entropy) term becomes 1.0
+  rq_ablate_learnability: false
+  rq_ablate_uncertainty: false
+
+  instances_per_program: 8
+  crossover_ratio: 0.2
+  in_depth_ratio: 0.5
+  ucb_c: 1.0
+  epsilon: 0.3
+  # Reservoir of non-champion programs as additional mutation material.
+  #   use_reservoir=false (default, original MAP-Elites): mutation parents are
+  #     drawn ONLY from MAP cell champions. Non-champion rejected programs are
+  #     not stored and cannot pollute the mutation pool.
+  #   use_reservoir=true: parent selection runs UCB over champion + reservoir
+  #     material together. Reservoir programs are never used for Solver
+  #     training unless they later become champions.
+  use_reservoir: false
+  candidate_reservoir_size: 4        # per H/D cell, top-R_Q non-elites retained (only used when use_reservoir=true)
+
+  # --- Champion re-evaluation ---
+  # Re-evaluate occupied MAP-Elites champions before each Questioner evolution
+  # phase under the current Solver. This realizes the self-invalidating archive:
+  # mastered champions lose R_Q and are updated or re-binned before
+  # new candidates compete with them.
+  #
+  #   null (default, Method-aligned) — re-evaluate ALL occupied champions
+  #       (bounded by n_h_bins × n_div_bins = 100 in current grid).
+  #   int > 0                         — partial budget for debugging/ablation;
+  #                                     age-weighted + random sampling.
+  #   0                               — disable re-evaluation (ablation only).
+  #       Stale champions from past Solver states will then compete against
+  #       fresh candidates with unfair R_Q — not recommended for training runs.
+  reeval_per_step: null
+  reeval_age_ratio: 0.7                 # (0~1) age-weighted 비율 (partial 모드에서만 사용)
+
+  # Frontier band for Solver training dataset selection.
+  # p_hat IN  (f_low, f_high) → "frontier" champion, eligible for training.
+  # p_hat OUT of the band      → still kept in archive as mutation material,
+  #                              excluded from training data (R_Q = 0 anyway).
+  # reeval does NOT evict extreme-p champions; it only evicts consistently
+  # exec-failing ones.
+  # L=[0.3, 0.7]: 이전 [0.1, 0.9] 대비 narrower band — Solver가 진짜 경계
+  # (어렵지도 쉽지도 않은) 문제만 학습. Training set 크기는 줄어듦.
+  frontier_p_hat_range: [0.1, 0.9]
+
+  # --- Training-data selection (H-priority + D-uniform + strict anti-reuse) ---
+  # mode:
+  #   "h_priority_d_uniform" (default) — H 내림차순 × D 균등 + (program, seed) 재사용 금지
+  #   "uniform"                         — 모든 champion × seeds[0, m)  (legacy)
+  # training_budget:
+  #   outer iteration 당 총 (problem, answer) 인스턴스 수.
+  #   null 이면 n_h_bins × n_div_bins × instances_per_program 로 자동 설정.
+  # strict_anti_reuse:
+  #   true  (권장) — 같은 (program_id, seed) 쌍은 전체 학습 동안 최대 1회만
+  #                   노출. used_seeds 는 RQEvolveTrainer._save_checkpoint /
+  #                   _load_checkpoint 가 JSON sidecar (rq_used_seeds.json)
+  #                   로 저장/복원하므로 restart 후에도 유지됨.
+  #   false        — _refresh_dataset 시작 시 used_seeds 가 초기화되어 한
+  #                   outer iteration 안에서만 중복 금지. outer iteration 간에는 같은
+  #                   (program_id, seed) 쌍이 재사용될 수 있음.
+  training_selection_mode: "h_priority_d_uniform"
+  training_budget: null
+  strict_anti_reuse: true
+
+  # --- Outer-iteration-start evolution hook (Method outer-iteration order) ---
+  # Evolution runs at the beginning of each Solver outer iteration via _pre_outer_iteration_hook().
+  # Method's order: archive reevaluation → inner iterations → dataset refresh →
+  # Solver training update pass. Controlled here:
+  #
+  # evolve_before_train:
+  #   true (default) — run evolution at outer iteration 0 too (first Solver update
+  #                    trains on archive-selected problems, not bootstrap seeds).
+  #   false          — skip only the outer-iteration-0 evolution; remaining outer iterations still
+  #                    run evolution normally.
+  # skip_initial_evolution_on_resume:
+  #   true (default) — when trainer.load_checkpoint_path is set, skip the
+  #                    outer-iteration-0 evolution. Safe default because the archive state
+  #                    is not part of the checkpoint — we don't want to evolve
+  #                    on an unknown archive snapshot.
+  #   false          — evolve at outer iteration 0 even on resume. Checkpoint is already
+  #                    loaded by fit() at that point, so this scores the archive
+  #                    with the checkpointed policy (not the base model).
+  evolve_before_train: true
+  skip_initial_evolution_on_resume: false

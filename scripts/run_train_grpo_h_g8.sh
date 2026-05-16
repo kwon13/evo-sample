@@ -12,4 +12,4 @@ export LD_LIBRARY_PATH="$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-python run_verl.py --config configs/rq_config_grpo_h_g8.yaml
+python run_verl.py --config configs/rq_config_grpo_h_g8_resume.yaml

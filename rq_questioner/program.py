@@ -195,6 +195,8 @@ class ProblemProgram:
             "rq_score": self.rq_score,
             "niche_h": self.niche_h,
             "niche_div": self.niche_div,
+            "root_seed_id": self.root_seed_id,
+            "last_reeval_step": self.last_reeval_step,
             "metadata": self.metadata,
         }
 
