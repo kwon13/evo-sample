@@ -61,7 +61,7 @@ worker:
     num_cpus: 1
 
 trainer:
-  load_checkpoint_path: ./rq_output/verl_ckpt_grpo_h_g8_org_map_pobs=8/global_step_96
+  load_checkpoint_path: ./rq_output/verl_ckpt_grpo_h_g8_org_map_pobs=8/global_step_192
   total_outer_iterations: 100
   max_steps: 256
   project_name: rq_evolve
