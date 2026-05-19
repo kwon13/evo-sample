@@ -1,11 +1,14 @@
 """Plot per-step math-eval results from a verl checkpoint parent directory.
 
-Reads every `<PARENT>/global_step_<N>/eval/summary.json` (pre-GPT) and, if
+Reads every `<PARENT>/global_step_<N>/<SUBDIR>/summary.json` (pre-GPT) and, if
 present, `with_gpt_judge.json` (post-GPT). Plots per-benchmark pass@1 vs step
 plus the 6-benchmark macro average. Saves the figure to `<PARENT>/eval_curve.png`.
 
+`--subdir` selects which per-step eval folder to read (default `eval`); use
+`--subdir eval_longlen` to plot the long-context re-eval.
+
 Usage:
-    python scripts/plot_eval_by_step.py <PARENT_DIR> [--out OUT_PNG]
+    python scripts/plot_eval_by_step.py <PARENT_DIR> [--subdir SUBDIR] [--out OUT_PNG]
 """
 
 from __future__ import annotations
@@ -33,14 +36,15 @@ def _step_num(d: Path) -> int:
     return int(m.group(1)) if m else -1
 
 
-def _read_summary(step_dir: Path) -> dict:
+def _read_summary(step_dir: Path, subdir: str = "eval") -> dict:
     """Return {bench: pass_at_1, 'avg6': ..., 'source': 'pre'|'gpt'} for one step.
 
     Prefers with_gpt_judge.json (post-GPT) if available; otherwise falls back
-    to summary.json (math_verify only).
+    to summary.json (math_verify only). `subdir` selects the per-step eval
+    folder (e.g. 'eval' or 'eval_longlen').
     """
-    judge = step_dir / "eval" / "with_gpt_judge.json"
-    summ = step_dir / "eval" / "summary.json"
+    judge = step_dir / subdir / "with_gpt_judge.json"
+    summ = step_dir / subdir / "summary.json"
 
     out: dict = {"bench": {}, "source": None}
     if judge.is_file():
@@ -64,7 +68,7 @@ def _read_summary(step_dir: Path) -> dict:
     return out
 
 
-def collect(parent: Path) -> tuple[list[int], dict[str, list[float | None]], list[float | None], list[str]]:
+def collect(parent: Path, subdir: str = "eval") -> tuple[list[int], dict[str, list[float | None]], list[float | None], list[str]]:
     step_dirs = sorted(
         [d for d in parent.glob("global_step_*") if d.is_dir() and _step_num(d) >= 0],
         key=_step_num,
@@ -74,7 +78,7 @@ def collect(parent: Path) -> tuple[list[int], dict[str, list[float | None]], lis
     avg6: list[float | None] = []
     sources: list[str] = []
     for d in step_dirs:
-        s = _read_summary(d)
+        s = _read_summary(d, subdir)
         if not s["source"]:
             continue  # no eval at all for this step
         steps.append(_step_num(d))
@@ -123,10 +127,10 @@ def _draw_panel(ax, name: str, color: str, xs: list[int], ys: list[float],
                     fontsize=9, fontweight="bold", color=color)
 
 
-def plot(parent: Path, out_png: Path) -> None:
-    steps, series, avg6, sources = collect(parent)
+def plot(parent: Path, out_png: Path, subdir: str = "eval") -> None:
+    steps, series, avg6, sources = collect(parent, subdir)
     if not steps:
-        raise SystemExit(f"No evaluable step dirs under {parent}")
+        raise SystemExit(f"No evaluable step dirs under {parent} (subdir={subdir!r})")
 
     pre_x = [x for x, src in zip(steps, sources) if src == "pre"]
     gpt_x = [x for x, src in zip(steps, sources) if src == "gpt"]
@@ -139,8 +143,9 @@ def plot(parent: Path, out_png: Path) -> None:
 
     # 2 rows × 4 cols: 6 benchmarks + avg6 + 1 unused
     fig, axes = plt.subplots(2, 4, figsize=(18, 8), constrained_layout=True)
+    subdir_tag = "" if subdir == "eval" else f"  [{subdir}]"
     fig.suptitle(
-        f"{parent.name}  —  per-step eval ({title_src})",
+        f"{parent.name}{subdir_tag}  —  per-step eval ({title_src})",
         fontsize=13, fontweight="bold",
     )
 
@@ -186,14 +191,18 @@ def plot(parent: Path, out_png: Path) -> None:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("parent", help="verl checkpoint parent dir (contains global_step_*/)")
-    p.add_argument("--out", default=None, help="output PNG path (default: <PARENT>/eval_curve.png)")
+    p.add_argument("--subdir", default="eval",
+                   help="per-step eval folder to read (default: eval; e.g. eval_longlen)")
+    p.add_argument("--out", default=None,
+                   help="output PNG path (default: <PARENT>/<subdir>_curve.png)")
     args = p.parse_args()
 
     parent = Path(args.parent).resolve()
     if not parent.is_dir():
         raise SystemExit(f"not a directory: {parent}")
-    out_png = Path(args.out) if args.out else parent / "eval_curve.png"
-    plot(parent, out_png)
+    default_name = "eval_curve.png" if args.subdir == "eval" else f"{args.subdir}_curve.png"
+    out_png = Path(args.out) if args.out else parent / default_name
+    plot(parent, out_png, args.subdir)
 
 
 if __name__ == "__main__":

@@ -109,6 +109,7 @@ def init_map_elites(
     candidate_reservoir_size=4,
     diversity_axis="concept_group",
     use_reservoir=False,
+    selection_strategy="ucb",
 ) -> MAPElitesGrid:
     grid = MAPElitesGrid(
         n_h_bins=n_h_bins,
@@ -119,6 +120,7 @@ def init_map_elites(
         candidate_reservoir_size=candidate_reservoir_size,
         diversity_axis=diversity_axis,
         use_reservoir=use_reservoir,
+        selection_strategy=selection_strategy,
     )
 
     if diversity_axis == "embedding":
@@ -241,6 +243,7 @@ class RQTaskRunner:
         epsilon = rq_cfg_get("epsilon", 0.3)
         candidate_reservoir_size = rq_cfg_get("candidate_reservoir_size", 4)
         use_reservoir = bool(rq_cfg_get("use_reservoir", False))
+        selection_strategy = rq_cfg_get("selection_strategy", "ucb")
         instances_per_program = rq_cfg_get("instances_per_program", 16)
 
         # R_Q term ablation: R_Q = p(1-p) * U. Forcing a term to 1.0
@@ -282,10 +285,15 @@ class RQTaskRunner:
             candidate_reservoir_size=candidate_reservoir_size,
             diversity_axis=diversity_axis,
             use_reservoir=use_reservoir,
+            selection_strategy=selection_strategy,
         )
         print(
             f"[Runner] reservoir: "
             f"{'ON (champion + reservoir parents)' if use_reservoir else 'OFF (champion-only parents, original MAP-Elites)'}"
+        )
+        print(
+            f"[Runner] parent selection: "
+            f"{'RANDOM (uniform, original MAP-Elites ablation)' if selection_strategy == 'random' else 'UCB (ε-greedy + rank-based UCB)'}"
         )
         dynamic_dataset = build_seed_dataset(seeds, instances_per_program)
         dynamic_dataset.set_tokenizer(tokenizer, max_prompt_length=config.data.max_prompt_length)

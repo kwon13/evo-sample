@@ -174,6 +174,11 @@ class RQConfig:
     in_depth_ratio: float = 0.5
     ucb_c: float = 1.0
     epsilon: float = 0.3
+    # Parent selection strategy (ablation toggle):
+    #   "ucb"    (default) — ε-greedy + rank-based UCB selection
+    #   "random"           — uniform random over material, ignoring R_Q /
+    #                        UCB entirely (original MAP-Elites parent selection)
+    selection_strategy: str = "ucb"
     use_reservoir: bool = False
     candidate_reservoir_size: int = 4
     # R_Q term ablation: R_Q = p(1-p) * U. Forcing a term to 1.0 removes

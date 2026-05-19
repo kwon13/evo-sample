@@ -54,9 +54,12 @@ class MAPElitesGrid:
         candidate_reservoir_size: int = 4,
         diversity_axis: str = "embedding",
         use_reservoir: bool = False,
+        selection_strategy: str = "ucb",
     ):
         if diversity_axis not in {"embedding", "concept_group", "concept_type"}:
             raise ValueError(f"Unknown diversity_axis: {diversity_axis}")
+        if selection_strategy not in {"ucb", "random"}:
+            raise ValueError(f"Unknown selection_strategy: {selection_strategy}")
         self.diversity_axis = diversity_axis
         if diversity_axis == "concept_group":
             n_div_bins = len(CONCEPT_GROUPS)
@@ -68,6 +71,11 @@ class MAPElitesGrid:
         self.h_range = h_range
         self.ucb_c = ucb_c
         self.epsilon = epsilon
+        # Parent selection strategy. "ucb" (default) runs ε-greedy + rank-based
+        # UCB. "random" is an ablation switch that draws parents uniformly at
+        # random over all material — the original MAP-Elites parent selection,
+        # independent of R_Q fitness and UCB exploration counts.
+        self.selection_strategy = selection_strategy
         # Master switch for the candidate reservoir. When False (original
         # MAP-Elites spirit), only champions are used as mutation parents and
         # non-champion programs are never stored — preventing malformed
@@ -737,7 +745,9 @@ class MAPElitesGrid:
         if not entries:
             return None
 
-        if _random.random() < self.epsilon:
+        if self.selection_strategy == "random" or _random.random() < self.epsilon:
+            # "random" ablation: always uniform — original MAP-Elites behavior.
+            # "ucb": ε-probability uniform exploration branch.
             _, niche, program, source = _random.choice(entries)
         else:
             ucb_scores = self._material_ucb_scores(entries)
