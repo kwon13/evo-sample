@@ -184,6 +184,16 @@ def _load_benchmark_rows(name: str) -> list[dict[str, Any]]:
             if isinstance(ans, list):
                 ans = ans[0] if ans else ""
             rows.append({"question": str(r["question"]), "answer": str(ans)})
+    elif name == "gsm8k":
+        ds = _load_hf("openai/gsm8k", split="test", config_name="main")
+        rows = []
+        for r in ds:
+            # GSM8K stores a full worked solution ending in "#### <answer>";
+            # keep only the final numeric answer for grading.
+            ans = str(r["answer"])
+            if "####" in ans:
+                ans = ans.split("####")[-1].strip()
+            rows.append({"question": str(r["question"]), "answer": ans})
     else:
         raise ValueError(f"unknown benchmark: {name!r}")
 
@@ -426,7 +436,7 @@ def call_gpt_judge(
     ground_truth: str,
     extracted_answer: str,
     *,
-    model: str = "gpt-4o",
+    model: str = "gpt-5.4-mini",
     api_key: str | None = None,
     retry_max: int = 3,
     retry_backoff_seconds: list[float] | tuple[float, ...] = (1, 5, 30),
@@ -455,12 +465,24 @@ def call_gpt_judge(
 
     for attempt in range(int(retry_max)):
         try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=0.1,
-                max_tokens=8,
-            )
+            if model.lower().startswith(("gpt-5", "o1", "o3", "o4")):
+                # Reasoning models reject a custom temperature and the
+                # `max_tokens` field; they need `max_completion_tokens` and
+                # enough budget for reasoning tokens. `low` effort keeps a
+                # yes/no equivalence check fast and cheap.
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    max_completion_tokens=2000,
+                    reasoning_effort="low",
+                )
+            else:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=8,
+                )
             text = (resp.choices[0].message.content or "").strip()
             yes = text.lower().startswith("yes")
             return GPTJudgeResult(yes=yes, raw_response=text, error=None)

@@ -20,7 +20,7 @@ if [[ $# -lt 1 ]]; then
 fi
 
 PARENT="$(readlink -f "$1")"
-MAX_WORKERS="${2:-16}"
+MAX_WORKERS="${2:-32}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR%/scripts}"
 
@@ -65,7 +65,7 @@ for d in "${PARENT}"/global_step_*/; do
         --details "${details}" \
         --out "${out}" \
         --max_workers "${MAX_WORKERS}" \
-        --model "gpt-4o" 2>&1 | tee "${log}"; then
+        --model "gpt-5.4-mini" 2>&1 | tee "${log}"; then
     OK+=("${n}")
   else
     rc=${PIPESTATUS[0]}

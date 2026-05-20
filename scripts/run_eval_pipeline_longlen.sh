@@ -104,6 +104,6 @@ else
   python "${SCRIPTS}/gpt_judge_recheck.py" \
     --details "${DETAILS}" \
     --out "${WITH_JUDGE}" \
-    --model "gpt-4o" \
+    --model "gpt-5.4-mini" \
     2>&1 | tee "${LOG_DIR}/gpt_recheck.log"
 fi
