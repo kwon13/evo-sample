@@ -8,9 +8,6 @@ inflation for AIME/AMC, the R-Zero system prompt, the boxed-only extraction
 regex, and math_verify-based grading.
 """
 
-from __future__ import annotations
-
-import io
 import json
 import logging
 import os

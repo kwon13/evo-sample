@@ -100,10 +100,11 @@ WITH_JUDGE="${OUT_DIR}/with_gpt_judge.json"
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
   echo "[warn] OPENAI_API_KEY not set; skipping GPT-4o re-check." >&2
 else
-  echo "[judge] re-checking failures with gpt-4o -> ${WITH_JUDGE}"
+  JUDGE_MODEL="${JUDGE_MODEL:-gpt-5.4-mini}"
+  echo "[judge] re-checking failures with ${JUDGE_MODEL} -> ${WITH_JUDGE}"
   python "${SCRIPTS}/gpt_judge_recheck.py" \
     --details "${DETAILS}" \
     --out "${WITH_JUDGE}" \
-    --model "gpt-5.4-mini" \
+    --model "${JUDGE_MODEL}" \
     2>&1 | tee "${LOG_DIR}/gpt_recheck.log"
 fi
