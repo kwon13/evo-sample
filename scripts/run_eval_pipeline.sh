@@ -99,6 +99,50 @@ else
     2>&1 | tee "${LOG_DIR}/gpt_recheck.log"
 fi
 
+# ---- 3.5 reasoning benchmarks (BBEH / MMLU-Pro / SuperGPQA) ---------------
+# Enable by setting REASONING_EVAL=1. Each benchmark writes its own summary
+# under <OUT_DIR>/<name>/{summary.json,details.jsonl}. Subsample per-category
+# with REASONING_MAX_SAMPLES (default: all examples; set e.g. 100 for speed).
+# Override the list with REASONING_BENCHMARKS="bbeh,mmlupro" if needed.
+if [[ "${REASONING_EVAL:-0}" == "1" ]]; then
+  REASONING_BENCHMARKS="${REASONING_BENCHMARKS:-bbeh,mmlupro,supergpqa}"
+  REASONING_MAX_SAMPLES="${REASONING_MAX_SAMPLES:--1}"
+  REASONING_MAX_TOKENS="${REASONING_MAX_TOKENS:-8192}"
+
+  declare -A REASONING_SCRIPTS=(
+    [bbeh]="${REPO_ROOT}/evaluation/eval_bbeh.py"
+    [mmlupro]="${REPO_ROOT}/evaluation/eval_mmlupro.py"
+    [supergpqa]="${REPO_ROOT}/evaluation/eval_supergpqa.py"
+  )
+
+  IFS=',' read -ra REASONING_LIST <<< "${REASONING_BENCHMARKS}"
+  for bench in "${REASONING_LIST[@]}"; do
+    bench="$(echo "${bench}" | tr -d '[:space:]')"
+    [[ -z "${bench}" ]] && continue
+    script="${REASONING_SCRIPTS[${bench}]:-}"
+    if [[ -z "${script}" ]]; then
+      echo "[warn] unknown reasoning benchmark '${bench}', skipping" >&2
+      continue
+    fi
+    bench_out="${OUT_DIR}/${bench}"
+    mkdir -p "${bench_out}"
+    echo "[eval] ${bench} -> ${bench_out}  (max_samples=${REASONING_MAX_SAMPLES})"
+    python "${script}" \
+      --model_path "${HF_DIR}" \
+      --tokenizer "${HF_DIR}" \
+      --output_dir "${bench_out}" \
+      --max_samples "${REASONING_MAX_SAMPLES}" \
+      --max_tokens "${REASONING_MAX_TOKENS}" \
+      --temperature 0.0 \
+      --top_p 1.0 \
+      --tensor_parallel_size 1 \
+      --gpu_memory_utilization 0.85 \
+      --max_model_len 10240 \
+      --dtype bfloat16 \
+      2>&1 | tee "${LOG_DIR}/${bench}_eval.log"
+  done
+fi
+
 # ---- 4. summary -----------------------------------------------------------
 echo
 echo "=========================================================="
@@ -132,6 +176,26 @@ o = s.get("overall", {})
 print(f"  overall        pass@1={o.get('pass_at_1',0.0)*100:6.2f}%  n={o.get('num_examples',0)}")
 PY
 fi
+
+if [[ "${REASONING_EVAL:-0}" == "1" ]]; then
+  echo "----------------------------------------------------------"
+  echo "[reasoning benchmarks]"
+  python - <<PY
+import json, os
+out_dir = "${OUT_DIR}"
+for bench in ("bbeh", "mmlupro", "supergpqa"):
+    path = os.path.join(out_dir, bench, "summary.json")
+    if not os.path.isfile(path):
+        continue
+    with open(path) as f:
+        s = json.load(f)
+    b = s.get("benchmarks", {}).get(bench, {})
+    line = f"  {bench:10s} pass@1={b.get('pass_at_1', 0.0)*100:6.2f}%  n={b.get('num_examples', 0)}"
+    if "macro_avg" in b:
+        line += f"  macro={b['macro_avg']*100:6.2f}%"
+    print(line)
+PY
+fi
 echo "=========================================================="
 
 
@@ -144,4 +208,19 @@ bash scripts/run_eval_all_steps.sh \
 bash scripts/run_eval_all_steps_parallel.sh \
   /data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo_h_g8_new \
   0,1,2,3
+
+# Math + reasoning benchmarks (BBEH/MMLU-Pro/SuperGPQA) on a single step:
+REASONING_EVAL=1 REASONING_MAX_SAMPLES=100 \
+  bash scripts/run_eval_pipeline.sh \
+    /data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo_h_g8_new/global_step_80 0
+
+# Only a subset of reasoning benchmarks:
+REASONING_EVAL=1 REASONING_BENCHMARKS=bbeh,mmlupro REASONING_MAX_SAMPLES=200 \
+  bash scripts/run_eval_pipeline.sh <CKPT_DIR> <GPU_IDX>
+
+# Fan out across all checkpoints (parallel wrapper inherits these env vars):
+REASONING_EVAL=1 REASONING_MAX_SAMPLES=100 \
+  bash scripts/run_eval_all_steps_parallel.sh \
+    /data1/yhoon113/evo-sample/rq_output/verl_ckpt_grpo_h_g8_new \
+    0,1,2,3
 END_COMMENT
