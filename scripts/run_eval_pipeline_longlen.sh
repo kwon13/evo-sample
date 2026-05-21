@@ -42,20 +42,41 @@ if (( MAX_MODEL_LEN > MODEL_CTX_CAP )); then
   MAX_MODEL_LEN="${MODEL_CTX_CAP}"
 fi
 
+ACTOR_DIR="${CKPT_DIR}/actor"
 HF_DIR="${CKPT_DIR}/hf_merged"
 OUT_DIR="${CKPT_DIR}/${OUT_SUBDIR}"
 
 REPO_ROOT="/data1/yhoon113/evo-sample"
 SCRIPTS="${REPO_ROOT}/scripts"
 
-if [[ ! -f "${HF_DIR}/config.json" ]] || ! compgen -G "${HF_DIR}/*.safetensors" > /dev/null; then
-  echo "[err] missing HF model at ${HF_DIR} (need config.json + *.safetensors)" >&2
-  exit 1
-fi
-
 mkdir -p "${OUT_DIR}"
 LOG_DIR="${OUT_DIR}/logs"
 mkdir -p "${LOG_DIR}"
+
+# Ensure hf_merged exists: if not, merge from actor/. Errors out if neither
+# is available.
+hf_merged_present() {
+  [[ -f "${HF_DIR}/config.json" ]] && compgen -G "${HF_DIR}/*.safetensors" > /dev/null
+}
+
+if ! hf_merged_present; then
+  if [[ -d "${ACTOR_DIR}" && -d "${ACTOR_DIR}/huggingface" ]]; then
+    echo "[merge] no hf_merged/, merging from ${ACTOR_DIR} -> ${HF_DIR}"
+    python "${SCRIPTS}/merge_fsdp_to_hf.py" \
+      --ckpt_dir "${ACTOR_DIR}" \
+      --out_dir  "${HF_DIR}" \
+      2>&1 | tee "${LOG_DIR}/merge.log"
+    if ! hf_merged_present; then
+      echo "[err] merge did not produce a valid HF model at ${HF_DIR}" >&2
+      exit 1
+    fi
+  else
+    echo "[err] no usable model: ${HF_DIR} missing and ${ACTOR_DIR}/huggingface not found" >&2
+    exit 1
+  fi
+else
+  echo "[merge] reusing existing HF model at ${HF_DIR}"
+fi
 
 # ---- env ------------------------------------------------------------------
 # Auto-source .env so the GPT-4o judge has OPENAI_API_KEY.

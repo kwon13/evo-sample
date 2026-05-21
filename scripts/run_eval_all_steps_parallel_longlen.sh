@@ -94,8 +94,14 @@ for d in "${ALL_STEPS[@]}"; do
     SKIPPED+=("${n} (out of [${START_STEP},${END_STEP}])")
     continue
   fi
-  if [[ ! -d "${d}/hf_merged" ]]; then
-    SKIPPED+=("${n} (no hf_merged/)")
+  # Accept a step if it has hf_merged/ already, or if it has actor/huggingface/
+  # which means the pipeline can merge on the fly.
+  if [[ -d "${d}/hf_merged" ]]; then
+    :
+  elif [[ -d "${d}/actor/huggingface" ]]; then
+    :
+  else
+    SKIPPED+=("${n} (no hf_merged/ and no actor/huggingface/)")
     continue
   fi
   STEP_DIRS+=("${d}")
