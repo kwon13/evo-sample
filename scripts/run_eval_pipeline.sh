@@ -31,13 +31,15 @@ HF_DIR="${CKPT_DIR}/hf_merged"
 REPO_ROOT="/data1/yhoon113/evo-sample"
 SCRIPTS="${REPO_ROOT}/scripts"
 
-if [[ ! -d "${ACTOR_DIR}" ]]; then
-  echo "[err] missing actor dir: ${ACTOR_DIR}" >&2
-  exit 1
-fi
-if [[ ! -d "${ACTOR_DIR}/huggingface" ]]; then
-  echo "[err] missing ${ACTOR_DIR}/huggingface (config/tokenizer source)" >&2
-  exit 1
+if [[ "${REASONING_ONLY:-0}" != "1" ]]; then
+  if [[ ! -d "${ACTOR_DIR}" ]]; then
+    echo "[err] missing actor dir: ${ACTOR_DIR}" >&2
+    exit 1
+  fi
+  if [[ ! -d "${ACTOR_DIR}/huggingface" ]]; then
+    echo "[err] missing ${ACTOR_DIR}/huggingface (config/tokenizer source)" >&2
+    exit 1
+  fi
 fi
 
 mkdir -p "${OUT_DIR}"
@@ -51,52 +53,65 @@ export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
 cd "${REPO_ROOT}"
 
-# ---- 1. FSDP -> HF merge --------------------------------------------------
-if [[ -f "${HF_DIR}/config.json" ]] && \
-   compgen -G "${HF_DIR}/*.safetensors" > /dev/null; then
-  echo "[merge] reusing existing HF model at ${HF_DIR}"
-else
-  echo "[merge] ${ACTOR_DIR} -> ${HF_DIR}"
-  python "${SCRIPTS}/merge_fsdp_to_hf.py" \
-    --ckpt_dir "${ACTOR_DIR}" \
-    --out_dir  "${HF_DIR}" \
-    2>&1 | tee "${LOG_DIR}/merge.log"
-fi
-
-# ---- 2. 6-benchmark math eval (math500/amc23/aime24/aime25/minerva/olympiad)
 MATH_OUT="${OUT_DIR}"
-echo "[eval] math benchmarks -> ${MATH_OUT}"
-python "${SCRIPTS}/eval_vllm_math.py" \
-  --model "${HF_DIR}" \
-  --tokenizer "${HF_DIR}" \
-  --config "" \
-  --output_dir "${MATH_OUT}" \
-  --max_tokens 8192 \
-  --temperature 0.0 \
-  --top_p 1.0 \
-  --tensor_parallel_size 1 \
-  --gpu_memory_utilization 0.85 \
-  --max_model_len 10240 \
-  --dtype bfloat16 \
-  2>&1 | tee "${LOG_DIR}/math_eval.log"
 
-DETAILS="${MATH_OUT}/details.jsonl"
-if [[ ! -f "${DETAILS}" ]]; then
-  echo "[err] details.jsonl not produced at ${DETAILS}" >&2
-  exit 1
-fi
-
-# ---- 3. GPT-4o judge re-check on failures ---------------------------------
-WITH_JUDGE="${MATH_OUT}/with_gpt_judge.json"
-if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-  echo "[warn] OPENAI_API_KEY not set; skipping GPT-4o re-check." >&2
+# REASONING_ONLY=1 skips FSDP merge + math eval + GPT judge; useful when math
+# has already been run on these checkpoints and you only want to add the
+# reasoning benchmarks. Implicitly enables REASONING_EVAL.
+if [[ "${REASONING_ONLY:-0}" == "1" ]]; then
+  REASONING_EVAL=1
+  echo "[skip] REASONING_ONLY=1: skipping FSDP merge, math eval, and GPT judge"
+  if [[ ! -f "${HF_DIR}/config.json" ]] || ! compgen -G "${HF_DIR}/*.safetensors" > /dev/null; then
+    echo "[err] REASONING_ONLY requires pre-merged HF model at ${HF_DIR}" >&2
+    exit 1
+  fi
 else
-  echo "[judge] re-checking failures with gpt-5.4-mini -> ${WITH_JUDGE}"
-  python "${SCRIPTS}/gpt_judge_recheck.py" \
-    --details "${DETAILS}" \
-    --out "${WITH_JUDGE}" \
-    --model "gpt-5.4-mini" \
-    2>&1 | tee "${LOG_DIR}/gpt_recheck.log"
+  # ---- 1. FSDP -> HF merge ------------------------------------------------
+  if [[ -f "${HF_DIR}/config.json" ]] && \
+     compgen -G "${HF_DIR}/*.safetensors" > /dev/null; then
+    echo "[merge] reusing existing HF model at ${HF_DIR}"
+  else
+    echo "[merge] ${ACTOR_DIR} -> ${HF_DIR}"
+    python "${SCRIPTS}/merge_fsdp_to_hf.py" \
+      --ckpt_dir "${ACTOR_DIR}" \
+      --out_dir  "${HF_DIR}" \
+      2>&1 | tee "${LOG_DIR}/merge.log"
+  fi
+
+  # ---- 2. 6-benchmark math eval (math500/amc23/aime24/aime25/minerva/olympiad)
+  echo "[eval] math benchmarks -> ${MATH_OUT}"
+  python "${SCRIPTS}/eval_vllm_math.py" \
+    --model "${HF_DIR}" \
+    --tokenizer "${HF_DIR}" \
+    --config "" \
+    --output_dir "${MATH_OUT}" \
+    --max_tokens 8192 \
+    --temperature 0.0 \
+    --top_p 1.0 \
+    --tensor_parallel_size 1 \
+    --gpu_memory_utilization 0.85 \
+    --max_model_len 10240 \
+    --dtype bfloat16 \
+    2>&1 | tee "${LOG_DIR}/math_eval.log"
+
+  DETAILS="${MATH_OUT}/details.jsonl"
+  if [[ ! -f "${DETAILS}" ]]; then
+    echo "[err] details.jsonl not produced at ${DETAILS}" >&2
+    exit 1
+  fi
+
+  # ---- 3. GPT-4o judge re-check on failures -------------------------------
+  WITH_JUDGE="${MATH_OUT}/with_gpt_judge.json"
+  if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+    echo "[warn] OPENAI_API_KEY not set; skipping GPT-4o re-check." >&2
+  else
+    echo "[judge] re-checking failures with gpt-5.4-mini -> ${WITH_JUDGE}"
+    python "${SCRIPTS}/gpt_judge_recheck.py" \
+      --details "${DETAILS}" \
+      --out "${WITH_JUDGE}" \
+      --model "gpt-5.4-mini" \
+      2>&1 | tee "${LOG_DIR}/gpt_recheck.log"
+  fi
 fi
 
 # ---- 3.5 reasoning benchmarks (BBEH / MMLU-Pro / SuperGPQA) ---------------

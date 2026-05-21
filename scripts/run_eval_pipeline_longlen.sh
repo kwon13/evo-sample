@@ -72,39 +72,110 @@ export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
 cd "${REPO_ROOT}"
 
-# ---- 1. 6-benchmark math eval (long context) ------------------------------
-echo "[eval] ${HF_DIR}"
-echo "[eval] max_tokens=${MAX_TOKENS}  max_model_len=${MAX_MODEL_LEN}  -> ${OUT_DIR}"
-python "${SCRIPTS}/eval_vllm_math.py" \
-  --model "${HF_DIR}" \
-  --tokenizer "${HF_DIR}" \
-  --config "" \
-  --output_dir "${OUT_DIR}" \
-  --max_tokens "${MAX_TOKENS}" \
-  --temperature 0.0 \
-  --top_p 1.0 \
-  --tensor_parallel_size 1 \
-  --gpu_memory_utilization 0.85 \
-  --max_model_len "${MAX_MODEL_LEN}" \
-  --dtype bfloat16 \
-  2>&1 | tee "${LOG_DIR}/math_eval.log"
+# REASONING_ONLY=1 skips math eval + GPT judge; useful when math has already
+# been run on these checkpoints and you only want to fill in the reasoning
+# benchmarks. Implicitly enables REASONING_EVAL.
+if [[ "${REASONING_ONLY:-0}" == "1" ]]; then
+  REASONING_EVAL=1
+  echo "[skip] REASONING_ONLY=1: skipping math eval and GPT judge"
+else
+  # ---- 1. 6-benchmark math eval (long context) ----------------------------
+  echo "[eval] ${HF_DIR}"
+  echo "[eval] max_tokens=${MAX_TOKENS}  max_model_len=${MAX_MODEL_LEN}  -> ${OUT_DIR}"
+  python "${SCRIPTS}/eval_vllm_math.py" \
+    --model "${HF_DIR}" \
+    --tokenizer "${HF_DIR}" \
+    --config "" \
+    --output_dir "${OUT_DIR}" \
+    --max_tokens "${MAX_TOKENS}" \
+    --temperature 0.0 \
+    --top_p 1.0 \
+    --tensor_parallel_size 1 \
+    --gpu_memory_utilization 0.85 \
+    --max_model_len "${MAX_MODEL_LEN}" \
+    --dtype bfloat16 \
+    2>&1 | tee "${LOG_DIR}/math_eval.log"
 
-DETAILS="${OUT_DIR}/details.jsonl"
-if [[ ! -f "${DETAILS}" ]]; then
-  echo "[err] details.jsonl not produced at ${DETAILS}" >&2
-  exit 1
+  DETAILS="${OUT_DIR}/details.jsonl"
+  if [[ ! -f "${DETAILS}" ]]; then
+    echo "[err] details.jsonl not produced at ${DETAILS}" >&2
+    exit 1
+  fi
+
+  # ---- 2. GPT-4o judge re-check on failures -------------------------------
+  WITH_JUDGE="${OUT_DIR}/with_gpt_judge.json"
+  if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+    echo "[warn] OPENAI_API_KEY not set; skipping GPT-4o re-check." >&2
+  else
+    JUDGE_MODEL="${JUDGE_MODEL:-gpt-5.4-mini}"
+    echo "[judge] re-checking failures with ${JUDGE_MODEL} -> ${WITH_JUDGE}"
+    python "${SCRIPTS}/gpt_judge_recheck.py" \
+      --details "${DETAILS}" \
+      --out "${WITH_JUDGE}" \
+      --model "${JUDGE_MODEL}" \
+      2>&1 | tee "${LOG_DIR}/gpt_recheck.log"
+  fi
 fi
 
-# ---- 2. GPT-4o judge re-check on failures ---------------------------------
-WITH_JUDGE="${OUT_DIR}/with_gpt_judge.json"
-if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-  echo "[warn] OPENAI_API_KEY not set; skipping GPT-4o re-check." >&2
-else
-  JUDGE_MODEL="${JUDGE_MODEL:-gpt-5.4-mini}"
-  echo "[judge] re-checking failures with ${JUDGE_MODEL} -> ${WITH_JUDGE}"
-  python "${SCRIPTS}/gpt_judge_recheck.py" \
-    --details "${DETAILS}" \
-    --out "${WITH_JUDGE}" \
-    --model "${JUDGE_MODEL}" \
-    2>&1 | tee "${LOG_DIR}/gpt_recheck.log"
+# ---- 3. reasoning benchmarks (BBEH / MMLU-Pro / SuperGPQA) ----------------
+# Same toggle as run_eval_pipeline.sh. Reasoning eval uses its own max_tokens
+# (default 8192 to match R-Zero); the longlen math max_tokens does not apply.
+# Output goes under <OUT_DIR>/<bench>/ so it sits alongside the longlen math
+# results. Override REASONING_OUT_ROOT if you want a different location.
+if [[ "${REASONING_EVAL:-0}" == "1" ]]; then
+  REASONING_BENCHMARKS="${REASONING_BENCHMARKS:-bbeh,mmlupro,supergpqa}"
+  REASONING_MAX_SAMPLES="${REASONING_MAX_SAMPLES:--1}"
+  REASONING_MAX_TOKENS="${REASONING_MAX_TOKENS:-8192}"
+  REASONING_OUT_ROOT="${REASONING_OUT_ROOT:-${OUT_DIR}}"
+
+  declare -A REASONING_SCRIPTS=(
+    [bbeh]="${REPO_ROOT}/evaluation/eval_bbeh.py"
+    [mmlupro]="${REPO_ROOT}/evaluation/eval_mmlupro.py"
+    [supergpqa]="${REPO_ROOT}/evaluation/eval_supergpqa.py"
+  )
+
+  IFS=',' read -ra REASONING_LIST <<< "${REASONING_BENCHMARKS}"
+  for bench in "${REASONING_LIST[@]}"; do
+    bench="$(echo "${bench}" | tr -d '[:space:]')"
+    [[ -z "${bench}" ]] && continue
+    script="${REASONING_SCRIPTS[${bench}]:-}"
+    if [[ -z "${script}" ]]; then
+      echo "[warn] unknown reasoning benchmark '${bench}', skipping" >&2
+      continue
+    fi
+    bench_out="${REASONING_OUT_ROOT}/${bench}"
+    mkdir -p "${bench_out}"
+    echo "[eval] ${bench} -> ${bench_out}  (max_samples=${REASONING_MAX_SAMPLES})"
+    python "${script}" \
+      --model_path "${HF_DIR}" \
+      --tokenizer "${HF_DIR}" \
+      --output_dir "${bench_out}" \
+      --max_samples "${REASONING_MAX_SAMPLES}" \
+      --max_tokens "${REASONING_MAX_TOKENS}" \
+      --temperature 0.0 \
+      --top_p 1.0 \
+      --tensor_parallel_size 1 \
+      --gpu_memory_utilization 0.85 \
+      --max_model_len "${MAX_MODEL_LEN}" \
+      --dtype bfloat16 \
+      2>&1 | tee "${LOG_DIR}/${bench}_eval.log"
+  done
+
+  echo "----------------------------------------------------------"
+  echo "[reasoning benchmarks]"
+  python - <<PY
+import json, os
+out_root = "${REASONING_OUT_ROOT}"
+for bench in ("bbeh", "mmlupro", "supergpqa"):
+    path = os.path.join(out_root, bench, "summary.json")
+    if not os.path.isfile(path):
+        continue
+    with open(path) as f:
+        s = json.load(f)
+    b = s.get("benchmarks", {}).get(bench, {})
+    line = f"  {bench:10s} pass@1={b.get('pass_at_1', 0.0)*100:6.2f}%  n={b.get('num_examples', 0)}"
+    if "macro_avg" in b:
+        line += f"  macro={b['macro_avg']*100:6.2f}%"
+    print(line)
+PY
 fi
