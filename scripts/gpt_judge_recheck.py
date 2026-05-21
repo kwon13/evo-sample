@@ -10,6 +10,9 @@ Mirrors R-Zero's results_recheck.py:
   - Treat a `Yes` reply as a correct answer (R-Zero override).
   - Write `with_gpt_judge.json` with per-benchmark totals and the
     6-benchmark math average.
+  - Write `gpt_verdicts.jsonl` next to it: one row per GPT-judged problem
+    ({benchmark, index, answer, pred, gpt_yes, gpt_raw, error}), so later
+    case analysis can read each verdict instead of re-calling GPT.
 
 Usage:
   python scripts/gpt_judge_recheck.py \
@@ -34,7 +37,10 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evaluation.math_benchmarks import call_gpt_judge  # noqa: E402
+from evaluation.math_benchmarks import (  # noqa: E402
+    call_gpt_judge,
+    extract_math_answer,
+)
 
 logger = logging.getLogger("gpt_judge_recheck")
 
@@ -62,7 +68,7 @@ def recheck(
     gpt_model: str,
     api_key: str,
     max_workers: int,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     rows = _load_jsonl(details_path)
     by_bench: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
@@ -73,11 +79,22 @@ def recheck(
     total_yes = 0
     total_failed = 0
 
+    # Per-problem GPT verdicts, so case analysis does not need a GPT re-run.
+    verdicts: list[dict[str, Any]] = []
+
     progress_lock = threading.Lock()
 
-    def _judge_one(row: dict[str, Any]) -> tuple[dict[str, Any], Any]:
-        return row, call_gpt_judge(
-            ground_truth=str(row.get("answer", "")),
+    def _judge_one(row: dict[str, Any]) -> tuple[dict[str, Any], str, Any]:
+        gt = str(row.get("answer", ""))
+        # math500 stores the full reference *solution* in `answer`; hand GPT
+        # only its boxed final answer so the comparison is not diluted by the
+        # surrounding derivation. Other benchmarks already store a clean answer.
+        if row.get("benchmark") == "math500":
+            boxed, _ = extract_math_answer(gt)
+            if boxed:
+                gt = boxed
+        return row, gt, call_gpt_judge(
+            ground_truth=gt,
             extracted_answer=str(_first_sample(row).get("pred", "")),
             model=gpt_model,
             api_key=api_key,
@@ -110,13 +127,24 @@ def recheck(
             with ThreadPoolExecutor(max_workers=max_workers) as ex:
                 futures = [ex.submit(_judge_one, row) for row in to_judge]
                 for fut in as_completed(futures):
-                    _, res = fut.result()
+                    row, gt_used, res = fut.result()
                     bench_calls += 1
                     if res.error:
                         bench_failed += 1
                     if res.yes:
                         bench_yes += 1
                         correct += 1
+                    verdicts.append({
+                        "benchmark": bench,
+                        "index": row.get("index"),
+                        "answer": row.get("answer", ""),
+                        "gpt_ground_truth": gt_used,
+                        "pred": str(_first_sample(row).get("pred", "")),
+                        "math_verify_correct": False,
+                        "gpt_yes": bool(res.yes),
+                        "gpt_raw": res.raw_response,
+                        "error": res.error,
+                    })
                     if bench_calls % 50 == 0:
                         with progress_lock:
                             logger.info(
@@ -144,19 +172,21 @@ def recheck(
         "yes": total_yes,
         "failed": total_failed,
     }
-    return summary
+    return summary, verdicts
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--details", required=True, help="path to details.jsonl from eval_vllm_math.py")
     p.add_argument("--out", required=True, help="output with_gpt_judge.json path")
-    p.add_argument("--model", default="gpt-4o")
+    p.add_argument("--model", default="gpt-5.4-mini")
     p.add_argument(
         "--max_workers",
         type=int,
-        default=16,
-        help="ThreadPoolExecutor size for concurrent gpt-4o calls.",
+        default=32,
+        help=("ThreadPoolExecutor size for concurrent gpt-4o calls. "
+              "Raise (e.g. 64) if your OpenAI tier allows; call_gpt_judge "
+              "retries transient 429s with backoff."),
     )
     p.add_argument("--log_level", default="INFO")
     args = p.parse_args()
@@ -176,7 +206,7 @@ def main() -> None:
     if not details_path.is_file():
         raise FileNotFoundError(f"details file not found: {details_path}")
 
-    summary = recheck(details_path, args.model, api_key, args.max_workers)
+    summary, verdicts = recheck(details_path, args.model, api_key, args.max_workers)
 
     bench_stats = summary["benchmarks"]
     if all(b in bench_stats for b in MATH_6):
@@ -197,6 +227,14 @@ def main() -> None:
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
     print(f"saved: {out_path}")
+
+    # Per-problem GPT verdicts (one row per GPT-judged problem), so later case
+    # analysis can read the verdict directly instead of re-calling GPT.
+    verdicts_path = out_path.parent / "gpt_verdicts.jsonl"
+    with verdicts_path.open("w", encoding="utf-8") as f:
+        for v in verdicts:
+            f.write(json.dumps(v, ensure_ascii=False) + "\n")
+    print(f"saved: {verdicts_path}  ({len(verdicts)} verdicts)")
 
 
 if __name__ == "__main__":

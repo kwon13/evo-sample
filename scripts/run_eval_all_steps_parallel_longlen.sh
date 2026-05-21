@@ -43,7 +43,7 @@ MAX_TOKENS="${3:-24576}"
 START_STEP="${4:-0}"
 END_STEP="${5:-999999999}"
 
-OUT_SUBDIR="eval_longlen"
+OUT_SUBDIR="${OUT_SUBDIR:-eval_longlen}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PIPELINE="${SCRIPT_DIR}/run_eval_pipeline_longlen.sh"
