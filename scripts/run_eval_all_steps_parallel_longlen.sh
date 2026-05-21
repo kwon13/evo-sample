@@ -6,9 +6,11 @@
 # given GPU list as a worker pool. Each step occupies exactly one GPU; when a
 # GPU finishes, the wrapper picks up the next step.
 #
-# Unlike the original, this evaluates directly from each step's `hf_merged/`
-# HF model (no actor/ FSDP shards required) with a configurable max_tokens,
-# writing to `eval_longlen/` so the original `eval/` results are preserved.
+# Unlike the original, this prefers each step's `hf_merged/` HF model (no
+# actor/ FSDP merge needed). Steps that only have `actor/huggingface/` are
+# still accepted -- the pipeline merges to `hf_merged/` on the fly. Uses a
+# configurable max_tokens and writes to `eval_longlen/` so the original
+# `eval/` results are preserved.
 #
 # Usage:
 #   bash scripts/run_eval_all_steps_parallel_longlen.sh \
